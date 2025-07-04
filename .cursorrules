@@ -1,0 +1,158 @@
+# Cursor Rules for Azure FastAPI Project
+
+## 協作記錄規則 (Collaboration Logging Rules)
+
+**必須記錄到 `COLLABORATION_LOG.md`**
+
+### 記錄格式 (簡化版)
+```
+### [時間] [工具] - [動作]
+Who: [Cursor (Model名稱)/用戶]
+What: [做了什麼]
+Why: [為什麼做]
+When: [台灣時間]
+How: [怎麼做的]
+```
+
+### 記錄原則
+1. **簡單記錄** - 不要複雜化，保持簡潔
+2. **每次操作都記錄** - 代碼修改、配置變更、檢查等
+3. **使用台灣時間** - 格式 [HH:MM]
+4. **明確標示執行者** - 必須包含模型名稱，如 Cursor (Claude Sonnet 4)/用戶
+5. **模型追蹤** - 當切換不同 AI 模型時，清楚標示模型名稱以便追蹤各模型的貢獻
+6. **時間確認** - 記錄前必須使用 `date '+%Y-%m-%d %H:%M:%S %Z'` 命令確認台灣當前時間
+
+### 範例
+```
+### [10:15] Cursor (Claude Sonnet 4) - 修改 API 路由
+Who: Cursor (Claude Sonnet 4)
+What: 新增用戶認證 API 端點
+Why: 實現用戶登入功能
+When: 2025-06-30 10:15 (台灣時間)
+How: 在 src/api/v1/ 新增 auth.py
+```
+
+### 模型切換範例
+```
+### [11:00] Cursor (GPT-4) - 代碼重構
+Who: Cursor (GPT-4)
+What: 重構資料庫連接邏輯
+Why: 切換到 GPT-4 模型進行複雜重構任務
+When: 2025-06-30 11:00 (台灣時間)
+How: 使用 SQLAlchemy 2.0 語法重寫查詢邏輯
+```
+
+## 程式設計規範
+
+### 架構原則
+- 遵循 FHS (Functional Hierarchy Structure) 架構
+- 保持代碼簡潔和模組化
+- 優先考慮可讀性和維護性
+
+### 安全規範
+- 敏感資訊使用環境變數
+- API Keys 不得硬編碼
+- 遵循最小權限原則
+
+### 測試要求
+- 新功能必須包含單元測試
+- 重要 API 端點需要整合測試
+- 保持測試覆蓋率 > 80%
+
+### 文檔要求
+- 重要函數需要 docstring
+- API 端點需要 OpenAPI 文檔
+- 重大變更需要更新 README.md
+
+## Bubble.io API 相容性規範 ⚠️
+
+### 關鍵原則
+**Bubble.io API Connector 需要固定的 JSON Schema**
+
+### Pydantic 模型設計規則
+
+#### ❌ 絕對禁止
+```python
+# 不要使用 Optional
+class BadResponse(BaseModel):
+    data: Optional[dict]  # ❌ Schema 不一致
+    error: Optional[str]  # ❌ Bubble 無法處理
+```
+
+#### ✅ 正確做法
+```python
+# 所有欄位必須始終存在
+class GoodResponse(BaseModel):
+    success: bool = True
+    data: dict = {}      # ✅ 失敗時空字典
+    error: str = ""      # ✅ 失敗時空字串
+    items: List[str] = [] # ✅ 失敗時空陣列
+```
+
+### 實作檢查清單
+- [ ] 所有 Pydantic 模型欄位都有預設值
+- [ ] 不使用 Optional[T] 或 Union[T, None]
+- [ ] HTTP 200 的所有回應使用相同 Schema
+- [ ] 使用布林旗標（如 has_error）而非 Optional 欄位
+- [ ] 錯誤情況返回空值（[], "", 0）而非 null
+
+### 範例：統一回應格式
+```python
+class UnifiedResponse(BaseModel):
+    success: bool
+    data: DataModel           # 總是存在
+    error: ErrorModel         # 總是存在
+    warning: WarningModel     # 總是存在
+    timestamp: str
+
+class DataModel(BaseModel):
+    items: List[ItemModel] = []
+    total: int = 0
+    has_more: bool = False
+
+class ErrorModel(BaseModel):
+    has_error: bool = False
+    code: str = ""
+    message: str = ""
+
+class WarningModel(BaseModel):
+    has_warning: bool = False
+    message: str = ""
+```
+
+### 測試要求
+- 必須測試所有狀態回傳相同 Schema
+- 驗證沒有 null 值出現在回應中
+- 確認 Bubble.io 可以正確解析所有回應
+
+## Work Item 狀態管理規範
+
+### Azure DevOps 狀態轉換規則
+
+**Task 類型 Work Items 的正確狀態流程**：
+- **New** → **Active** → **Closed**
+
+**重要注意事項**：
+- ❌ **不要使用** "Completed" - 這不是 Azure DevOps 中的實際狀態
+- ✅ **正確術語** 是 "Closed" 表示任務已完成並驗證通過
+
+### 回報格式規範
+
+#### ❌ 錯誤的回報格式
+```
+Work Item #346 狀態：New → Active → ✅ Completed
+```
+
+#### ✅ 正確的回報格式
+```
+Work Item #346 狀態：New → Active → ✅ Closed
+```
+
+### 狀態更新時機
+1. **開始工作時**: 將狀態從 New 更新為 Active
+2. **完成工作後**: 通知 Claude Code 進行驗證
+3. **Claude Code 驗證通過**: 狀態從 Active 更新為 Closed
+
+### 回報責任
+- **Cursor**: 負責實作並回報完成，但不直接更新狀態為 Closed
+- **Claude Code**: 負責驗證實作結果並更新最終狀態為 Closed 

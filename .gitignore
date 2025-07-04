@@ -29,6 +29,13 @@ local.settings.json
 .cursor/
 *.swp
 *.swo
+*.code-workspace
+
+# MCP Memory System
+.serena/
+
+# Claude AI
+.claude/
 
 # OS
 .DS_Store

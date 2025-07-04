@@ -1,0 +1,188 @@
+name: Consistency Monitoring
+
+on:
+  schedule:
+    # Run every 6 hours
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type to run'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - short_text_only
+          - long_text_only
+
+env:
+  PYTHON_VERSION: '3.11'
+  
+jobs:
+  consistency-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install aiohttp  # Additional dependency for monitoring
+    
+    - name: Set up environment
+      env:
+        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+        AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+      run: |
+        echo "Environment configured"
+    
+    - name: Start API server
+      run: |
+        # Start the FastAPI server in background
+        uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+        # Wait for server to be ready
+        sleep 10
+        # Check if server is running
+        curl -f http://localhost:8000/health || exit 1
+    
+    - name: Run consistency tests
+      id: consistency_test
+      run: |
+        cd monitoring/consistency
+        python consistency_monitor.py --report > test_output.txt
+        cat test_output.txt
+        
+        # Extract KPI values for GitHub Actions output
+        echo "short_text_consistency=$(grep -oP 'Short Text Consistency \| \K[0-9.]+%' test_output.txt | head -1)" >> $GITHUB_OUTPUT
+        echo "long_text_consistency=$(grep -oP 'Long Text Consistency \| \K[0-9.]+%' test_output.txt | head -1)" >> $GITHUB_OUTPUT
+    
+    - name: Upload consistency report
+      uses: actions/upload-artifact@v3
+      with:
+        name: consistency-report-${{ github.run_number }}
+        path: monitoring/consistency/consistency_report_*.md
+        retention-days: 30
+    
+    - name: Check KPI thresholds
+      run: |
+        # Parse KPIs and check thresholds
+        cd monitoring/consistency
+        python -c "
+        import re
+        
+        # Read test output
+        with open('test_output.txt', 'r') as f:
+            content = f.read()
+        
+        # Extract FAIL status
+        fails = re.findall(r'❌ FAIL', content)
+        
+        if fails:
+            print(f'❌ {len(fails)} KPIs failed threshold checks')
+            exit(1)
+        else:
+            print('✅ All KPIs passed threshold checks')
+        "
+    
+    - name: Create issue if KPIs fail
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const title = `Consistency KPI Alert - Run #${context.runNumber}`;
+          const body = `
+          ## ⚠️ Consistency KPI Threshold Breach
+          
+          One or more consistency KPIs have fallen below acceptable thresholds.
+          
+          **Run Details:**
+          - Run Number: ${context.runNumber}
+          - Workflow: ${context.workflow}
+          - Triggered by: ${context.eventName}
+          
+          **Results:**
+          - Short Text Consistency: ${{ steps.consistency_test.outputs.short_text_consistency }}
+          - Long Text Consistency: ${{ steps.consistency_test.outputs.long_text_consistency }}
+          
+          **Action Required:**
+          1. Review the [consistency report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          2. Check recent code changes that might affect extraction consistency
+          3. Consider adjusting prompt configurations or model parameters
+          
+          cc: @api-team
+          `;
+          
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: title,
+            body: body,
+            labels: ['bug', 'consistency', 'kpi-alert']
+          });
+    
+    - name: Send Slack notification (if configured)
+      if: failure() && env.SLACK_WEBHOOK_URL != ''
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+          --data '{
+            "text": "⚠️ Consistency KPI Alert",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*Consistency KPI Threshold Breach*\nOne or more KPIs have fallen below thresholds."
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Repository:*\n${{ github.repository }}"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*Run:*\n<https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}|#${{ github.run_number }}>"
+                  }
+                ]
+              }
+            ]
+          }' \
+          $SLACK_WEBHOOK_URL || true
+    
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Consistency Monitoring Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f monitoring/consistency/test_output.txt ]; then
+          echo "### KPI Results" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          grep -E "(Short Text Consistency|Long Text Consistency|Core Keyword Stability|Two Test Same Probability)" monitoring/consistency/test_output.txt | head -4 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- [Download Consistency Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
