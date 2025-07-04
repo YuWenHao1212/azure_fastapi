@@ -1,0 +1,35 @@
+{
+  "git.enabled": true,
+  "git.path": "git",
+  "git.autorefresh": true,
+  "git.detectSubmodules": false,
+  "git.scanRepositories": [
+    "/Users/yuwenhao/Documents/GitHub/azure_fastapi"
+  ],
+  "files.exclude": {
+    "../*": true,
+    "**/.git": false,
+    "**/.svn": true,
+    "**/.hg": true,
+    "**/CVS": true,
+    "**/.DS_Store": true
+  },
+  "search.exclude": {
+    "../*": true,
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "**/*.code-search": true
+  },
+  "files.watcherExclude": {
+    "../*": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true
+  },
+  "azureFunctions.deploySubpath": ".",
+  "azureFunctions.scmDoBuildDuringDeployment": true,
+  "azureFunctions.pythonVenv": ".venv",
+  "azureFunctions.projectLanguage": "Python",
+  "azureFunctions.projectRuntime": "~4",
+  "azureFunctions.projectLanguageModel": 2
+}
