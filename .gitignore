@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# 環境變數和敏感資訊
+.env
+.env.local
+*.key
+secrets/
+local.settings.json
+
+# Azure Functions
+.python_packages/
+*.azurite/
+.azure/
+
+# IDE
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 測試覆蓋率
+htmlcov/
+.coverage
+.pytest_cache/
+
+# 暫存檔案
+*.tmp
+*.log
+*.bak
+
+# 開發工具和文檔 (不需要部署)
+docs/
+legacy/
+tests/temp/
+tests/functional/test_jds*/
+tools/
+archive/
+
+# 開發腳本 (不需要部署)
+install_aliases.sh
+quick_setup.sh
+setup_env.sh
+start_dev.sh
+run_*.sh
+TEST_*.md
+TESTING_*.md
+COLLABORATION_LOG.md
+CLAUDE.md
+README_*.md
+
+# 臨時測試檔案
+test_*.py
+!tests/**/test_*.py
+test_*.json
+*.test.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

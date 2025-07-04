@@ -1,0 +1,286 @@
+{
+  "test_summary": {
+    "total_tests": 25,
+    "passed_tests": 25,
+    "success_rate": 100.0,
+    "test_date": "2025-07-04 14:02:43"
+  },
+  "test_types_summary": {
+    "文本長度驗證": {
+      "total": 5,
+      "passed": 5
+    },
+    "簡體中文檢測": {
+      "total": 3,
+      "passed": 3
+    },
+    "其他語言檢測": {
+      "total": 4,
+      "passed": 4
+    },
+    "純繁中檢測": {
+      "total": 3,
+      "passed": 3
+    },
+    "純英文檢測": {
+      "total": 3,
+      "passed": 3
+    },
+    "混合內容閾值": {
+      "total": 7,
+      "passed": 7
+    }
+  },
+  "detailed_results": [
+    {
+      "test_type": "文本長度驗證",
+      "case_description": "空文本",
+      "text": "",
+      "expected": "拒絕 (長度不足)",
+      "actual": "LanguageDetectionError",
+      "passed": true,
+      "confidence": null,
+      "error": "Language detection failed: Text too short (minimum 10 characters required). Using en as fallback language."
+    },
+    {
+      "test_type": "文本長度驗證",
+      "case_description": "1個字符",
+      "text": "短",
+      "expected": "拒絕 (長度不足)",
+      "actual": "LanguageDetectionError",
+      "passed": true,
+      "confidence": null,
+      "error": "Text too short for language detection (1 characters). Minimum 10 characters required. Using en as fallback."
+    },
+    {
+      "test_type": "文本長度驗證",
+      "case_description": "6個字符",
+      "text": "Python",
+      "expected": "拒絕 (長度不足)",
+      "actual": "LanguageDetectionError",
+      "passed": true,
+      "confidence": null,
+      "error": "Text too short for language detection (6 characters). Minimum 10 characters required. Using en as fallback."
+    },
+    {
+      "test_type": "文本長度驗證",
+      "case_description": "10個字符 (邊界)",
+      "text": "Hello test",
+      "expected": "接受 (長度足夠)",
+      "actual": "檢測為 en",
+      "passed": true,
+      "confidence": null,
+      "error": null
+    },
+    {
+      "test_type": "文本長度驗證",
+      "case_description": "16個字符 (足夠)",
+      "text": "Hello world test",
+      "expected": "接受 (長度足夠)",
+      "actual": "檢測為 en",
+      "passed": true,
+      "confidence": null,
+      "error": null
+    },
+    {
+      "test_type": "簡體中文檢測",
+      "case_description": "純簡體中文",
+      "text": "我们正在寻找一位高级软件工程师，负责开发和维护基于 Python 的后端系统。",
+      "expected": "拒絕 zh-CN",
+      "actual": "正確拒絕 zh-CN",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'zh-CN' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "簡體中文檢測",
+      "case_description": "簡體中文 + 技術術語",
+      "text": "我们公司正在招聘软件开发工程师，需要具备机器学习和数据分析经验。",
+      "expected": "拒絕 zh-CN",
+      "actual": "正確拒絕 zh-CN",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'zh-CN' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "簡體中文檢測",
+      "case_description": "簡體中文 + 英文技術詞",
+      "text": "Python 开发工程师，负责人工智能和机器学习项目的开发工作。",
+      "expected": "拒絕 zh-CN",
+      "actual": "正確拒絕 zh-CN",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'zh-CN' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "其他語言檢測",
+      "case_description": "日文",
+      "text": "ソフトウェアエンジニアを募集しています。PythonとJavaScriptの経験が必要です。",
+      "expected": "拒絕 ja",
+      "actual": "正確拒絕 ja",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'ja' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "其他語言檢測",
+      "case_description": "韓文",
+      "text": "소프트웨어 엔지니어를 모집합니다. Python과 JavaScript 경험이 필요합니다.",
+      "expected": "拒絕 ko",
+      "actual": "正確拒絕 ko",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'ko' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "其他語言檢測",
+      "case_description": "法文",
+      "text": "Nous recherchons un ingénieur logiciel senior avec expertise en Python et JavaScript.",
+      "expected": "拒絕 other",
+      "actual": "正確拒絕 other",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'other' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "其他語言檢測",
+      "case_description": "西班牙文",
+      "text": "Buscamos un ingeniero de software con experiencia en programación y desarrollo.",
+      "expected": "拒絕 other",
+      "actual": "正確拒絕 other",
+      "passed": true,
+      "confidence": null,
+      "error": "Detected language 'other' (confidence: 0.90) is not supported. This service only supports: en, zh-TW. Please provide job descriptions in English or Traditional Chinese (Taiwan)."
+    },
+    {
+      "test_type": "純繁中檢測",
+      "case_description": "100% 繁體中文",
+      "text": "我們正在尋找一位資深軟體工程師，負責開發和維護基於資料科學的系統。",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.95,
+      "error": null
+    },
+    {
+      "test_type": "純繁中檢測",
+      "case_description": "99% 繁體中文",
+      "text": "我們正在尋找一位資深軟體工程師，負責開發和維護基於機器學習和資料科學的後端系統架構。",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.95,
+      "error": null
+    },
+    {
+      "test_type": "純繁中檢測",
+      "case_description": "純繁體技術術語",
+      "text": "資深軟體工程師職位，需要具備深度學習、機器學習、資料科學和人工智慧相關經驗。",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.95,
+      "error": null
+    },
+    {
+      "test_type": "純英文檢測",
+      "case_description": "100% 英文",
+      "text": "We are seeking a Senior Software Engineer with expertise in Python and machine learning.",
+      "expected": "en",
+      "actual": "en",
+      "passed": true,
+      "confidence": 0.95,
+      "error": null
+    },
+    {
+      "test_type": "純英文檢測",
+      "case_description": "技術術語英文",
+      "text": "Senior Software Engineer position requiring Python, JavaScript, React, Node.js, and AWS experience.",
+      "expected": "en",
+      "actual": "en",
+      "passed": true,
+      "confidence": 0.95,
+      "error": null
+    },
+    {
+      "test_type": "純英文檢測",
+      "case_description": "資料科學英文術語",
+      "text": "Data Scientist role focusing on machine learning, deep learning, and artificial intelligence projects.",
+      "expected": "en",
+      "actual": "en",
+      "passed": true,
+      "confidence": 0.95,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 10% 繁中 → en",
+      "text": "We are seeking a Senior Software Engineer with Python and 團隊合作 skills.",
+      "expected": "en",
+      "actual": "en",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 15% 繁中 → en",
+      "text": "Senior Software Engineer with 資料科學 experience required for our team.",
+      "expected": "en",
+      "actual": "en",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 18% 繁中 → en",
+      "text": "Python Developer with 機器學習 and JavaScript experience needed.",
+      "expected": "en",
+      "actual": "en",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 25% 繁中 → zh-TW",
+      "text": "We are seeking 資深軟體工程師 with 資料科學 and Python experience.",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 35% 繁中 → zh-TW",
+      "text": "尋找 Software Engineer 負責 機器學習 和 資料科學 Python projects.",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 50% 繁中 → zh-TW",
+      "text": "我們正在尋找 Software Engineer 負責 Python JavaScript 開發工作。",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    },
+    {
+      "test_type": "混合內容閾值",
+      "case_description": "約 70% 繁中 → zh-TW",
+      "text": "我們正在尋找一位資深工程師負責 Python 和 JavaScript 開發。",
+      "expected": "zh-TW",
+      "actual": "zh-TW",
+      "passed": true,
+      "confidence": 0.9,
+      "error": null
+    }
+  ]
+}
