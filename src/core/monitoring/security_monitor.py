@@ -240,8 +240,20 @@ class SecurityMonitor:
         result = {"threats": []}
         
         try:
-            # Get request body
-            body = await request.body()
+            # Check if we've already read the body
+            if hasattr(request.state, "_body"):
+                body = request.state._body
+            else:
+                # Read and cache the body
+                body = await request.body()
+                # Store it for later use
+                request.state._body = body
+                
+                # IMPORTANT: Replace the receive function to allow re-reading
+                async def receive():
+                    return {"type": "http.request", "body": body}
+                request._receive = receive
+            
             if not body:
                 return result
             
@@ -295,7 +307,11 @@ class SecurityMonitor:
     async def _store_suspicious_request(self, request: Request, security_result: Dict):
         """Store suspicious request for analysis."""
         try:
-            body = await request.body()
+            # Use cached body if available
+            if hasattr(request.state, "_body"):
+                body = request.state._body
+            else:
+                body = await request.body()
             body_text = body.decode('utf-8', errors='ignore')[:500]  # First 500 chars
         except:
             body_text = "Unable to read body"

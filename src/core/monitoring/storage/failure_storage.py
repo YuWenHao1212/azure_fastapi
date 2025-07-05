@@ -120,7 +120,12 @@ class FailureStorage:
                 json.dump(failure_record, f, ensure_ascii=False, indent=2)
         except Exception as e:
             # Log error but don't fail the main process
-            print(f"Failed to persist failure record: {e}")
+            from src.core.monitoring_service import monitoring_service
+            monitoring_service.track_error(
+                error_type="FailurePersistenceError",
+                error_message=str(e),
+                endpoint="failure_storage"
+            )
     
     def _update_statistics(self, failure_record: Dict[str, Any]):
         """Update failure statistics."""
@@ -275,7 +280,13 @@ class FailureStorage:
                         # Skip invalid files
                         pass
         except Exception as e:
-            print(f"Error loading existing failures: {e}")
+            # Log error but continue initialization
+            from src.core.monitoring_service import monitoring_service
+            monitoring_service.track_error(
+                error_type="FailureLoadError",
+                error_message=str(e),
+                endpoint="failure_storage"
+            )
     
     def export_analysis_report(self) -> Dict[str, Any]:
         """

@@ -2,16 +2,15 @@
 Unit tests for monitoring components.
 Tests for EndpointMetrics, SecurityMonitor, and CacheMetrics.
 """
-import pytest
-from datetime import datetime, timezone, timedelta
-from unittest.mock import MagicMock, patch, AsyncMock
-from collections import deque
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from fastapi import Request
 from starlette.datastructures import Headers
 
-from src.core.metrics.endpoint_metrics import EndpointMetrics
 from src.core.metrics.cache_metrics import CacheMetrics
+from src.core.metrics.endpoint_metrics import EndpointMetrics
 from src.core.monitoring.security_monitor import SecurityMonitor
 
 
@@ -246,8 +245,14 @@ class TestCacheMetrics:
         assert event_props["misses"] == 0
 
 
+@patch('src.core.monitoring.security_monitor.failure_storage')
 class TestSecurityMonitor:
     """Test SecurityMonitor functionality."""
+    
+    @pytest.fixture
+    def security_monitor(self):
+        """Create a fresh SecurityMonitor instance for each test."""
+        return SecurityMonitor()
     
     def create_mock_request(
         self, 
@@ -259,17 +264,27 @@ class TestSecurityMonitor:
         """Create a mock FastAPI Request object."""
         request = MagicMock(spec=Request)
         request.method = method
-        request.url.path = path
+        request.url = MagicMock()
+        request.url.path = path  # Set path as a string
         request.headers = Headers(headers or {})
         request.client = MagicMock()
         request.client.host = client_host
         request.body = AsyncMock(return_value=b'{"job_description": "test"}')
+        
+        # Create a proper state object that supports hasattr
+        class MockState:
+            pass
+        request.state = MockState()
+        request._receive = None  # Initialize _receive
         return request
     
     @pytest.mark.asyncio
-    async def test_valid_origin_check(self):
+    async def test_valid_origin_check(self, mock_failure_storage, security_monitor):
         """Test request from valid origin."""
-        monitor = SecurityMonitor()
+        # Configure mock to prevent actual file operations
+        mock_failure_storage.store_failure = AsyncMock()
+        
+        monitor = security_monitor
         
         request = self.create_mock_request(
             headers={
@@ -286,9 +301,12 @@ class TestSecurityMonitor:
         assert "origin" in result["checks_performed"]
     
     @pytest.mark.asyncio
-    async def test_invalid_origin_detection(self):
+    async def test_invalid_origin_detection(self, mock_failure_storage, security_monitor):
         """Test request from invalid origin."""
-        monitor = SecurityMonitor()
+        # Configure mock to prevent actual file operations
+        mock_failure_storage.store_failure = AsyncMock()
+        
+        monitor = security_monitor
         
         request = self.create_mock_request(
             headers={"origin": "https://malicious-site.com"}
@@ -302,9 +320,10 @@ class TestSecurityMonitor:
         assert "INVALID_ORIGIN" in result["threats"]
     
     @pytest.mark.asyncio
-    async def test_suspicious_user_agent(self):
+    async def test_suspicious_user_agent(self, mock_failure_storage, security_monitor):
         """Test detection of suspicious user agents."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         
         request = self.create_mock_request(
             headers={
@@ -319,9 +338,10 @@ class TestSecurityMonitor:
         assert "AUTOMATED_TOOL" in result["threats"]
     
     @pytest.mark.asyncio
-    async def test_rate_limiting(self):
+    async def test_rate_limiting(self, mock_failure_storage, security_monitor):
         """Test rate limit detection."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         monitor.rate_limit_threshold = 5  # Lower threshold for testing
         
         # Make requests from same IP
@@ -335,9 +355,10 @@ class TestSecurityMonitor:
         assert result["risk_level"] == "high"
     
     @pytest.mark.asyncio
-    async def test_xss_detection(self):
+    async def test_xss_detection(self, mock_failure_storage, security_monitor):
         """Test XSS attack pattern detection."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         
         request = self.create_mock_request(
             headers={"origin": "https://airesumeadvisor.bubbleapps.io"}
@@ -354,9 +375,10 @@ class TestSecurityMonitor:
         assert result["risk_level"] == "high"
     
     @pytest.mark.asyncio
-    async def test_sql_injection_detection(self):
+    async def test_sql_injection_detection(self, mock_failure_storage, security_monitor):
         """Test SQL injection pattern detection."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         
         request = self.create_mock_request(
             headers={"origin": "https://airesumeadvisor.bubbleapps.io"}
@@ -373,9 +395,10 @@ class TestSecurityMonitor:
         assert result["risk_level"] == "high"
     
     @pytest.mark.asyncio
-    async def test_ip_blocking(self):
+    async def test_ip_blocking(self, mock_failure_storage, security_monitor):
         """Test IP blocking functionality."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         
         # Block an IP
         monitor.block_ip("10.0.0.1")
@@ -389,9 +412,10 @@ class TestSecurityMonitor:
         assert "IP_BLOCKED" in result["threats"]
     
     @pytest.mark.asyncio
-    async def test_temporary_ip_blocking(self):
+    async def test_temporary_ip_blocking(self, mock_failure_storage, security_monitor):
         """Test temporary IP blocking."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         
         # Temporarily block an IP for 1 minute
         monitor._block_ip_temporarily("10.0.0.2", minutes=1)
@@ -405,9 +429,10 @@ class TestSecurityMonitor:
         # Check it's unblocked
         assert not monitor._is_ip_blocked("10.0.0.2")
     
-    def test_security_summary(self):
+    def test_security_summary(self, mock_failure_storage, security_monitor):
         """Test security summary generation."""
-        monitor = SecurityMonitor()
+        mock_failure_storage.store_failure = AsyncMock()
+        monitor = security_monitor
         
         # Add some stats
         monitor.security_stats["total_requests"] = 100

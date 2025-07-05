@@ -82,7 +82,6 @@ class TestKeywordExtractionAPI:
         assert "service" in data["data"]
     
     @patch('src.api.v1.keyword_extraction.get_keyword_extraction_service_v2')
-    @pytest.mark.skip(reason="Test hangs - investigating middleware initialization issue")
     def test_extract_keywords_success(self, mock_get_service, client):
         """Test successful keyword extraction."""
         # Create mock service

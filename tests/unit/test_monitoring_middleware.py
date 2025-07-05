@@ -2,12 +2,10 @@
 Unit tests for monitoring middleware.
 Tests request/response tracking and security integration.
 """
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
-import time
-from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi import Request, Response
+import pytest
+from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 
@@ -66,7 +64,8 @@ class TestMonitoringMiddleware:
         
         # Mock call_next to return a successful response
         async def mock_call_next(req):
-            response = Response(content="Success", status_code=200)
+            response = MagicMock()
+            response.status_code = 200
             response.headers = {}
             return response
         
@@ -213,7 +212,8 @@ class TestMonitoringMiddleware:
         async def mock_call_next(req):
             # Verify correlation ID was set on request state
             assert req.state.correlation_id == provided_correlation_id
-            response = Response(content="Success", status_code=200)
+            response = MagicMock()
+            response.status_code = 200
             response.headers = {}
             return response
         
@@ -229,7 +229,8 @@ class TestMonitoringMiddleware:
             # Verify a correlation ID was generated
             assert hasattr(req.state, 'correlation_id')
             assert req.state.correlation_id is not None
-            response = Response(content="Success", status_code=200)
+            response = MagicMock()
+            response.status_code = 200
             response.headers = {}
             return response
         
@@ -270,17 +271,24 @@ class TestMonitoringMiddleware:
         async def mock_call_next(req):
             # Verify security result was attached to request
             assert hasattr(req.state, 'security_result')
-            assert req.state.security_result["is_suspicious"] == True
-            response = Response(content="Success", status_code=200)
+            assert req.state.security_result["is_suspicious"] is True
+            response = MagicMock()
+            response.status_code = 200
             response.headers = {}
             return response
         
         response = await middleware.dispatch(request, mock_call_next)
         
         # Verify security information was included in tracking
-        track_event_call = mock_monitoring_service.track_event.call_args[1]
-        assert track_event_call["security_risk"] == "medium"
-        assert track_event_call["is_suspicious"] == True
+        # Find the RequestStarted event call
+        for call in mock_monitoring_service.track_event.call_args_list:
+            if call[0][0] == "RequestStarted":
+                track_event_call = call[0][1]
+                assert track_event_call["security_risk"] == "medium"
+                assert track_event_call["is_suspicious"] is True
+                break
+        else:
+            raise AssertionError("RequestStarted event not found")
     
     @pytest.mark.asyncio
     @patch('src.middleware.monitoring_middleware.security_monitor')
@@ -309,7 +317,8 @@ class TestMonitoringMiddleware:
         # Mock call_next with simulated delay
         async def mock_call_next(req):
             await asyncio.sleep(0.1)  # 100ms delay
-            response = Response(content="Success", status_code=200)
+            response = MagicMock()
+            response.status_code = 200
             response.headers = {}
             return response
         
@@ -355,7 +364,8 @@ class TestMonitoringMiddleware:
         )
         
         async def mock_call_next(req):
-            response = Response(content="Success", status_code=200)
+            response = MagicMock()
+            response.status_code = 200
             response.headers = {}
             return response
         
