@@ -31,6 +31,7 @@ from src.services.openai_client import (
 )
 from src.services.standardization import MultilingualStandardizer
 from src.services.unified_prompt_service import get_unified_prompt_service
+from src.core.metrics.cache_metrics import cache_metrics
 
 
 class KeywordExtractionServiceV2(BaseService):
@@ -195,7 +196,10 @@ class KeywordExtractionServiceV2(BaseService):
                 include_standardization, prompt_version
             )
             
+            cache_start = time.time()
             cached_result = self._get_cached_result(cache_key)
+            cache_retrieval_time = (time.time() - cache_start) * 1000
+            
             if cached_result is not None:
                 processing_time = int((time.time() - start_time) * 1000)
                 cached_result = cached_result.copy()
@@ -206,12 +210,32 @@ class KeywordExtractionServiceV2(BaseService):
                 self._cache_hits += 1
                 self.extraction_stats["cache_hits"] += 1
                 
+                # Track cache hit metrics with token estimates
+                cache_metrics.record_cache_access(
+                    cache_hit=True,
+                    cache_key=cache_key,
+                    endpoint="/api/v1/extract-jd-keywords",
+                    processing_time_ms=cache_retrieval_time,
+                    model="gpt-4o-2",
+                    actual_tokens={
+                        "input": len(job_description) // 4,  # Rough estimate: 1 token per 4 chars
+                        "output": len(str(cached_result.get('keywords', []))) // 4
+                    }
+                )
+                
                 self.logger.info("Cache hit for keyword extraction")
                 return cached_result
             
             # Cache miss
             self._cache_misses += 1
             self.extraction_stats["cache_misses"] += 1
+            
+            # Track cache miss
+            cache_metrics.record_cache_access(
+                cache_hit=False,
+                cache_key=cache_key,
+                endpoint="/api/v1/extract-jd-keywords"
+            )
             
             # 3. Execute extraction with YAML configuration
             extraction_result = await self._extract_keywords_with_config(
@@ -236,6 +260,21 @@ class KeywordExtractionServiceV2(BaseService):
             
             # 5. Cache result
             self._cache_result(cache_key, result)
+            
+            # Track actual OpenAI API token usage for cache miss
+            if 'llm_config_used' in extraction_result:
+                # More accurate token estimation based on actual extraction
+                cache_metrics.record_cache_access(
+                    cache_hit=False,
+                    cache_key=cache_key,
+                    endpoint="/api/v1/extract-jd-keywords",
+                    processing_time_ms=processing_time,
+                    model="gpt-4o-2",
+                    actual_tokens={
+                        "input": len(job_description) // 4 + 200,  # JD + prompt template
+                        "output": result.get('keyword_count', 0) * 10  # Estimate per keyword
+                    }
+                )
             
             # 6. Update stats
             self._update_extraction_stats(detected_language, extraction_result)

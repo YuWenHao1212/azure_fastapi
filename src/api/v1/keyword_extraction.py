@@ -10,6 +10,7 @@ Handles job description keyword extraction functionality with:
 """
 import asyncio
 import logging
+import time
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -35,6 +36,8 @@ from src.services.openai_client import (
     AzureOpenAIRateLimitError,
     AzureOpenAIServerError,
 )
+from src.core.monitoring_service import monitoring_service
+from src.core.monitoring.storage.failure_storage import failure_storage
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -165,7 +168,13 @@ async def extract_jd_keywords(
     - 500: INTERNAL_SERVER_ERROR - Unexpected processing error
     - 503: SERVICE_UNAVAILABLE - Azure OpenAI service issues
     """
-    request_start = datetime.utcnow()
+    request_start = time.time()
+    timing_breakdown = {
+        "validation_ms": 0,
+        "language_detection_ms": 0,
+        "keyword_extraction_ms": 0,
+        "total_ms": 0
+    }
     
     logger.info(
         f"Keyword extraction request received: "
@@ -186,22 +195,41 @@ async def extract_jd_keywords(
     
     try:
         # Validate request using Work Item #346 validator
+        validation_start = time.time()
         validated_data = await service.validate_input(request.dict())
+        timing_breakdown["validation_ms"] = (time.time() - validation_start) * 1000
         
-        logger.info("Request validation passed")
+        logger.info(f"Request validation passed in {timing_breakdown['validation_ms']:.2f}ms")
         
         # Process keyword extraction using Work Item #343 core logic
+        extraction_start = time.time()
         result = await service.process(validated_data)
+        timing_breakdown["keyword_extraction_ms"] = (time.time() - extraction_start) * 1000
         
         # Calculate total processing time
-        processing_time = (datetime.utcnow() - request_start).total_seconds() * 1000
-        result['total_processing_time_ms'] = round(processing_time, 2)
+        timing_breakdown["total_ms"] = (time.time() - request_start) * 1000
+        result['total_processing_time_ms'] = round(timing_breakdown["total_ms"], 2)
+        result['timing_breakdown'] = timing_breakdown
+        
+        # Track detailed processing time metrics
+        monitoring_service.track_metric(
+            "keyword_extraction_processing_time",
+            timing_breakdown["total_ms"],
+            {
+                "language": result.get('detected_language', 'unknown'),
+                "prompt_version": result.get('prompt_version_used', request.prompt_version),
+                "jd_length": len(request.job_description),
+                "keyword_count": result.get('keyword_count', 0),
+                "validation_ms": timing_breakdown["validation_ms"],
+                "extraction_ms": timing_breakdown["keyword_extraction_ms"]
+            }
+        )
         
         logger.info(
             f"Keyword extraction completed successfully: "
             f"keywords={result['keyword_count']}, "
             f"method={result['extraction_method']}, "
-            f"time={processing_time:.2f}ms, "
+            f"time={timing_breakdown['total_ms']:.2f}ms, "
             f"confidence={result['confidence_score']}"
         )
         
@@ -232,6 +260,17 @@ async def extract_jd_keywords(
         error_msg = str(e)
         logger.warning(f"Validation error: {error_msg}")
         
+        # Store failure for analysis
+        await failure_storage.store_failure(
+            category="validation_error",
+            job_description=request.job_description,
+            failure_reason=error_msg,
+            additional_info={
+                "max_keywords": request.max_keywords,
+                "prompt_version": request.prompt_version
+            }
+        )
+        
         # Return Bubble.io compatible error response
         error_response = create_error_response(
             code="VALIDATION_ERROR",
@@ -249,6 +288,16 @@ async def extract_jd_keywords(
         # Azure OpenAI service errors (503 Service Unavailable)
         error_msg = f"Azure OpenAI service error: {str(e)}"
         logger.error(error_msg)
+        
+        # Store API failure
+        await failure_storage.store_failure(
+            category="api_error",
+            job_description=request.job_description,
+            failure_reason=error_msg,
+            additional_info={
+                "error_type": type(e).__name__
+            }
+        )
         
         error_response = create_error_response(
             code="SERVICE_UNAVAILABLE",

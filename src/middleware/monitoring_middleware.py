@@ -11,7 +11,9 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from src.core.monitoring import monitoring_service
+from src.core.monitoring_service import monitoring_service
+from src.core.metrics.endpoint_metrics import endpoint_metrics
+from src.core.monitoring.security_monitor import security_monitor
 
 
 class MonitoringMiddleware(BaseHTTPMiddleware):
@@ -27,13 +29,40 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
     
     def __init__(self, app: ASGIApp):
         super().__init__(app)
-        self.endpoint_metrics = {}
     
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request with monitoring."""
+        # Security check first
+        security_result = await security_monitor.check_request_security(request)
+        
+        if security_result["is_blocked"]:
+            # Return 403 for blocked requests
+            monitoring_service.track_event(
+                "request_blocked",
+                {
+                    "client_ip": security_result["client_ip"],
+                    "threats": security_result["threats"]
+                }
+            )
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "success": False,
+                    "data": {},
+                    "error": {
+                        "code": "FORBIDDEN",
+                        "message": "Access denied",
+                        "details": "Your request has been blocked for security reasons"
+                    },
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                }
+            )
+        
         # Generate or extract correlation ID
         correlation_id = request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
         request.state.correlation_id = correlation_id
+        request.state.security_result = security_result
         
         # Extract request information
         endpoint = f"{request.method} {request.url.path}"
@@ -48,7 +77,9 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "correlation_id": correlation_id,
                 "origin": request.headers.get("origin", "unknown"),
-                "user_agent": request.headers.get("user-agent", "unknown")
+                "user_agent": request.headers.get("user-agent", "unknown"),
+                "security_risk": security_result.get("risk_level", "low"),
+                "is_suspicious": security_result.get("is_suspicious", False)
             }
         )
         
@@ -59,8 +90,16 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             # Calculate duration
             duration_ms = (time.time() - start_time) * 1000
             
-            # Track endpoint metrics
-            self._update_endpoint_metrics(endpoint, response.status_code, duration_ms)
+            # Track endpoint metrics using EndpointMetrics
+            endpoint_metrics.record_request(
+                endpoint=request.url.path,
+                method=request.method,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+                custom_properties={
+                    "correlation_id": correlation_id
+                }
+            )
             
             # Track successful request
             monitoring_service.track_request(
@@ -99,8 +138,18 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             # Calculate duration for failed requests
             duration_ms = (time.time() - start_time) * 1000
             
-            # Track endpoint metrics for errors
-            self._update_endpoint_metrics(endpoint, 500, duration_ms)
+            # Track endpoint metrics for errors using EndpointMetrics
+            endpoint_metrics.record_request(
+                endpoint=request.url.path,
+                method=request.method,
+                status_code=500,
+                duration_ms=duration_ms,
+                error_type=type(e).__name__,
+                custom_properties={
+                    "correlation_id": correlation_id,
+                    "error_message": str(e)
+                }
+            )
             
             # Track error
             monitoring_service.track_error(
@@ -118,66 +167,6 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             # Re-raise the exception
             raise
     
-    def _update_endpoint_metrics(self, endpoint: str, status_code: int, duration_ms: float):
-        """Update endpoint-level metrics."""
-        if endpoint not in self.endpoint_metrics:
-            self.endpoint_metrics[endpoint] = {
-                "total_requests": 0,
-                "failed_requests": 0,
-                "total_duration": 0,
-                "status_codes": {}
-            }
-        
-        metrics = self.endpoint_metrics[endpoint]
-        metrics["total_requests"] += 1
-        metrics["total_duration"] += duration_ms
-        
-        if status_code >= 400:
-            metrics["failed_requests"] += 1
-        
-        # Track status code distribution
-        status_code_str = str(status_code)
-        metrics["status_codes"][status_code_str] = metrics["status_codes"].get(status_code_str, 0) + 1
-        
-        # Calculate and track error rate
-        error_rate = (metrics["failed_requests"] / metrics["total_requests"]) * 100
-        avg_duration = metrics["total_duration"] / metrics["total_requests"]
-        
-        # Send endpoint metrics to Application Insights
-        monitoring_service.track_metric(
-            "endpoint_error_rate",
-            error_rate,
-            {
-                "endpoint": endpoint,
-                "total_requests": metrics["total_requests"],
-                "failed_requests": metrics["failed_requests"],
-                "avg_duration_ms": avg_duration
-            }
-        )
-        
-        # Track endpoint performance
-        monitoring_service.track_metric(
-            "endpoint_avg_duration",
-            avg_duration,
-            {
-                "endpoint": endpoint,
-                "total_requests": metrics["total_requests"]
-            }
-        )
-    
     def get_endpoint_stats(self) -> dict:
         """Get current endpoint statistics."""
-        stats = {}
-        for endpoint, metrics in self.endpoint_metrics.items():
-            error_rate = (metrics["failed_requests"] / metrics["total_requests"] * 100) if metrics["total_requests"] > 0 else 0
-            avg_duration = metrics["total_duration"] / metrics["total_requests"] if metrics["total_requests"] > 0 else 0
-            
-            stats[endpoint] = {
-                "total_requests": metrics["total_requests"],
-                "failed_requests": metrics["failed_requests"],
-                "error_rate": f"{error_rate:.2f}%",
-                "avg_duration_ms": f"{avg_duration:.2f}",
-                "status_code_distribution": metrics["status_codes"]
-            }
-        
-        return stats
+        return endpoint_metrics.get_endpoint_stats()
