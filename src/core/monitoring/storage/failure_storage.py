@@ -2,13 +2,13 @@
 Failure case storage system for monitoring and analysis.
 Stores failed JD samples for debugging and improvement.
 """
+import asyncio
 import json
 import os
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-import asyncio
-from collections import deque
+from typing import Any
 
 
 class FailureStorage:
@@ -22,7 +22,7 @@ class FailureStorage:
     - Provides analysis capabilities
     """
     
-    def __init__(self, storage_path: Optional[str] = None, max_storage_size: int = 100):
+    def __init__(self, storage_path: str | None = None, max_storage_size: int = 100):
         """
         Initialize failure storage.
         
@@ -58,8 +58,8 @@ class FailureStorage:
         category: str,
         job_description: str,
         failure_reason: str,
-        language: Optional[str] = None,
-        additional_info: Optional[Dict[str, Any]] = None
+        language: str | None = None,
+        additional_info: dict[str, Any] | None = None
     ) -> str:
         """
         Store a failure case.
@@ -107,7 +107,7 @@ class FailureStorage:
         
         return failure_id
     
-    async def _persist_failure(self, failure_record: Dict[str, Any]):
+    async def _persist_failure(self, failure_record: dict[str, Any]):
         """Persist failure to disk."""
         try:
             # Create daily directory
@@ -127,7 +127,7 @@ class FailureStorage:
                 endpoint="failure_storage"
             )
     
-    def _update_statistics(self, failure_record: Dict[str, Any]):
+    def _update_statistics(self, failure_record: dict[str, Any]):
         """Update failure statistics."""
         self.stats["total_failures"] += 1
         
@@ -144,9 +144,9 @@ class FailureStorage:
     
     def get_recent_failures(
         self,
-        category: Optional[str] = None,
+        category: str | None = None,
         limit: int = 10
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get recent failure cases.
         
@@ -165,7 +165,7 @@ class FailureStorage:
         # Return most recent first
         return failures[-limit:][::-1]
     
-    def get_failure_patterns(self) -> Dict[str, Any]:
+    def get_failure_patterns(self) -> dict[str, Any]:
         """
         Analyze and return common failure patterns.
         
@@ -265,7 +265,7 @@ class FailureStorage:
                         # Load failures from this directory
                         for file in date_dir.iterdir():
                             if file.suffix == '.json':
-                                with open(file, 'r', encoding='utf-8') as f:
+                                with open(file, encoding='utf-8') as f:
                                     failure = json.load(f)
                                     self.failures.append(failure)
                                     
@@ -288,7 +288,7 @@ class FailureStorage:
                 endpoint="failure_storage"
             )
     
-    def export_analysis_report(self) -> Dict[str, Any]:
+    def export_analysis_report(self) -> dict[str, Any]:
         """
         Export a comprehensive analysis report.
         
@@ -304,7 +304,7 @@ class FailureStorage:
             "patterns": self.get_failure_patterns(),
             "recent_failures": {
                 category: self.get_recent_failures(category, 5)
-                for category in self.failure_categories.keys()
+                for category in self.failure_categories
             },
             "generated_at": datetime.now(timezone.utc).isoformat()
         }

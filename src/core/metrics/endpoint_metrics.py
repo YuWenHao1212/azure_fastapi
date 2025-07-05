@@ -4,7 +4,7 @@ Tracks error rates, performance, and usage patterns per endpoint.
 """
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Dict, Optional, Any
+from typing import Any
 
 from src.core.monitoring_service import monitoring_service
 
@@ -47,8 +47,8 @@ class EndpointMetrics:
         method: str,
         status_code: int,
         duration_ms: float,
-        error_type: Optional[str] = None,
-        custom_properties: Optional[Dict[str, Any]] = None
+        error_type: str | None = None,
+        custom_properties: dict[str, Any] | None = None
     ):
         """
         Record a request for an endpoint.
@@ -148,7 +148,7 @@ class EndpointMetrics:
                 }
             )
     
-    def get_endpoint_stats(self, endpoint: Optional[str] = None) -> Dict[str, Any]:
+    def get_endpoint_stats(self, endpoint: str | None = None) -> dict[str, Any]:
         """
         Get statistics for endpoints.
         
@@ -172,7 +172,7 @@ class EndpointMetrics:
         
         return stats
     
-    def _format_endpoint_stats(self, endpoint: str, metrics: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_endpoint_stats(self, endpoint: str, metrics: dict[str, Any]) -> dict[str, Any]:
         """Format endpoint statistics for display."""
         total_requests = metrics["total_requests"]
         
@@ -201,7 +201,7 @@ class EndpointMetrics:
             "last_updated": metrics["last_updated"].isoformat() if metrics["last_updated"] else None
         }
     
-    def get_error_rate_summary(self) -> Dict[str, Any]:
+    def get_error_rate_summary(self) -> dict[str, Any]:
         """Get error rate summary for all endpoints."""
         summary = {
             "total_endpoints": len(self.metrics),
@@ -244,7 +244,7 @@ class EndpointMetrics:
         
         return summary
     
-    def reset_metrics(self, endpoint: Optional[str] = None):
+    def reset_metrics(self, endpoint: str | None = None):
         """
         Reset metrics for an endpoint or all endpoints.
         

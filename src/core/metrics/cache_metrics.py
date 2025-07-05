@@ -2,9 +2,9 @@
 Cache performance monitoring and cost tracking.
 Monitors cache hit rates and calculates cost savings.
 """
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Optional, Any, List
 from collections import deque
+from datetime import datetime, timezone
+from typing import Any
 
 from src.core.monitoring_service import monitoring_service
 
@@ -73,9 +73,9 @@ class CacheMetrics:
         cache_hit: bool,
         cache_key: str,
         endpoint: str = "/api/v1/extract-jd-keywords",
-        processing_time_ms: Optional[float] = None,
+        processing_time_ms: float | None = None,
         model: str = "gpt-4o-2",
-        actual_tokens: Optional[Dict[str, int]] = None
+        actual_tokens: dict[str, int] | None = None
     ):
         """
         Record a cache access.
@@ -113,9 +113,9 @@ class CacheMetrics:
     def _record_cache_hit(
         self,
         cache_key: str,
-        retrieval_time_ms: Optional[float],
+        retrieval_time_ms: float | None,
         model: str,
-        actual_tokens: Optional[Dict[str, int]]
+        actual_tokens: dict[str, int] | None
     ):
         """Record a cache hit."""
         self.metrics["cache_hits"] += 1
@@ -152,7 +152,7 @@ class CacheMetrics:
     def _record_cache_miss(
         self,
         cache_key: str,
-        api_call_time_ms: Optional[float]
+        api_call_time_ms: float | None
     ):
         """Record a cache miss."""
         self.metrics["cache_misses"] += 1
@@ -259,7 +259,7 @@ class CacheMetrics:
             }
         )
     
-    def get_cache_summary(self) -> Dict[str, Any]:
+    def get_cache_summary(self) -> dict[str, Any]:
         """Get cache performance summary."""
         hit_rate = 0.0
         if self.metrics["total_requests"] > 0:
@@ -290,7 +290,7 @@ class CacheMetrics:
             "hourly_trend": self._get_hourly_trend()
         }
     
-    def _get_hourly_trend(self) -> List[Dict[str, Any]]:
+    def _get_hourly_trend(self) -> list[dict[str, Any]]:
         """Get hourly trend data."""
         trend = []
         for stats in self.hourly_stats:
@@ -317,7 +317,7 @@ class CacheMetrics:
         
         return trend
     
-    def get_top_cached_items(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_top_cached_items(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get most frequently cached items."""
         sorted_keys = sorted(
             self.cache_key_stats.items(),

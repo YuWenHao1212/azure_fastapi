@@ -4,16 +4,16 @@ Implements comprehensive monitoring for all API endpoints.
 """
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 from datetime import datetime, timezone
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
-from src.core.monitoring_service import monitoring_service
 from src.core.metrics.endpoint_metrics import endpoint_metrics
 from src.core.monitoring.security_monitor import security_monitor
+from src.core.monitoring_service import monitoring_service
 
 
 class MonitoringMiddleware(BaseHTTPMiddleware):

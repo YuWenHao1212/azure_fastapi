@@ -16,6 +16,8 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.core.config import get_settings
+from src.core.monitoring.storage.failure_storage import failure_storage
+from src.core.monitoring_service import monitoring_service
 from src.models.keyword_extraction import (
     KeywordExtractionData,
     KeywordExtractionRequest,
@@ -36,8 +38,6 @@ from src.services.openai_client import (
     AzureOpenAIRateLimitError,
     AzureOpenAIServerError,
 )
-from src.core.monitoring_service import monitoring_service
-from src.core.monitoring.storage.failure_storage import failure_storage
 
 # Setup logging
 logger = logging.getLogger(__name__)

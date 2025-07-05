@@ -4,14 +4,12 @@ Monitors for suspicious patterns and unauthorized access attempts.
 """
 import re
 from collections import defaultdict, deque
-from datetime import datetime, timezone, timedelta
-from typing import Dict, List, Optional, Set, Tuple
-from ipaddress import ip_address, ip_network
+from datetime import datetime, timedelta, timezone
 
 from fastapi import Request
 
-from src.core.monitoring_service import monitoring_service
 from src.core.monitoring.storage.failure_storage import failure_storage
+from src.core.monitoring_service import monitoring_service
 
 
 class SecurityMonitor:
@@ -66,7 +64,7 @@ class SecurityMonitor:
             "suspicious_user_agents": defaultdict(int)
         }
     
-    async def check_request_security(self, request: Request) -> Dict[str, any]:
+    async def check_request_security(self, request: Request) -> dict[str, any]:
         """
         Check request for security threats.
         
@@ -165,7 +163,7 @@ class SecurityMonitor:
         # Use direct connection IP
         return request.client.host if request.client else "unknown"
     
-    def _check_origin(self, request: Request) -> Dict[str, any]:
+    def _check_origin(self, request: Request) -> dict[str, any]:
         """Check if request origin is allowed."""
         origin = request.headers.get("origin", "").lower()
         referer = request.headers.get("referer", "").lower()
@@ -182,7 +180,7 @@ class SecurityMonitor:
         
         return {"valid": False, "origin": check_origin}
     
-    def _check_user_agent(self, request: Request) -> Dict[str, any]:
+    def _check_user_agent(self, request: Request) -> dict[str, any]:
         """Check User-Agent for suspicious patterns."""
         user_agent = request.headers.get("user-agent", "").lower()
         result = {"suspicious": False, "threats": []}
@@ -212,7 +210,7 @@ class SecurityMonitor:
         
         return result
     
-    def _check_rate_limit(self, client_ip: str) -> Dict[str, any]:
+    def _check_rate_limit(self, client_ip: str) -> dict[str, any]:
         """Check if IP exceeds rate limit."""
         now = datetime.now(timezone.utc)
         minute_ago = now - timedelta(minutes=1)
@@ -235,7 +233,7 @@ class SecurityMonitor:
             "limit": self.rate_limit_threshold
         }
     
-    async def _check_request_content(self, request: Request) -> Dict[str, any]:
+    async def _check_request_content(self, request: Request) -> dict[str, any]:
         """Check request body for malicious patterns."""
         result = {"threats": []}
         
@@ -304,7 +302,7 @@ class SecurityMonitor:
             }
         )
     
-    async def _store_suspicious_request(self, request: Request, security_result: Dict):
+    async def _store_suspicious_request(self, request: Request, security_result: dict):
         """Store suspicious request for analysis."""
         try:
             # Use cached body if available
@@ -313,7 +311,7 @@ class SecurityMonitor:
             else:
                 body = await request.body()
             body_text = body.decode('utf-8', errors='ignore')[:500]  # First 500 chars
-        except:
+        except Exception:
             body_text = "Unable to read body"
         
         await failure_storage.store_failure(
@@ -331,7 +329,7 @@ class SecurityMonitor:
             }
         )
     
-    def _send_security_alert(self, security_result: Dict):
+    def _send_security_alert(self, security_result: dict):
         """Send security alert to monitoring."""
         monitoring_service.track_event(
             "security_threat_detected",
@@ -353,7 +351,7 @@ class SecurityMonitor:
             }
         )
     
-    def get_security_summary(self) -> Dict[str, any]:
+    def get_security_summary(self) -> dict[str, any]:
         """Get security monitoring summary."""
         total = self.security_stats["total_requests"]
         suspicious = self.security_stats["suspicious_requests"]

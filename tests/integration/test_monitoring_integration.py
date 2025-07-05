@@ -2,19 +2,18 @@
 Integration tests for monitoring system.
 Tests the complete monitoring flow including middleware, metrics, and security.
 """
-import pytest
 import asyncio
-from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from src.middleware.monitoring_middleware import MonitoringMiddleware
-from src.core.metrics.endpoint_metrics import endpoint_metrics
 from src.core.metrics.cache_metrics import cache_metrics
+from src.core.metrics.endpoint_metrics import endpoint_metrics
 from src.core.monitoring.security_monitor import security_monitor
 from src.core.monitoring.storage.failure_storage import failure_storage
+from src.middleware.monitoring_middleware import MonitoringMiddleware
 
 
 class TestMonitoringIntegration:

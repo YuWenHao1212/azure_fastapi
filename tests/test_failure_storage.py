@@ -1,9 +1,9 @@
 """
 Tests for failure storage system.
 """
-import pytest
 import asyncio
-from datetime import datetime, timezone
+
+import pytest
 
 from src.core.monitoring.storage.failure_storage import FailureStorage
 

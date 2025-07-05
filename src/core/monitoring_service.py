@@ -3,20 +3,19 @@ Azure Application Insights integration for monitoring and telemetry.
 """
 import logging
 import os
-from typing import Optional, Dict, Any
 from datetime import datetime, timezone
+from typing import Any
 
-from opencensus.ext.azure.log_exporter import AzureLogHandler
 from opencensus.ext.azure import metrics_exporter
-from opencensus.trace import tracer as tracer_module
-from opencensus.trace.samplers import ProbabilitySampler
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 from opencensus.ext.azure.trace_exporter import AzureExporter
 from opencensus.stats import aggregation as aggregation_module
 from opencensus.stats import measure as measure_module
 from opencensus.stats import stats as stats_module
 from opencensus.stats import view as view_module
-from opencensus.tags import tag_map as tag_map_module
 from opencensus.tags import tag_key as tag_key_module
+from opencensus.trace import tracer as tracer_module
+from opencensus.trace.samplers import ProbabilitySampler
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,7 @@ class MonitoringService:
             self.is_enabled = False
     
     def track_request(self, endpoint: str, method: str, duration_ms: float, 
-                     success: bool, status_code: int, custom_properties: Optional[Dict[str, Any]] = None):
+                     success: bool, status_code: int, custom_properties: dict[str, Any] | None = None):
         """Track API request metrics."""
         if not self.is_enabled:
             return
@@ -99,7 +98,7 @@ class MonitoringService:
             )
     
     def track_error(self, error_type: str, error_message: str, 
-                   endpoint: Optional[str] = None, custom_properties: Optional[Dict[str, Any]] = None):
+                   endpoint: str | None = None, custom_properties: dict[str, Any] | None = None):
         """Track errors and exceptions."""
         if not self.is_enabled:
             return
@@ -125,19 +124,10 @@ class MonitoringService:
             )
     
     def track_dependency(self, dependency_type: str, dependency_name: str,
-                        duration_ms: float, success: bool, data: Optional[str] = None):
+                        duration_ms: float, success: bool, data: str | None = None):
         """Track external dependency calls (e.g., OpenAI API)."""
         if not self.is_enabled:
             return
-        
-        dependency_data = {
-            "type": dependency_type,
-            "name": dependency_name,
-            "duration_ms": duration_ms,
-            "success": success,
-            "data": data,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        }
         
         # Track dependency
         if hasattr(self, 'tracer'):
@@ -233,7 +223,7 @@ class MonitoringService:
         self.view_manager.register_view(duration_view)
         self.view_manager.register_view(keyword_view)
     
-    def _record_custom_metric(self, metric_name: str, properties: Dict[str, Any]):
+    def _record_custom_metric(self, metric_name: str, properties: dict[str, Any]):
         """Record custom metrics to Application Insights."""
         if hasattr(self, 'logger'):
             self.logger.info(
@@ -243,7 +233,7 @@ class MonitoringService:
                 }
             )
     
-    def track_metric(self, name: str, value: float, properties: Optional[Dict[str, Any]] = None):
+    def track_metric(self, name: str, value: float, properties: dict[str, Any] | None = None):
         """Track a custom metric."""
         if not self.is_enabled:
             return
@@ -259,7 +249,7 @@ class MonitoringService:
         
         self._record_custom_metric(name, metric_properties)
     
-    def track_event(self, name: str, properties: Optional[Dict[str, Any]] = None):
+    def track_event(self, name: str, properties: dict[str, Any] | None = None):
         """Track a custom event."""
         if not self.is_enabled:
             return

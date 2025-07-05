@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any
 
+from src.core.metrics.cache_metrics import cache_metrics
 from src.models.keyword_extraction import KeywordExtractionRequest, StandardizedTerm
 from src.models.prompt_config import LLMConfig
 from src.models.response import IntersectionStats, WarningInfo
@@ -31,7 +32,6 @@ from src.services.openai_client import (
 )
 from src.services.standardization import MultilingualStandardizer
 from src.services.unified_prompt_service import get_unified_prompt_service
-from src.core.metrics.cache_metrics import cache_metrics
 
 
 class KeywordExtractionServiceV2(BaseService):
