@@ -3,19 +3,19 @@ Custom exceptions for bilingual keyword extraction service.
 Provides specialized error handling for language detection and extraction.
 """
 
-from typing import List, Optional, Dict, Any
+from typing import Any
 
 
 class BilingualServiceError(Exception):
     """Base exception for bilingual service errors."""
     
-    def __init__(self, message: str, error_code: str = None, details: Dict[str, Any] = None):
+    def __init__(self, message: str, error_code: str = None, details: dict[str, Any] = None):
         super().__init__(message)
         self.message = message
         self.error_code = error_code or "BILINGUAL_SERVICE_ERROR"
         self.details = details or {}
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for API response."""
         return {
             "code": self.error_code,
@@ -34,7 +34,7 @@ class UnsupportedLanguageError(BilingualServiceError):
     
     def __init__(self, 
                  detected_language: str, 
-                 supported_languages: List[str],
+                 supported_languages: list[str],
                  confidence: float = None,
                  user_specified: bool = False):
         """
@@ -189,7 +189,7 @@ class PromptNotAvailableError(BilingualServiceError):
     def __init__(self, 
                  language: str,
                  version: str = None,
-                 available_languages: List[str] = None):
+                 available_languages: list[str] = None):
         """
         Initialize prompt not available error.
         
@@ -280,8 +280,8 @@ class BilingualValidationError(BilingualServiceError):
     
     def __init__(self, 
                  validation_type: str,
-                 errors: List[str],
-                 suggestions: List[str] = None):
+                 errors: list[str],
+                 suggestions: list[str] = None):
         """
         Initialize bilingual validation error.
         
@@ -310,7 +310,7 @@ class BilingualValidationError(BilingualServiceError):
         self.suggestions = suggestions
 
 
-def create_unsupported_language_response(error: UnsupportedLanguageError) -> Dict[str, Any]:
+def create_unsupported_language_response(error: UnsupportedLanguageError) -> dict[str, Any]:
     """
     Create a standardized API response for unsupported language errors.
     
@@ -357,7 +357,7 @@ def create_unsupported_language_response(error: UnsupportedLanguageError) -> Dic
     }
 
 
-def create_language_detection_error_response(error: LanguageDetectionError) -> Dict[str, Any]:
+def create_language_detection_error_response(error: LanguageDetectionError) -> dict[str, Any]:
     """
     Create a standardized API response for language detection errors.
     

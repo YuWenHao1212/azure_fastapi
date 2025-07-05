@@ -2,12 +2,13 @@
 Integration tests for Azure Functions deployment.
 Tests the FastAPI application running on Azure Functions.
 """
-import pytest
 import json
-from unittest.mock import Mock, patch, MagicMock
-import azure.functions as func
-from pathlib import Path
 import sys
+from pathlib import Path
+from unittest.mock import Mock, patch
+
+import azure.functions as func
+import pytest
 
 # Add project root to path
 current_dir = Path(__file__).parent
@@ -155,17 +156,21 @@ class TestAzureFunctionsIntegration:
             assert len(response_data["data"]["keywords"]) > 0
     
     @pytest.mark.asyncio
-    async def test_cors_headers(self, mock_http_request, mock_context):
+    @pytest.mark.cors_dependent
+    async def test_cors_headers(self, mock_http_request, mock_context, skip_cors_tests):
         """Test CORS headers are properly set through Azure Functions."""
+        if skip_cors_tests:
+            pytest.skip("Skipping CORS-dependent test")
+        
         sys.path.insert(0, str(project_root))
         from function_app import process_http_request
         
-        # Create OPTIONS request
+        # Create OPTIONS request with allowed origin
         request = mock_http_request(
             method="OPTIONS",
             url="/api/v1/extract-jd-keywords",
             headers={
-                "Origin": "https://example.com",
+                "Origin": "https://airesumeadvisor.bubbleapps.io",
                 "Access-Control-Request-Method": "POST"
             }
         )

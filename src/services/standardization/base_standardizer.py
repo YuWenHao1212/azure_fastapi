@@ -6,8 +6,6 @@ Provides common functionality for all language-specific standardizers.
 import logging
 import re
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Tuple, Set
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +14,10 @@ class StandardizationResult:
     """Result of keyword standardization process."""
     
     def __init__(self, 
-                 original_keywords: List[str],
-                 standardized_keywords: List[str],
-                 mappings: List[Dict[str, str]] = None,
-                 excluded_keywords: List[str] = None):
+                 original_keywords: list[str],
+                 standardized_keywords: list[str],
+                 mappings: list[dict[str, str]] = None,
+                 excluded_keywords: list[str] = None):
         self.original_keywords = original_keywords
         self.standardized_keywords = standardized_keywords
         self.mappings = mappings or []
@@ -40,11 +38,11 @@ class StandardizationResult:
         """Final number of standardized keywords."""
         return len(self.standardized_keywords)
     
-    def get_mapping_by_method(self, method: str) -> List[Dict[str, str]]:
+    def get_mapping_by_method(self, method: str) -> list[dict[str, str]]:
         """Get mappings by standardization method."""
         return [m for m in self.mappings if m.get('method') == method]
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary for API response."""
         return {
             "original_count": len(self.original_keywords),
@@ -62,7 +60,7 @@ class BaseStandardizer(ABC):
     Provides common functionality and defines the interface for language-specific standardizers.
     """
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize base standardizer.
         
@@ -83,7 +81,7 @@ class BaseStandardizer(ABC):
         """Get the language code supported by this standardizer."""
         pass
     
-    def standardize_keywords(self, keywords: List[str]) -> StandardizationResult:
+    def standardize_keywords(self, keywords: list[str]) -> StandardizationResult:
         """
         Standardize a list of keywords.
         
@@ -126,7 +124,7 @@ class BaseStandardizer(ABC):
         logger.info(f"Standardization complete: {len(keywords)} -> {len(final_keywords)} keywords")
         return result
     
-    def _clean_keywords(self, keywords: List[str]) -> List[str]:
+    def _clean_keywords(self, keywords: list[str]) -> list[str]:
         """
         Clean and normalize keywords.
         
@@ -167,7 +165,7 @@ class BaseStandardizer(ABC):
         # Default normalization: strip and collapse whitespace
         return re.sub(r'\s+', ' ', keyword.strip())
     
-    def _apply_exclusion_rules(self, keywords: List[str]) -> Tuple[List[str], List[str]]:
+    def _apply_exclusion_rules(self, keywords: list[str]) -> tuple[list[str], list[str]]:
         """
         Apply exclusion rules to filter out unwanted keywords.
         
@@ -203,7 +201,7 @@ class BaseStandardizer(ABC):
         logger.debug(f"Excluded {len(excluded)} keywords by exclusion rules")
         return filtered, excluded
     
-    def _apply_standardization_mappings(self, keywords: List[str]) -> Tuple[List[str], List[Dict[str, str]]]:
+    def _apply_standardization_mappings(self, keywords: list[str]) -> tuple[list[str], list[dict[str, str]]]:
         """
         Apply direct standardization mappings.
         
@@ -221,7 +219,7 @@ class BaseStandardizer(ABC):
         
         # Build mapping dictionary from all categories
         mapping_dict = {}
-        for category, category_data in self.config['categories'].items():
+        for _category, category_data in self.config['categories'].items():
             if 'mappings' in category_data:
                 mapping_dict.update(category_data['mappings'])
         
@@ -240,7 +238,7 @@ class BaseStandardizer(ABC):
         logger.debug(f"Applied {len(mappings)} dictionary mappings")
         return standardized, mappings
     
-    def _apply_pattern_rules(self, keywords: List[str]) -> Tuple[List[str], List[Dict[str, str]]]:
+    def _apply_pattern_rules(self, keywords: list[str]) -> tuple[list[str], list[dict[str, str]]]:
         """
         Apply pattern-based standardization rules.
         
@@ -278,7 +276,7 @@ class BaseStandardizer(ABC):
         logger.debug(f"Applied {len(mappings)} pattern rules")
         return standardized, mappings
     
-    def _remove_duplicates(self, keywords: List[str]) -> List[str]:
+    def _remove_duplicates(self, keywords: list[str]) -> list[str]:
         """
         Remove duplicates while preserving order.
         
@@ -288,7 +286,7 @@ class BaseStandardizer(ABC):
         Returns:
             Keywords with duplicates removed
         """
-        seen: Set[str] = set()
+        seen: set[str] = set()
         result = []
         
         for keyword in keywords:
@@ -309,7 +307,7 @@ class BaseStandardizer(ABC):
         """
         return self.config is not None
     
-    def get_standardization_stats(self) -> Dict:
+    def get_standardization_stats(self) -> dict:
         """
         Get statistics about the standardization configuration.
         

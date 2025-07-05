@@ -4,9 +4,9 @@ Provides standardization for English and Traditional Chinese keywords.
 """
 
 from .base_standardizer import BaseStandardizer
-from .zh_tw_standardizer import TraditionalChineseStandardizer
 from .en_standardizer import EnglishStandardizer
 from .multilingual_standardizer import MultilingualStandardizer
+from .zh_tw_standardizer import TraditionalChineseStandardizer
 
 __all__ = [
     "BaseStandardizer",

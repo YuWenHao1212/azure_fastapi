@@ -4,26 +4,26 @@ Validate standardization dictionaries for duplicates, conflicts, and other issue
 """
 
 import sys
-import yaml
-from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Set, Tuple
+from pathlib import Path
+
+import yaml
 
 
-def load_yaml_file(filepath: Path) -> Dict:
+def load_yaml_file(filepath: Path) -> dict:
     """Load and parse a YAML file."""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             return yaml.safe_load(f)
     except Exception as e:
         print(f"Error loading {filepath}: {e}")
         return {}
 
 
-def extract_mappings(data: Dict) -> Dict[str, str]:
+def extract_mappings(data: dict) -> dict[str, str]:
     """Extract all mappings from nested YAML structure."""
     mappings = {}
-    for category, items in data.items():
+    for _category, items in data.items():
         if isinstance(items, dict):
             for original, standardized in items.items():
                 # Store with lowercase key for consistency
@@ -34,7 +34,7 @@ def extract_mappings(data: Dict) -> Dict[str, str]:
     return mappings
 
 
-def check_duplicates(all_dicts: Dict[str, Dict[str, str]]) -> List[str]:
+def check_duplicates(all_dicts: dict[str, dict[str, str]]) -> list[str]:
     """Check for duplicate keys across dictionaries."""
     issues = []
     seen_keys = {}
@@ -54,7 +54,7 @@ def check_duplicates(all_dicts: Dict[str, Dict[str, str]]) -> List[str]:
     return issues
 
 
-def check_conflicts(combined: Dict[str, str]) -> List[str]:
+def check_conflicts(combined: dict[str, str]) -> list[str]:
     """Check for conflicting standardizations (different keys mapping to same value)."""
     issues = []
     reverse_map = defaultdict(list)
@@ -76,7 +76,7 @@ def check_conflicts(combined: Dict[str, str]) -> List[str]:
     return issues
 
 
-def check_circular_references(combined: Dict[str, str]) -> List[str]:
+def check_circular_references(combined: dict[str, str]) -> list[str]:
     """Check for circular references (A->B and B->A)."""
     issues = []
     
@@ -91,7 +91,7 @@ def check_circular_references(combined: Dict[str, str]) -> List[str]:
     return issues
 
 
-def check_self_references(combined: Dict[str, str]) -> List[str]:
+def check_self_references(combined: dict[str, str]) -> list[str]:
     """Check for self-references (key maps to itself)."""
     issues = []
     
@@ -104,7 +104,7 @@ def check_self_references(combined: Dict[str, str]) -> List[str]:
     return issues
 
 
-def get_statistics(all_dicts: Dict[str, Dict[str, str]]) -> Dict[str, int]:
+def get_statistics(all_dicts: dict[str, dict[str, str]]) -> dict[str, int]:
     """Get statistics about the dictionaries."""
     stats = {}
     total = 0
@@ -118,7 +118,7 @@ def get_statistics(all_dicts: Dict[str, Dict[str, str]]) -> Dict[str, int]:
     return stats
 
 
-def validate_patterns(patterns_file: Path) -> Tuple[int, List[str]]:
+def validate_patterns(patterns_file: Path) -> tuple[int, list[str]]:
     """Validate pattern file structure and regex patterns."""
     import re
     

@@ -450,9 +450,47 @@ class DataModel(BaseModel):
 5. 確保 Python 3.10+ 避免相容性問題
 6. 注意 Azure 成本監控
 7. **Git 提交規則**：由於專案已設置 CI/CD pipeline，Claude Code **絕對不可以**自行執行 `git commit`。任何提交前必須：
-   - 先向用戶說明要提交的內容
+   - 執行預提交測試：`./run_precommit_tests.sh`
+   - 向用戶展示完整測試結果
+   - 確保所有測試通過（包括代碼風格檢查）
+   - 詳細說明要提交的內容
    - 獲得用戶明確同意後才能執行
    - 提交訊息需包含清晰的變更說明
+
+### 預提交測試流程
+
+#### 執行測試
+```bash
+# 完整測試（推薦）- 自動啟動 API
+./run_precommit_tests.sh
+
+# 快速測試 - 跳過需要 API 的測試
+./run_precommit_tests.sh --no-api
+```
+
+#### 測試涵蓋範圍
+- ✅ 單元測試（Core Models, API Handlers, Services）
+- ✅ 整合測試（Azure Deployment, Performance）
+- ✅ 性能測試（並行處理、緩存機制）
+- ✅ Bubble.io API 相容性測試
+- ✅ 代碼風格檢查（ruff）
+
+#### 測試結果要求
+提交前必須確保：
+- 所有測試通過（Passed）
+- 無失敗測試（Failed: 0）
+- 代碼風格檢查通過
+- 測試結果範例：
+```
+📊 TEST SUMMARY
+═══════════════════════════════════════
+Total tests: 8
+Passed: 8
+Failed: 0
+Skipped: 0
+
+✅ All tests passed! Ready to commit.
+```
 
 ### 臨時文件管理
 - 臨時測試文件放在 `legacy/temp_tests/`
@@ -469,8 +507,8 @@ class DataModel(BaseModel):
 
 ---
 
-**文檔版本**: 2.0.0  
-**最後更新**: 2025-07-03  
+**文檔版本**: 2.1.0  
+**最後更新**: 2025-07-05  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
 

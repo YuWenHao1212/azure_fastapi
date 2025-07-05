@@ -4,7 +4,7 @@ This wraps the existing standardizer to fit the multilingual interface.
 """
 
 import logging
-from typing import List
+
 from ..keyword_standardizer import KeywordStandardizer
 from .base_standardizer import BaseStandardizer, StandardizationResult
 
@@ -36,7 +36,7 @@ class EnglishStandardizer(BaseStandardizer):
         """Get the supported language code."""
         return "en"
     
-    def standardize_keywords(self, keywords: List[str]) -> StandardizationResult:
+    def standardize_keywords(self, keywords: list[str]) -> StandardizationResult:
         """
         Standardize English keywords using the legacy standardizer.
         

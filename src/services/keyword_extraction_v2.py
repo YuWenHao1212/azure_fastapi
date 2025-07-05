@@ -2,32 +2,35 @@
 Bilingual Keyword Extraction Service V2 with unified prompt management.
 Uses UnifiedPromptService for YAML-based configuration management.
 """
-from typing import List, Dict, Any, Optional, Set
-import logging
 import asyncio
+import hashlib
 import json
 import time
-import hashlib
 from datetime import datetime, timedelta
+from typing import Any
 
+from src.models.keyword_extraction import KeywordExtractionRequest, StandardizedTerm
+from src.models.prompt_config import LLMConfig
+from src.models.response import IntersectionStats, WarningInfo
 from src.services.base import BaseService
-from src.services.openai_client import AzureOpenAIClient, get_azure_openai_client, AzureOpenAIError
+from src.services.exceptions import (
+    LanguageDetectionError,
+    LowConfidenceDetectionError,
+    UnsupportedLanguageError,
+    create_unsupported_language_response,
+)
 from src.services.keyword_standardizer import KeywordStandardizer
-from src.services.language_detection import MixedLanguageDetectionService, LanguageValidator
-from src.services.language_detection.simple_language_detector import SimplifiedLanguageDetector
+from src.services.language_detection import LanguageValidator
+from src.services.language_detection.simple_language_detector import (
+    SimplifiedLanguageDetector,
+)
+from src.services.openai_client import (
+    AzureOpenAIClient,
+    AzureOpenAIError,
+    get_azure_openai_client,
+)
 from src.services.standardization import MultilingualStandardizer
 from src.services.unified_prompt_service import get_unified_prompt_service
-from src.services.exceptions import (
-    UnsupportedLanguageError, LanguageDetectionError, LowConfidenceDetectionError,
-    PromptNotAvailableError, create_unsupported_language_response, create_language_detection_error_response
-)
-from src.models.keyword_extraction import (
-    KeywordExtractionRequest,
-    KeywordExtractionData,
-    StandardizedTerm
-)
-from src.models.response import IntersectionStats, WarningInfo
-from src.models.prompt_config import LLMConfig
 
 
 class KeywordExtractionServiceV2(BaseService):
@@ -44,7 +47,7 @@ class KeywordExtractionServiceV2(BaseService):
     
     def __init__(
         self,
-        openai_client: Optional[AzureOpenAIClient] = None,
+        openai_client: AzureOpenAIClient | None = None,
         prompt_version: str = "latest",
         enable_cache: bool = True,
         cache_ttl_minutes: int = 60,
@@ -102,7 +105,7 @@ class KeywordExtractionServiceV2(BaseService):
             f"Languages: {self.SUPPORTED_LANGUAGES}"
         )
     
-    async def validate_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate_input(self, data: dict[str, Any]) -> dict[str, Any]:
         """Validate the extraction request."""
         request = KeywordExtractionRequest(**data)
         validated_data = request.dict()
@@ -119,7 +122,7 @@ class KeywordExtractionServiceV2(BaseService):
         cache_input = f"{job_description}|{language}|{max_keywords}|{include_standardization}|{prompt_version}"
         return hashlib.sha256(cache_input.encode('utf-8')).hexdigest()
     
-    def _get_cached_result(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def _get_cached_result(self, cache_key: str) -> dict[str, Any] | None:
         """Get cached result if available."""
         if not self.enable_cache or cache_key not in self._cache:
             return None
@@ -134,7 +137,7 @@ class KeywordExtractionServiceV2(BaseService):
         
         return cached_entry['result']
     
-    def _cache_result(self, cache_key: str, result: Dict[str, Any]):
+    def _cache_result(self, cache_key: str, result: dict[str, Any]):
         """Cache the extraction result."""
         if not self.enable_cache:
             return
@@ -163,7 +166,7 @@ class KeywordExtractionServiceV2(BaseService):
         if expired_keys:
             self.logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
     
-    async def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process keyword extraction with unified prompt management."""
         start_time = time.time()
         
@@ -203,7 +206,7 @@ class KeywordExtractionServiceV2(BaseService):
                 self._cache_hits += 1
                 self.extraction_stats["cache_hits"] += 1
                 
-                self.logger.info(f"Cache hit for keyword extraction")
+                self.logger.info("Cache hit for keyword extraction")
                 return cached_result
             
             # Cache miss
@@ -301,7 +304,7 @@ class KeywordExtractionServiceV2(BaseService):
         max_keywords: int, 
         include_standardization: bool,
         prompt_version: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute keyword extraction using configuration from YAML.
         This is the key difference - all LLM parameters come from YAML!
@@ -422,7 +425,7 @@ class KeywordExtractionServiceV2(BaseService):
             }
         }
     
-    async def _extract_single_round(self, prompt: str, llm_config: LLMConfig, round_num: int) -> List[str]:
+    async def _extract_single_round(self, prompt: str, llm_config: LLMConfig, round_num: int) -> list[str]:
         """
         Execute a single round using LLM config from YAML.
         This is the KEY CHANGE - no more hardcoded parameters!
@@ -449,7 +452,7 @@ class KeywordExtractionServiceV2(BaseService):
             self.logger.error(f"Round {round_num} extraction failed: {str(e)}")
             raise AzureOpenAIError(f"Keyword extraction round {round_num} failed: {str(e)}")
     
-    def _parse_keywords_from_response(self, response: str) -> List[str]:
+    def _parse_keywords_from_response(self, response: str) -> list[str]:
         """Parse keywords from LLM response."""
         try:
             cleaned_response = response.strip()
@@ -484,7 +487,7 @@ class KeywordExtractionServiceV2(BaseService):
         
         return keywords
     
-    def _update_extraction_stats(self, language: str, result: Dict[str, Any]):
+    def _update_extraction_stats(self, language: str, result: dict[str, Any]):
         """Update internal statistics."""
         self.extraction_stats["total_extractions"] += 1
         
@@ -498,7 +501,7 @@ class KeywordExtractionServiceV2(BaseService):
         if result.get('warning', {}).get('has_warning', False):
             self.extraction_stats["warning_count"] += 1
     
-    def get_service_stats(self) -> Dict[str, Any]:
+    def get_service_stats(self) -> dict[str, Any]:
         """Get service statistics."""
         cache_hit_rate = 0.0
         total_requests = self._cache_hits + self._cache_misses
@@ -537,7 +540,7 @@ class KeywordExtractionServiceV2(BaseService):
         self._cache.clear()
         self.logger.info(f"Cleared cache of {cache_size} entries")
     
-    def get_cache_info(self) -> Dict[str, Any]:
+    def get_cache_info(self) -> dict[str, Any]:
         """Get detailed cache information."""
         current_time = datetime.utcnow()
         active_entries = 0

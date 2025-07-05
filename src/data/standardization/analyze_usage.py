@@ -8,26 +8,25 @@ Usage:
     python analyze_usage.py --find "python"    # Find specific keyword
 """
 
-import yaml
-import sys
 import argparse
-import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
+import sys
 from collections import Counter, defaultdict
+from pathlib import Path
+
+import yaml
 
 
-def load_yaml_file(filepath: Path) -> Dict:
+def load_yaml_file(filepath: Path) -> dict:
     """Load and parse a YAML file."""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             return yaml.safe_load(f) or {}
     except Exception as e:
         print(f"Error loading {filepath}: {e}")
         return {}
 
 
-def analyze_dictionary(yaml_file: Path) -> Dict[str, any]:
+def analyze_dictionary(yaml_file: Path) -> dict[str, any]:
     """Analyze a single dictionary file."""
     data = load_yaml_file(yaml_file)
     
@@ -68,7 +67,7 @@ def analyze_dictionary(yaml_file: Path) -> Dict[str, any]:
     return stats
 
 
-def analyze_patterns(yaml_file: Path) -> Dict[str, any]:
+def analyze_patterns(yaml_file: Path) -> dict[str, any]:
     """Analyze patterns file."""
     data = load_yaml_file(yaml_file)
     
@@ -102,7 +101,7 @@ def analyze_patterns(yaml_file: Path) -> Dict[str, any]:
     return stats
 
 
-def find_keyword(keyword: str, data_dir: Path) -> List[Tuple[str, str, str]]:
+def find_keyword(keyword: str, data_dir: Path) -> list[tuple[str, str, str]]:
     """
     Find a keyword across all dictionaries.
     
@@ -118,7 +117,7 @@ def find_keyword(keyword: str, data_dir: Path) -> List[Tuple[str, str, str]]:
         if filepath.exists():
             data = load_yaml_file(filepath)
             
-            for category, mappings in data.items():
+            for _category, mappings in data.items():
                 if isinstance(mappings, dict):
                     for original, standardized in mappings.items():
                         if (keyword_lower in original.lower() or 
@@ -128,7 +127,7 @@ def find_keyword(keyword: str, data_dir: Path) -> List[Tuple[str, str, str]]:
     return results
 
 
-def check_conflicts(data_dir: Path) -> Dict[str, List[Tuple[str, str, str]]]:
+def check_conflicts(data_dir: Path) -> dict[str, list[tuple[str, str, str]]]:
     """
     Check for potential conflicts across dictionaries.
     
@@ -158,7 +157,7 @@ def check_conflicts(data_dir: Path) -> Dict[str, List[Tuple[str, str, str]]]:
     return dict(conflicts)
 
 
-def generate_summary_report(stats_list: List[Dict], conflicts: Dict, detailed: bool) -> None:
+def generate_summary_report(stats_list: list[dict], conflicts: dict, detailed: bool) -> None:
     """Generate and print summary report."""
     print("\n" + "=" * 70)
     print("KEYWORD STANDARDIZATION ANALYSIS REPORT")
@@ -298,7 +297,7 @@ def main():
     # Analyze patterns file
     patterns_file = data_dir / 'patterns.yaml'
     if patterns_file.exists():
-        print(f"  ✓ Analyzing patterns.yaml...")
+        print("  ✓ Analyzing patterns.yaml...")
         stats = analyze_patterns(patterns_file)
         stats_list.append(stats)
     

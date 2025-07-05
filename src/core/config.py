@@ -2,9 +2,9 @@
 Core configuration module for Azure FastAPI application.
 Following FHS architecture principles.
 """
+from typing import Any
+
 from pydantic_settings import BaseSettings
-from typing import Dict, Any, List
-import os
 
 
 class Settings(BaseSettings):
@@ -80,7 +80,7 @@ class Settings(BaseSettings):
             return [header.strip() for header in self.cors_allow_headers.split(",")]
         return ["*"]
     
-    def get_openai_config(self) -> Dict[str, Any]:
+    def get_openai_config(self) -> dict[str, Any]:
         """Get OpenAI configuration dictionary."""
         return {
             "api_key": self.openai_api_key,

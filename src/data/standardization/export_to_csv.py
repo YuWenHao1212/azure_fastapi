@@ -8,27 +8,26 @@ Usage:
     python export_to_csv.py --output my_export  # Custom output directory
 """
 
-import yaml
-import csv
-import os
-import sys
 import argparse
-from pathlib import Path
+import csv
+import sys
 from datetime import datetime
-from typing import Dict, List, Tuple
+from pathlib import Path
+
+import yaml
 
 
-def load_yaml_file(filepath: Path) -> Dict:
+def load_yaml_file(filepath: Path) -> dict:
     """Load and parse a YAML file."""
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, encoding='utf-8') as f:
             return yaml.safe_load(f)
     except Exception as e:
         print(f"Error loading {filepath}: {e}")
         return {}
 
 
-def export_dictionary_to_csv(yaml_file: Path, output_dir: Path) -> Tuple[bool, str]:
+def export_dictionary_to_csv(yaml_file: Path, output_dir: Path) -> tuple[bool, str]:
     """
     Export a single dictionary YAML file to CSV.
     
@@ -71,7 +70,7 @@ def export_dictionary_to_csv(yaml_file: Path, output_dir: Path) -> Tuple[bool, s
         return False, f"Error writing CSV: {e}"
 
 
-def export_patterns_to_csv(yaml_file: Path, output_dir: Path) -> Tuple[bool, str]:
+def export_patterns_to_csv(yaml_file: Path, output_dir: Path) -> tuple[bool, str]:
     """
     Export patterns YAML file to CSV with special handling.
     
@@ -116,7 +115,7 @@ def export_patterns_to_csv(yaml_file: Path, output_dir: Path) -> Tuple[bool, str
         return False, f"Error writing CSV: {e}"
 
 
-def create_summary_file(output_dir: Path, results: List[Tuple[str, bool, str]]) -> None:
+def create_summary_file(output_dir: Path, results: list[tuple[str, bool, str]]) -> None:
     """Create a summary file with export information."""
     summary_file = output_dir / "export_summary.txt"
     

@@ -25,22 +25,21 @@ Bubble.io API 格式相容性整合測試 (完整 8 測試案例)
 Author: Claude Code
 Date: 2025-07-04
 """
-import sys
 import os
-import asyncio
-import json
+import sys
+from datetime import datetime
 from pathlib import Path
 from unittest.mock import patch
-from datetime import datetime
 
 # Add project root to Python path
-project_root = Path(__file__).parent
+project_root = Path(__file__).parent.parent.parent  # Go up to project root
 sys.path.insert(0, str(project_root))
 
 # Import test dependencies
 from fastapi.testclient import TestClient
+
 from src.main import app
-from src.models.response import UnifiedResponse
+
 
 class BubbleApiFormatTests:
     """Bubble.io API 格式相容性測試 - 使用 Mock 驗證 API 組裝和回應格式"""

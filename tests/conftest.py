@@ -2,20 +2,25 @@
 Pytest configuration and shared fixtures for Work Item #348.
 Provides common test utilities for unit testing keyword extraction functionality.
 """
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any, List
-from datetime import datetime
 
 # Add src to Python path for imports
 import sys
+from datetime import datetime
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.models.keyword_extraction import KeywordExtractionRequest, KeywordExtractionData
-from src.models.response import UnifiedResponse, ErrorDetail
 from src.core.config import Settings
+from src.models.keyword_extraction import (
+    KeywordExtractionData,
+    KeywordExtractionRequest,
+)
+from src.models.response import ErrorDetail, UnifiedResponse
+from tests.test_config import TestConfig
 
 
 @pytest.fixture(scope="session")
@@ -60,8 +65,38 @@ def sample_keyword_extraction_request():
         max_keywords=20,  # Updated to correct default
         include_standardization=True,
         use_multi_round_validation=True,
-        prompt_version="latest"  # Updated to correct default
+        prompt_version=TestConfig.get_default_prompt_version()
     )
+
+
+@pytest.fixture
+def default_prompt_version():
+    """Get the default prompt version for tests."""
+    return TestConfig.get_default_prompt_version()
+
+
+@pytest.fixture
+def test_prompt_versions():
+    """Get list of prompt versions to test."""
+    return TestConfig.get_test_prompt_versions()
+
+
+@pytest.fixture
+def skip_external_api():
+    """Check if external API tests should be skipped."""
+    return TestConfig.should_skip_external_api_tests()
+
+
+@pytest.fixture
+def skip_cors_tests():
+    """Check if CORS tests should be skipped."""
+    return TestConfig.should_skip_cors_tests()
+
+
+@pytest.fixture
+def test_api_base_url():
+    """Get the test API base URL."""
+    return TestConfig.get_test_api_base_url()
 
 
 @pytest.fixture

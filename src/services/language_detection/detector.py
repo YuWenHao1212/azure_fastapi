@@ -3,12 +3,18 @@ Language detection service for bilingual keyword extraction.
 Uses langdetect library with Traditional Chinese support.
 """
 
-import time
 import logging
-from typing import NamedTuple, List
+import time
+from typing import NamedTuple
+
 from langdetect import detect, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
-from src.services.exceptions import UnsupportedLanguageError, LanguageDetectionError, LowConfidenceDetectionError
+
+from src.services.exceptions import (
+    LanguageDetectionError,
+    LowConfidenceDetectionError,
+    UnsupportedLanguageError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -226,6 +232,6 @@ class LanguageDetectionService:
         """Validate if text is long enough for detection."""
         return len(text.strip()) >= self.MIN_TEXT_LENGTH
     
-    def get_supported_languages(self) -> List[str]:
+    def get_supported_languages(self) -> list[str]:
         """Get list of supported language codes."""
         return self.SUPPORTED_LANGUAGES.copy()

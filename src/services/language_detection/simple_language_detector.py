@@ -4,11 +4,15 @@ Only accepts: Pure Traditional Chinese, Pure English, or Traditional Chinese + E
 Rejects all other cases including Simplified Chinese, Japanese, Korean, etc.
 """
 
-import time
 import logging
-from typing import NamedTuple, Set
-from src.services.language_detection.detector import LanguageDetectionService, LanguageDetectionResult
-from src.services.exceptions import UnsupportedLanguageError, LanguageDetectionError
+import time
+from typing import NamedTuple
+
+from src.services.exceptions import LanguageDetectionError, UnsupportedLanguageError
+from src.services.language_detection.detector import (
+    LanguageDetectionResult,
+    LanguageDetectionService,
+)
 
 logger = logging.getLogger(__name__)
 

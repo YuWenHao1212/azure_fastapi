@@ -2,9 +2,10 @@
 Simplified prompt configuration models for LLM prompt management.
 No template engine required - just basic configuration.
 """
-from pydantic import BaseModel, Field
-from typing import Dict, Any
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class LLMConfig(BaseModel):
@@ -42,11 +43,11 @@ class PromptConfig(BaseModel):
     version: str = Field(description="Semantic version (e.g., 1.0.0)")
     metadata: PromptMetadata = Field(default_factory=PromptMetadata, description="Version metadata")
     llm_config: LLMConfig = Field(default_factory=LLMConfig, description="LLM parameters")
-    prompts: Dict[str, str] = Field(
+    prompts: dict[str, str] = Field(
         default_factory=dict,
         description="Prompt texts - typically 'system' and 'user'"
     )
-    multi_round_config: Dict[str, Any] = Field(
+    multi_round_config: dict[str, Any] = Field(
         default_factory=dict,
         description="Configuration for multi-round extraction"
     )

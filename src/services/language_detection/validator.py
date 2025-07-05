@@ -4,9 +4,14 @@ Provides validation utilities for language detection and processing.
 """
 
 import logging
-from typing import List, Optional, Dict, Any
+from typing import Any
+
+from ..exceptions import (
+    LanguageDetectionError,
+    LowConfidenceDetectionError,
+    UnsupportedLanguageError,
+)
 from .detector import LanguageDetectionService
-from ..exceptions import UnsupportedLanguageError, LowConfidenceDetectionError, LanguageDetectionError
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +19,7 @@ logger = logging.getLogger(__name__)
 class LanguageValidationResult:
     """Result of language validation."""
     
-    def __init__(self, is_valid: bool, language: str = "", errors: List[str] = None, confidence: float = 0.0):
+    def __init__(self, is_valid: bool, language: str = "", errors: list[str] = None, confidence: float = 0.0):
         self.is_valid = is_valid
         self.language = language
         self.errors = errors or []
@@ -25,7 +30,7 @@ class LanguageValidationResult:
         self.errors.append(error)
         self.is_valid = False
     
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API response."""
         return {
             "is_valid": self.is_valid,
@@ -45,7 +50,7 @@ class LanguageValidator:
     - Language detection result validation
     """
     
-    def __init__(self, detection_service: Optional[LanguageDetectionService] = None):
+    def __init__(self, detection_service: LanguageDetectionService | None = None):
         """
         Initialize validator with optional detection service.
         
@@ -221,7 +226,7 @@ class LanguageValidator:
     def validate_language_consistency(self, 
                                      input_language: str, 
                                      detected_language: str, 
-                                     extracted_keywords: List[str]) -> LanguageValidationResult:
+                                     extracted_keywords: list[str]) -> LanguageValidationResult:
         """
         Validate language consistency between input, detection, and output.
         
@@ -251,7 +256,7 @@ class LanguageValidator:
         logger.debug(f"Language consistency validation: {result.is_valid}")
         return result
     
-    def _validate_keyword_language_consistency(self, keywords: List[str], language: str) -> bool:
+    def _validate_keyword_language_consistency(self, keywords: list[str], language: str) -> bool:
         """
         Basic validation of keyword language consistency.
         
@@ -283,7 +288,7 @@ class LanguageValidator:
         # Default: assume consistent
         return True
     
-    def get_validation_summary(self, validations: List[LanguageValidationResult]) -> Dict[str, Any]:
+    def get_validation_summary(self, validations: list[LanguageValidationResult]) -> dict[str, Any]:
         """
         Generate summary of multiple validation results.
         

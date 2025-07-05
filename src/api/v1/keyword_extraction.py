@@ -8,17 +8,33 @@ Handles job description keyword extraction functionality with:
 - Bubble.io compatible responses
 - Comprehensive error handling (400, 500, 503)
 """
-from fastapi import APIRouter, HTTPException, Depends, status
-from typing import Dict, Any
-import logging
 import asyncio
+import logging
 from datetime import datetime
 
-from src.models.keyword_extraction import KeywordExtractionRequest, KeywordExtractionData
-from src.models.response import UnifiedResponse, create_success_response, create_error_response, WarningInfo, ErrorDetail
-from src.services.keyword_extraction_v2 import get_keyword_extraction_service_v2, KeywordExtractionServiceV2
-from src.services.openai_client import AzureOpenAIError, AzureOpenAIRateLimitError, AzureOpenAIAuthError, AzureOpenAIServerError
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from src.core.config import get_settings
+from src.models.keyword_extraction import (
+    KeywordExtractionData,
+    KeywordExtractionRequest,
+)
+from src.models.response import (
+    ErrorDetail,
+    UnifiedResponse,
+    WarningInfo,
+    create_error_response,
+    create_success_response,
+)
+from src.services.keyword_extraction_v2 import (
+    get_keyword_extraction_service_v2,
+)
+from src.services.openai_client import (
+    AzureOpenAIAuthError,
+    AzureOpenAIError,
+    AzureOpenAIRateLimitError,
+    AzureOpenAIServerError,
+)
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -445,8 +461,97 @@ async def keyword_extraction_version() -> UnifiedResponse:
         "api_endpoints": {
             "extract_keywords": "POST /api/v1/extract-jd-keywords",
             "health_check": "GET /api/v1/health", 
-            "version_info": "GET /api/v1/version"
+            "version_info": "GET /api/v1/version",
+            "prompt_version": "GET /api/v1/prompt-version"
         }
     }
     
     return create_success_response(version_data)
+
+
+@router.get(
+    "/prompt-version",
+    response_model=UnifiedResponse,
+    summary="Get active prompt version for keyword extraction",
+    description="Get the currently active prompt version and configuration details for keyword extraction task",
+    tags=["Service Info"]
+)
+async def get_keyword_extraction_prompt_version(
+    language: str = "en",
+    settings = Depends(get_settings)
+) -> UnifiedResponse:
+    """
+    Get active prompt version information for keyword extraction task.
+    
+    Parameters:
+    - language: Language code ("en" or "zh-TW")
+    
+    Returns:
+    - Task name (keyword_extraction)
+    - Active prompt version details
+    - LLM configuration
+    - Available versions
+    """
+    try:
+        from src.services.unified_prompt_service import get_unified_prompt_service
+        
+        # Get the prompt service
+        prompt_service = get_unified_prompt_service()
+        
+        # Task is hardcoded to keyword_extraction for this endpoint
+        task = "keyword_extraction"
+        
+        # Get active version
+        active_version = prompt_service.get_active_version(language)
+        
+        # Get available versions
+        available_versions = prompt_service.list_versions(language)
+        
+        # Get prompt config for active version if exists
+        prompt_info = {}
+        if active_version:
+            try:
+                config = prompt_service.get_prompt_config(language, active_version)
+                prompt_info = {
+                    "version": config.version,
+                    "status": config.metadata.status,
+                    "author": config.metadata.author,
+                    "description": config.metadata.description,
+                    "created_at": config.metadata.created_at,
+                    "llm_config": {
+                        "temperature": config.llm_config.temperature,
+                        "max_tokens": config.llm_config.max_tokens,
+                        "seed": config.llm_config.seed,
+                        "top_p": config.llm_config.top_p
+                    },
+                    "multi_round_enabled": config.multi_round_config.get("enabled", False)
+                }
+            except Exception as e:
+                logger.warning(f"Failed to load prompt config: {e}")
+        
+        response_data = {
+            "task": task,
+            "language": language,
+            "active_version": active_version,
+            "available_versions": available_versions,
+            "prompt_info": prompt_info,
+            "default_request_version": "1.4.0",  # From KeywordExtractionRequest default
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        
+        logger.info(f"Retrieved prompt version info for task={task}, language={language}")
+        return create_success_response(response_data)
+        
+    except Exception as e:
+        logger.error(f"Failed to get prompt version: {str(e)}")
+        
+        error_response = create_error_response(
+            code="PROMPT_VERSION_ERROR",
+            message="無法取得提示版本資訊",
+            details=str(e)
+        )
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_response.dict()
+        )

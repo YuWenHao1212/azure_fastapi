@@ -10,13 +10,13 @@
 """
 
 import asyncio
-import httpx
-import sys
-import os
-import math
 import json
-from datetime import datetime
+import os
+import sys
 from collections import Counter
+from datetime import datetime
+
+import httpx
 
 # 預設的測試 JD（中文）
 DEFAULT_JD = """
@@ -39,10 +39,10 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
     jd_to_test = job_description or DEFAULT_JD
     jd_preview = jd_to_test[:100] + "..." if len(jd_to_test) > 100 else jd_to_test
     
-    print(f"🎯 一致性 KPI 測試（自動語言偵測版）")
+    print("🎯 一致性 KPI 測試（自動語言偵測版）")
     print("=" * 80)
     print(f"Prompt 版本: {prompt_version}")
-    print(f"語言設定: auto (自動偵測)")
+    print("語言設定: auto (自動偵測)")
     print(f"測試次數: {num_tests}")
     print(f"JD 預覽: {jd_preview}")
     print("=" * 80)
@@ -97,7 +97,7 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
         
         # 語言偵測統計
         lang_counter = Counter(detected_languages)
-        print(f"\n🌐 語言偵測統計:")
+        print("\n🌐 語言偵測統計:")
         for lang, count in lang_counter.most_common():
             print(f"   {lang}: {count} 次 ({count/successful_runs*100:.1f}%)")
         
@@ -108,11 +108,11 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
             for result in all_results:
                 keyword_counter.update(result)
             
-            print(f"\n📊 關鍵字頻率分析:")
+            print("\n📊 關鍵字頻率分析:")
             print(f"   總共出現 {len(keyword_counter)} 個不同關鍵字")
             
             # 顯示前 20 個最常出現的關鍵字
-            print(f"\n🔝 前 20 個高頻關鍵字:")
+            print("\n🔝 前 20 個高頻關鍵字:")
             for i, (keyword, count) in enumerate(keyword_counter.most_common(20), 1):
                 percentage = (count / successful_runs) * 100
                 print(f"   {i:2d}. {keyword}: {count} 次 ({percentage:.1f}%)")
@@ -149,20 +149,20 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
             
             consistency_rate = identical_pairs / total_pairs if total_pairs > 0 else 0
             
-            print(f"\n📊 一致性 KPI 分析:")
+            print("\n📊 一致性 KPI 分析:")
             print(f"   總測試次數: {successful_runs}")
             print(f"   唯一結果組合: {len(unique_combinations)} 個")
             
             # 顯示組合分布
             sorted_combos = sorted(unique_combinations.items(), key=lambda x: len(x[1]), reverse=True)
-            print(f"\n   組合分布:")
+            print("\n   組合分布:")
             for idx, (combo, occurrences) in enumerate(sorted_combos[:5], 1):
                 percentage = (len(occurrences) / successful_runs) * 100
                 print(f"   - 組合{idx}: {len(occurrences)}次 ({percentage:.1f}%)")
             if len(sorted_combos) > 5:
                 print(f"   - 其他{len(sorted_combos)-5}個組合: 各出現較少次數")
             
-            print(f"\n   配對統計:")
+            print("\n   配對統計:")
             print(f"   總配對數: {total_pairs}")
             print(f"   相同配對數: {identical_pairs}")
             print(f"   完全一致率: {consistency_rate:.1%}")
@@ -176,10 +176,7 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
                 n = total_pairs
                 
                 # 標準誤差
-                if p > 0 and p < 1:
-                    se = math.sqrt(p * (1 - p) / n)
-                else:
-                    se = 0
+                se = math.sqrt(p * (1 - p) / n) if p > 0 and p < 1 else 0
                 
                 # 95% 信心區間 (z = 1.96)
                 z = 1.96
@@ -187,14 +184,14 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
                 ci_lower = max(0, p - margin_of_error)
                 ci_upper = min(1, p + margin_of_error)
                 
-                print(f"\n📈 統計分析:")
+                print("\n📈 統計分析:")
                 print(f"   95% 信心區間: [{ci_lower:.1%}, {ci_upper:.1%}]")
                 print(f"   標準誤差: {se:.3f}")
                 print(f"   誤差範圍: ±{margin_of_error:.1%}")
                 
                 # 解釋信心區間
-                print(f"\n💡 解釋:")
-                print(f"   在 95% 的信心水準下，任兩次執行取得相同關鍵字列表的機率為:")
+                print("\n💡 解釋:")
+                print("   在 95% 的信心水準下，任兩次執行取得相同關鍵字列表的機率為:")
                 print(f"   {ci_lower:.1%} 到 {ci_upper:.1%} 之間")
                 
                 # 計算達到目標所需的樣本數
@@ -202,7 +199,7 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
                 if consistency_rate < target_rate:
                     # 使用當前的變異性估算需要多少次測試
                     required_identical = math.ceil(target_rate * total_pairs)
-                    print(f"\n📊 達標分析:")
+                    print("\n📊 達標分析:")
                     print(f"   目標一致性率: {target_rate:.0%}")
                     print(f"   需要相同配對數: {required_identical} (目前: {identical_pairs})")
                     print(f"   差距: {required_identical - identical_pairs} 對")
@@ -224,7 +221,7 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
                 jaccard_variance = sum((x - avg_jaccard) ** 2 for x in jaccard_scores) / len(jaccard_scores)
                 jaccard_std = math.sqrt(jaccard_variance)
                 
-                print(f"\n📊 Jaccard 相似度分析:")
+                print("\n📊 Jaccard 相似度分析:")
                 print(f"   平均相似度: {avg_jaccard:.1%}")
                 print(f"     → 任意兩次測試平均有 {avg_jaccard:.1%} 的關鍵字重疊")
                 print(f"     → 16個關鍵字中，平均約{int(16 * avg_jaccard)}個是相同的")
@@ -235,24 +232,24 @@ async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: s
                 
                 print(f"\n   最高相似度: {max_jaccard:.1%}")
                 if max_jaccard == 1.0:
-                    print(f"     → 有些測試對的關鍵字完全相同")
+                    print("     → 有些測試對的關鍵字完全相同")
                 else:
                     print(f"     → 最相似的兩次測試有 {max_jaccard:.1%} 重疊")
                 
                 print(f"\n   標準差: {jaccard_std:.3f}")
                 if jaccard_std < 0.1:
-                    print(f"     → 相似度的離散程度很小，表示穩定性高")
+                    print("     → 相似度的離散程度很小，表示穩定性高")
                 elif jaccard_std < 0.2:
-                    print(f"     → 相似度的離散程度中等，表示有一定變化")
+                    print("     → 相似度的離散程度中等，表示有一定變化")
                 else:
-                    print(f"     → 相似度的離散程度較大，表示變化較多")
+                    print("     → 相似度的離散程度較大，表示變化較多")
                 
                 # 分組統計
                 high_similarity = sum(1 for s in jaccard_scores if s >= 0.8)
                 medium_similarity = sum(1 for s in jaccard_scores if 0.5 <= s < 0.8)
                 low_similarity = sum(1 for s in jaccard_scores if s < 0.5)
                 
-                print(f"\n📊 相似度分布:")
+                print("\n📊 相似度分布:")
                 print(f"   高相似度 (≥80%): {high_similarity} 對 ({high_similarity/len(jaccard_scores)*100:.1f}%)")
                 print(f"   中相似度 (50-79%): {medium_similarity} 對 ({medium_similarity/len(jaccard_scores)*100:.1f}%)")
                 print(f"   低相似度 (<50%): {low_similarity} 對 ({low_similarity/len(jaccard_scores)*100:.1f}%)")
@@ -315,7 +312,7 @@ async def main():
         # 從檔案讀取 JD
         jd_file = sys.argv[2]
         if jd_file and os.path.exists(jd_file):
-            with open(jd_file, 'r', encoding='utf-8') as f:
+            with open(jd_file, encoding='utf-8') as f:
                 job_description = f.read()
             print(f"📄 從檔案載入 JD: {jd_file}")
     

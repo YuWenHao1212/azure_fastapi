@@ -3,11 +3,10 @@ Unified Prompt Service for managing prompts and LLM configurations.
 Combines multilingual support with YAML-based configuration management.
 """
 import logging
-from typing import Tuple, Dict, Optional
 from pathlib import Path
 
 from src.core.simple_prompt_manager import SimplePromptManager
-from src.models.prompt_config import PromptConfig, LLMConfig
+from src.models.prompt_config import LLMConfig, PromptConfig
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ class UnifiedPromptService:
     # Task path for all languages (now using unified directory with language-specific filenames)
     TASK_PATH = "keyword_extraction"
     
-    def __init__(self, prompts_base_dir: Optional[str] = None):
+    def __init__(self, prompts_base_dir: str | None = None):
         """
         Initialize the unified prompt service.
         
@@ -46,8 +45,8 @@ class UnifiedPromptService:
         self, 
         language: str, 
         version: str = "latest",
-        variables: Optional[Dict[str, str]] = None
-    ) -> Tuple[str, LLMConfig]:
+        variables: dict[str, str] | None = None
+    ) -> tuple[str, LLMConfig]:
         """
         Get formatted prompt and LLM configuration for specified language and version.
         
@@ -161,7 +160,6 @@ class UnifiedPromptService:
             return []
         
         # Scan the task directory for files with language suffix
-        from pathlib import Path
         task_dir = Path(self.simple_prompt_manager.prompts_dir) / self.TASK_PATH
         if not task_dir.exists():
             return []
@@ -186,7 +184,7 @@ class UnifiedPromptService:
         
         return versions
     
-    def get_active_version(self, language: str) -> Optional[str]:
+    def get_active_version(self, language: str) -> str | None:
         """
         Get the currently active version for a language.
         
@@ -199,12 +197,24 @@ class UnifiedPromptService:
         if language not in self.SUPPORTED_LANGUAGES:
             return None
         
-        # For the new naming scheme, the "active" version is the latest available
+        # Check each version to find the one marked as "active"
         available_versions = self.list_versions(language)
         if not available_versions:
             return None
         
-        # Return the highest numeric version (not "latest")
+        # Look for version marked as "active" in metadata
+        for version in available_versions:
+            if version == "latest":
+                continue
+            try:
+                config = self.get_prompt_config(language, version)
+                if config.metadata.status == "active":
+                    return version
+            except Exception as e:
+                logger.warning(f"Error checking version {version}: {e}")
+                continue
+        
+        # If no active version found, return the highest numeric version
         numeric_versions = [v for v in available_versions if v != "latest"]
         if numeric_versions:
             return max(numeric_versions)
@@ -263,7 +273,7 @@ class UnifiedPromptService:
 _unified_prompt_service = None
 
 
-def get_unified_prompt_service(prompts_base_dir: Optional[str] = None) -> UnifiedPromptService:
+def get_unified_prompt_service(prompts_base_dir: str | None = None) -> UnifiedPromptService:
     """
     Get singleton instance of UnifiedPromptService.
     

@@ -7,7 +7,6 @@ Date: 2025-07-03
 """
 
 import logging
-from typing import Set, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class ImprovedChineseDetector:
         '薪资福利', '工作环境', '职业发展', '团队合作', '沟通协调', '问题解决'
     }
     
-    def detect_chinese_variant(self, text: str) -> Tuple[str, float]:
+    def detect_chinese_variant(self, text: str) -> tuple[str, float]:
         """
         檢測中文變體（繁體或簡體）
         

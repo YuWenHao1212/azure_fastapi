@@ -15,15 +15,14 @@
     python test_prompt_version_comparison.py --jd "職位描述"     # 直接提供 JD
     python test_prompt_version_comparison.py --runs 30          # 每個版本測試 30 次
 """
-import asyncio
-import httpx
 import argparse
-import math
+import asyncio
 import json
-from datetime import datetime
-from pathlib import Path
+import math
 from collections import Counter
-from typing import Dict, List, Tuple, Set
+from datetime import datetime
+
+import httpx
 
 # 預設英文測試 JD
 DEFAULT_ENGLISH_JD = """
@@ -131,7 +130,7 @@ class PromptVersionComparison:
                 print(f"❌ 語言偵測失敗: HTTP {response.status_code}")
                 return False
     
-    async def test_version_consistency(self, version: str) -> Dict:
+    async def test_version_consistency(self, version: str) -> dict:
         """測試特定版本的一致性"""
         print(f"\n📋 測試版本 {version} ({self.runs_per_version} 次)...")
         
@@ -176,7 +175,7 @@ class PromptVersionComparison:
             "success_rate": len(results) / self.runs_per_version
         }
     
-    def analyze_consistency(self, version_data: Dict) -> Dict:
+    def analyze_consistency(self, version_data: dict) -> dict:
         """分析一個版本的一致性"""
         results = version_data["results"]
         
@@ -246,7 +245,7 @@ class PromptVersionComparison:
                                             key=lambda x: x[1], reverse=True)[:5]
         }
     
-    def compare_versions(self, analyses: List[Dict]) -> Dict:
+    def compare_versions(self, analyses: list[dict]) -> dict:
         """比較不同版本的結果"""
         if len(analyses) < 2:
             return {"insufficient_versions": True}
@@ -280,7 +279,7 @@ class PromptVersionComparison:
     
     async def run_comparison(self):
         """執行完整的版本比較測試"""
-        print(f"\n🚀 開始 Prompt 版本比較測試")
+        print("\n🚀 開始 Prompt 版本比較測試")
         print(f"   JD 長度: {len(self.test_jd)} 字符")
         print(f"   每版本測試次數: {self.runs_per_version}")
         print("=" * 80)
@@ -339,7 +338,7 @@ class PromptVersionComparison:
         # 生成報告
         self.generate_report(analyses, comparison)
     
-    def generate_report(self, analyses: List[Dict], comparison: Dict):
+    def generate_report(self, analyses: list[dict], comparison: dict):
         """生成詳細報告"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         report_file = f"prompt_version_comparison_{self.detected_language}_{timestamp}.json"
@@ -430,7 +429,7 @@ async def main():
     # 決定使用的 JD
     if args.jd_file:
         try:
-            with open(args.jd_file, 'r', encoding='utf-8') as f:
+            with open(args.jd_file, encoding='utf-8') as f:
                 test_jd = f.read()
             print(f"📄 從檔案載入 JD: {args.jd_file}")
         except Exception as e:

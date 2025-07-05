@@ -2,13 +2,14 @@
 Simple Prompt Manager for handling versioned prompts.
 No template engine - just basic YAML configuration and string formatting.
 """
-import yaml
 import logging
-from pathlib import Path
-from typing import Dict, Optional, List, Any
 from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
-from src.models.prompt_config import PromptConfig, LLMConfig, PromptMetadata
+import yaml
+
+from src.models.prompt_config import PromptConfig
 
 
 class SimplePromptManager:
@@ -21,7 +22,7 @@ class SimplePromptManager:
         """Initialize the prompt manager."""
         self.prompts_dir = Path(prompts_dir)
         self.logger = logging.getLogger(__name__)
-        self._cache: Dict[str, PromptConfig] = {}
+        self._cache: dict[str, PromptConfig] = {}
         
         # Ensure prompts directory exists
         self.prompts_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +60,7 @@ class SimplePromptManager:
         if not file_path.exists():
             raise FileNotFoundError(f"Prompt file not found: {file_path}")
         
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             data = yaml.safe_load(f)
         
         # Create config object
@@ -99,7 +100,7 @@ class SimplePromptManager:
         if not file_path.exists():
             raise FileNotFoundError(f"Prompt file not found: {file_path}")
         
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             data = yaml.safe_load(f)
         
         # Create config object
@@ -112,7 +113,7 @@ class SimplePromptManager:
         
         return config
     
-    def format_prompt(self, template: str, variables: Dict[str, str]) -> str:
+    def format_prompt(self, template: str, variables: dict[str, str]) -> str:
         """
         Simple string formatting using Python's format method.
         
@@ -128,7 +129,7 @@ class SimplePromptManager:
         except KeyError as e:
             raise ValueError(f"Missing required variable in prompt: {e}")
     
-    def list_versions(self, task: str) -> List[str]:
+    def list_versions(self, task: str) -> list[str]:
         """List all available versions for a task."""
         task_dir = self.prompts_dir / task
         if not task_dir.exists():
@@ -145,7 +146,7 @@ class SimplePromptManager:
         
         return versions
     
-    def get_active_version(self, task: str) -> Optional[str]:
+    def get_active_version(self, task: str) -> str | None:
         """Get the currently active version for a task."""
         versions = self.list_versions(task)
         
@@ -193,14 +194,14 @@ class SimplePromptManager:
     def _clear_cache_for_task(self, task: str):
         """Clear cache entries for a specific task."""
         keys_to_remove = [
-            key for key in self._cache.keys()
+            key for key in self._cache
             if key.startswith(f"{task}:")
         ]
         for key in keys_to_remove:
             del self._cache[key]
     
     @lru_cache(maxsize=32)
-    def get_prompt_info(self, task: str, version: str) -> Dict[str, Any]:
+    def get_prompt_info(self, task: str, version: str) -> dict[str, Any]:
         """Get summary information about a prompt configuration."""
         config = self.load_prompt_config(task, version)
         

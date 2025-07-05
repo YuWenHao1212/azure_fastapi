@@ -3,10 +3,10 @@ Bilingual prompt management for keyword extraction.
 Manages language-specific prompts for English and Traditional Chinese.
 """
 
-import logging
-from typing import Dict, Optional, Any, NamedTuple
-from pathlib import Path
 import json
+import logging
+from pathlib import Path
+from typing import Any, NamedTuple
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +16,7 @@ class PromptConfig(NamedTuple):
     version: str
     language: str
     content: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class BilingualPromptManager:
@@ -31,7 +31,7 @@ class BilingualPromptManager:
     SUPPORTED_LANGUAGES = ["en", "zh-TW"]
     DEFAULT_VERSION = "latest"
     
-    def __init__(self, prompt_base_path: Optional[str] = None):
+    def __init__(self, prompt_base_path: str | None = None):
         """
         Initialize bilingual prompt manager.
         
@@ -39,7 +39,7 @@ class BilingualPromptManager:
             prompt_base_path: Base path for prompt configuration files
         """
         self.prompt_base_path = prompt_base_path or "src/prompts"
-        self._prompt_cache: Dict[str, PromptConfig] = {}
+        self._prompt_cache: dict[str, PromptConfig] = {}
         self._version_mapping = {
             "en": {
                 "latest": "1.3.0",
@@ -315,7 +315,7 @@ Return only JSON with exactly 25 keywords: {{"keywords": ["Term1", "Term2", ...,
         
         return version in self._version_mapping[language]
     
-    def get_prompt_metadata(self, language: str, version: str = "latest") -> Dict[str, Any]:
+    def get_prompt_metadata(self, language: str, version: str = "latest") -> dict[str, Any]:
         """
         Get metadata for a prompt configuration.
         
@@ -329,7 +329,7 @@ Return only JSON with exactly 25 keywords: {{"keywords": ["Term1", "Term2", ...,
         prompt_config = self.get_prompt(language, version)
         return prompt_config.metadata.copy()
     
-    def _load_prompt_from_file(self, language: str, version: str) -> Optional[PromptConfig]:
+    def _load_prompt_from_file(self, language: str, version: str) -> PromptConfig | None:
         """
         Load prompt configuration from file.
         
@@ -347,7 +347,7 @@ Return only JSON with exactly 25 keywords: {{"keywords": ["Term1", "Term2", ...,
                 logger.debug(f"Prompt file not found: {prompt_file}")
                 return None
             
-            with open(prompt_file, 'r', encoding='utf-8') as f:
+            with open(prompt_file, encoding='utf-8') as f:
                 prompt_data = json.load(f)
             
             return PromptConfig(
@@ -374,7 +374,7 @@ Return only JSON with exactly 25 keywords: {{"keywords": ["Term1", "Term2", ...,
         required_placeholder = "{job_description}"
         return required_placeholder in prompt_content
     
-    def get_all_supported_combinations(self) -> list[Dict[str, str]]:
+    def get_all_supported_combinations(self) -> list[dict[str, str]]:
         """
         Get all supported language-version combinations.
         
@@ -393,7 +393,7 @@ Return only JSON with exactly 25 keywords: {{"keywords": ["Term1", "Term2", ...,
         
         return combinations
     
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """
         Get prompt cache statistics.
         

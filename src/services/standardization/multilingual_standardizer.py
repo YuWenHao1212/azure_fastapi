@@ -4,10 +4,10 @@ Coordinates standardization across multiple languages.
 """
 
 import logging
-from typing import List, Dict, Optional
+
 from .base_standardizer import BaseStandardizer, StandardizationResult
-from .zh_tw_standardizer import TraditionalChineseStandardizer
 from .en_standardizer import EnglishStandardizer
+from .zh_tw_standardizer import TraditionalChineseStandardizer
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ class MultilingualStandardizer:
     
     def __init__(self):
         """Initialize multilingual standardizer with language-specific standardizers."""
-        self.standardizers: Dict[str, Optional[BaseStandardizer]] = {}
+        self.standardizers: dict[str, BaseStandardizer | None] = {}
         self._initialize_standardizers()
     
     def _initialize_standardizers(self):
@@ -46,7 +46,7 @@ class MultilingualStandardizer:
             logger.error(f"Failed to initialize Traditional Chinese standardizer: {str(e)}")
             self.standardizers["zh-TW"] = None
     
-    def standardize_keywords(self, keywords: List[str], language: str) -> StandardizationResult:
+    def standardize_keywords(self, keywords: list[str], language: str) -> StandardizationResult:
         """
         Standardize keywords for the specified language.
         
@@ -112,7 +112,7 @@ class MultilingualStandardizer:
         # Other languages need working standardizer
         return standardizer is not None and standardizer.is_standardization_available()
     
-    def get_supported_languages(self) -> List[str]:
+    def get_supported_languages(self) -> list[str]:
         """
         Get list of supported languages.
         
@@ -121,7 +121,7 @@ class MultilingualStandardizer:
         """
         return self.SUPPORTED_LANGUAGES.copy()
     
-    def get_standardizer_for_language(self, language: str) -> Optional[BaseStandardizer]:
+    def get_standardizer_for_language(self, language: str) -> BaseStandardizer | None:
         """
         Get the standardizer instance for a specific language.
         
@@ -133,7 +133,7 @@ class MultilingualStandardizer:
         """
         return self.standardizers.get(language)
     
-    def get_standardization_stats(self, language: str) -> Dict:
+    def get_standardization_stats(self, language: str) -> dict:
         """
         Get standardization statistics for a language.
         
@@ -182,7 +182,7 @@ class MultilingualStandardizer:
         
         return stats
     
-    def get_all_standardization_stats(self) -> Dict[str, Dict]:
+    def get_all_standardization_stats(self) -> dict[str, dict]:
         """
         Get standardization statistics for all supported languages.
         
@@ -196,7 +196,7 @@ class MultilingualStandardizer:
         
         return all_stats
     
-    def validate_language_support(self, language: str) -> Dict[str, any]:
+    def validate_language_support(self, language: str) -> dict[str, any]:
         """
         Validate language support and return detailed status.
         
@@ -248,7 +248,7 @@ class MultilingualStandardizer:
         
         return validation
     
-    def get_multilingual_summary(self) -> Dict:
+    def get_multilingual_summary(self) -> dict:
         """
         Get summary of multilingual standardization capabilities.
         

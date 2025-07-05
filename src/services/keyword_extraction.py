@@ -7,30 +7,34 @@ Performance Optimizations:
 - Parallel processing for Round 1 and Round 2 execution (~50% speed improvement)
 - Caching mechanism for identical text results (100x speed improvement for repeated requests)
 """
-from typing import List, Dict, Any, Optional, Set
-import logging
 import asyncio
+import hashlib
 import json
 import time
-import hashlib
 from datetime import datetime, timedelta
+from typing import Any
 
-from src.services.base import BaseService
-from src.services.openai_client import AzureOpenAIClient, get_azure_openai_client, AzureOpenAIError
-from src.services.keyword_standardizer import KeywordStandardizer
-from src.services.language_detection import LanguageDetectionService, LanguageValidator, BilingualPromptManager
-from src.services.standardization import MultilingualStandardizer
-from src.services.exceptions import (
-    UnsupportedLanguageError, LanguageDetectionError, LowConfidenceDetectionError,
-    PromptNotAvailableError, create_unsupported_language_response, create_language_detection_error_response
-)
-from src.core.simple_prompt_manager import prompt_manager
-from src.models.keyword_extraction import (
-    KeywordExtractionRequest,
-    KeywordExtractionData,
-    StandardizedTerm
-)
+from src.models.keyword_extraction import KeywordExtractionRequest, StandardizedTerm
 from src.models.response import IntersectionStats, WarningInfo
+from src.services.base import BaseService
+from src.services.exceptions import (
+    LanguageDetectionError,
+    LowConfidenceDetectionError,
+    UnsupportedLanguageError,
+    create_unsupported_language_response,
+)
+from src.services.keyword_standardizer import KeywordStandardizer
+from src.services.language_detection import (
+    BilingualPromptManager,
+    LanguageDetectionService,
+    LanguageValidator,
+)
+from src.services.openai_client import (
+    AzureOpenAIClient,
+    AzureOpenAIError,
+    get_azure_openai_client,
+)
+from src.services.standardization import MultilingualStandardizer
 
 
 class KeywordExtractionService(BaseService):
@@ -51,7 +55,7 @@ class KeywordExtractionService(BaseService):
     
     def __init__(
         self,
-        openai_client: Optional[AzureOpenAIClient] = None,
+        openai_client: AzureOpenAIClient | None = None,
         prompt_version: str = "latest",
         enable_cache: bool = True,
         cache_ttl_minutes: int = 60,
@@ -108,7 +112,7 @@ class KeywordExtractionService(BaseService):
             f"Parallel processing: {enable_parallel_processing}"
         )
     
-    async def validate_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate_input(self, data: dict[str, Any]) -> dict[str, Any]:
         """Validate the bilingual extraction request."""
         # Validate using Pydantic model with language parameter
         request = KeywordExtractionRequest(**data)
@@ -142,7 +146,7 @@ class KeywordExtractionService(BaseService):
         # Generate SHA256 hash for consistent, compact key
         return hashlib.sha256(cache_input.encode('utf-8')).hexdigest()
     
-    def _get_cached_result(self, cache_key: str) -> Optional[Dict[str, Any]]:
+    def _get_cached_result(self, cache_key: str) -> dict[str, Any] | None:
         """
         Get cached result if available and not expired.
         
@@ -167,7 +171,7 @@ class KeywordExtractionService(BaseService):
         
         return cached_entry['result']
     
-    def _cache_result(self, cache_key: str, result: Dict[str, Any]):
+    def _cache_result(self, cache_key: str, result: dict[str, Any]):
         """
         Cache the extraction result.
         
@@ -204,7 +208,7 @@ class KeywordExtractionService(BaseService):
         if expired_keys:
             self.logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
     
-    async def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         Process bilingual keyword extraction using 2-round intersection strategy.
         Supports language detection, language-specific processing, caching, and parallel processing.
@@ -376,7 +380,7 @@ class KeywordExtractionService(BaseService):
         max_keywords: int, 
         include_standardization: bool,
         prompt_version: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute bilingual keyword extraction using 2-round intersection strategy.
         
@@ -497,7 +501,7 @@ class KeywordExtractionService(BaseService):
             'prompt_version': prompt_version
         }
     
-    async def _extract_single_round(self, prompt: str, round_num: int) -> List[str]:
+    async def _extract_single_round(self, prompt: str, round_num: int) -> list[str]:
         """
         Execute a single round of keyword extraction.
         
@@ -528,7 +532,7 @@ class KeywordExtractionService(BaseService):
             self.logger.error(f"Round {round_num} extraction failed: {str(e)}")
             raise AzureOpenAIError(f"Keyword extraction round {round_num} failed: {str(e)}")
     
-    def _parse_keywords_from_response(self, response: str) -> List[str]:
+    def _parse_keywords_from_response(self, response: str) -> list[str]:
         """
         Parse keywords from LLM response.
         
@@ -580,7 +584,7 @@ class KeywordExtractionService(BaseService):
         
         return keywords
     
-    def _update_extraction_stats(self, language: str, result: Dict[str, Any]):
+    def _update_extraction_stats(self, language: str, result: dict[str, Any]):
         """Update internal statistics tracking."""
         self.extraction_stats["total_extractions"] += 1
         
@@ -594,7 +598,7 @@ class KeywordExtractionService(BaseService):
         if result.get('warning', {}).get('has_warning', False):
             self.extraction_stats["warning_count"] += 1
     
-    def get_service_stats(self) -> Dict[str, Any]:
+    def get_service_stats(self) -> dict[str, Any]:
         """Get service statistics for monitoring."""
         cache_hit_rate = 0.0
         total_requests = self._cache_hits + self._cache_misses
@@ -625,7 +629,7 @@ class KeywordExtractionService(BaseService):
         self._cache.clear()
         self.logger.info(f"Cleared cache of {cache_size} entries")
     
-    def get_cache_info(self) -> Dict[str, Any]:
+    def get_cache_info(self) -> dict[str, Any]:
         """Get detailed cache information for debugging."""
         current_time = datetime.utcnow()
         active_entries = 0

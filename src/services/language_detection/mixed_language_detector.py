@@ -3,13 +3,22 @@ Enhanced language detector with mixed language support for Taiwan job descriptio
 When Traditional Chinese ratio > 40%, use Traditional Chinese prompt.
 """
 
-import time
 import logging
-from typing import NamedTuple, Tuple
+import time
+from typing import NamedTuple
+
 from langdetect import detect, detect_langs
 from langdetect.lang_detect_exception import LangDetectException
-from src.services.language_detection.detector import LanguageDetectionService, LanguageDetectionResult
-from src.services.exceptions import UnsupportedLanguageError, LanguageDetectionError, LowConfidenceDetectionError
+
+from src.services.exceptions import (
+    LanguageDetectionError,
+    LowConfidenceDetectionError,
+    UnsupportedLanguageError,
+)
+from src.services.language_detection.detector import (
+    LanguageDetectionResult,
+    LanguageDetectionService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +150,7 @@ class MixedLanguageDetectionService(LanguageDetectionService):
                     # This is genuine Japanese, skip Taiwan JD rules
                 else:
                     # No kana found, might be misdetected Chinese
-                    logger.info(f"Japanese detected but no kana found, checking if it's actually Chinese")
+                    logger.info("Japanese detected but no kana found, checking if it's actually Chinese")
                     if lang_stats.chinese_ratio >= self.TRADITIONAL_CHINESE_THRESHOLD and lang_stats.traditional_chars >= lang_stats.simplified_chars:
                         detected_lang = 'zh-TW'
                         confidence = max(confidence, 0.85)

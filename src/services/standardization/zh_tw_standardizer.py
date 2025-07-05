@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from typing import List, Optional
+
 from .base_standardizer import BaseStandardizer
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ class TraditionalChineseStandardizer(BaseStandardizer):
     
     DEFAULT_CONFIG_PATH = "src/data/standardization/zh_tw_standard_terms.json"
     
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: str | None = None):
         """
         Initialize Traditional Chinese standardizer.
         
@@ -49,7 +49,7 @@ class TraditionalChineseStandardizer(BaseStandardizer):
                 self.config = None
                 return
             
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, encoding='utf-8') as f:
                 self.config = json.load(f)
             
             # Validate config structure
@@ -196,7 +196,7 @@ class TraditionalChineseStandardizer(BaseStandardizer):
         
         return keyword.strip()
     
-    def get_category_keywords(self, category: str) -> List[str]:
+    def get_category_keywords(self, category: str) -> list[str]:
         """
         Get all standardized keywords for a specific category.
         
@@ -218,9 +218,9 @@ class TraditionalChineseStandardizer(BaseStandardizer):
         
         # Return unique standardized terms
         standardized_terms = set(category_data['mappings'].values())
-        return sorted(list(standardized_terms))
+        return sorted(standardized_terms)
     
-    def get_all_categories(self) -> List[str]:
+    def get_all_categories(self) -> list[str]:
         """
         Get all available categories.
         
@@ -232,7 +232,7 @@ class TraditionalChineseStandardizer(BaseStandardizer):
         
         return list(self.config['categories'].keys())
     
-    def search_keywords(self, query: str, limit: int = 10) -> List[str]:
+    def search_keywords(self, query: str, limit: int = 10) -> list[str]:
         """
         Search for keywords that match a query.
         
@@ -262,7 +262,7 @@ class TraditionalChineseStandardizer(BaseStandardizer):
         
         return matches[:limit]
     
-    def get_taiwan_specific_terms(self) -> List[str]:
+    def get_taiwan_specific_terms(self) -> list[str]:
         """
         Get terms that are specifically Taiwan-localized.
         

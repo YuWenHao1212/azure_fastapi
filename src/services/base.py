@@ -2,16 +2,16 @@
 Base service class for FHS architecture.
 All services should inherit from this base class.
 """
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
 import logging
+from abc import ABC, abstractmethod
 from datetime import datetime
+from typing import Any
 
 
 class BaseService(ABC):
     """Abstract base class for all services."""
     
-    def __init__(self, logger: Optional[logging.Logger] = None):
+    def __init__(self, logger: logging.Logger | None = None):
         """Initialize base service with optional logger."""
         self.logger = logger or logging.getLogger(self.__class__.__name__)
         self._start_time = None
@@ -43,16 +43,16 @@ class BaseService(ABC):
         self.logger.warning(message, extra=kwargs)
     
     @abstractmethod
-    async def validate_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def validate_input(self, data: dict[str, Any]) -> dict[str, Any]:
         """Validate input data. Must be implemented by subclasses."""
         pass
     
     @abstractmethod
-    async def process(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process the main business logic. Must be implemented by subclasses."""
         pass
     
-    async def execute(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def execute(self, data: dict[str, Any]) -> dict[str, Any]:
         """Execute service with validation and error handling."""
         try:
             self._start_timer()

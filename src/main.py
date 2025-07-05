@@ -2,16 +2,17 @@
 Main FastAPI application entry point.
 Following FHS architecture principles.
 """
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from starlette.exceptions import HTTPException as StarletteHTTPException
 import logging
 from datetime import datetime
 
-from src.core.config import settings
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from src.api.v1 import router as v1_router
+from src.core.config import settings
 
 # Configure logging
 logging.basicConfig(

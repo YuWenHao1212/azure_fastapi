@@ -3,9 +3,10 @@ Unified response models for FHS architecture.
 All API responses must use these models to ensure consistency.
 Following Bubble.io compatibility requirements - no Optional types.
 """
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class ErrorDetail(BaseModel):
@@ -31,7 +32,7 @@ class UnifiedResponse(BaseModel):
     Ensures consistent response structure across the application.
     """
     success: bool = Field(default=True, description="Request success status")
-    data: Dict[str, Any] = Field(default_factory=dict, description="Response data")
+    data: dict[str, Any] = Field(default_factory=dict, description="Response data")
     error: ErrorDetail = Field(default_factory=ErrorDetail, description="Error information")
     warning: WarningInfo = Field(default_factory=WarningInfo, description="Warning information")
     timestamp: str = Field(
@@ -84,7 +85,7 @@ class StandardizedTerm(BaseModel):
     method: str = Field(default="", description="Standardization method used")
 
 
-def create_success_response(data: Dict[str, Any]) -> UnifiedResponse:
+def create_success_response(data: dict[str, Any]) -> UnifiedResponse:
     """Create a successful response with given data."""
     return UnifiedResponse(
         success=True,
@@ -99,7 +100,7 @@ def create_error_response(
     code: str,
     message: str,
     details: str = "",
-    data: Dict[str, Any] = None
+    data: dict[str, Any] = None
 ) -> UnifiedResponse:
     """Create an error response with given error information."""
     return UnifiedResponse(

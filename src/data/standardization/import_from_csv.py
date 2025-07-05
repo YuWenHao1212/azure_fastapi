@@ -8,16 +8,16 @@ Usage:
     python import_from_csv.py --input updates --backup
 """
 
-import yaml
-import csv
-import os
-import sys
 import argparse
+import csv
 import shutil
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Tuple, Any
+import sys
 from collections import OrderedDict
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import yaml
 
 
 def backup_existing_files(data_dir: Path) -> bool:
@@ -39,7 +39,7 @@ def backup_existing_files(data_dir: Path) -> bool:
         return False
 
 
-def load_csv_dictionary(csv_file: Path) -> Tuple[Dict[str, Dict[str, str]], List[str]]:
+def load_csv_dictionary(csv_file: Path) -> tuple[dict[str, dict[str, str]], list[str]]:
     """
     Load dictionary data from CSV file.
     
@@ -51,7 +51,7 @@ def load_csv_dictionary(csv_file: Path) -> Tuple[Dict[str, Dict[str, str]], List
     row_count = 0
     
     try:
-        with open(csv_file, 'r', encoding='utf-8-sig') as csvfile:
+        with open(csv_file, encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile)
             
             for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is 1)
@@ -94,7 +94,7 @@ def load_csv_dictionary(csv_file: Path) -> Tuple[Dict[str, Dict[str, str]], List
         return {}, warnings
 
 
-def load_csv_patterns(csv_file: Path) -> Tuple[Dict[str, List[Dict]], List[str]]:
+def load_csv_patterns(csv_file: Path) -> tuple[dict[str, list[dict]], list[str]]:
     """
     Load pattern data from CSV file.
     
@@ -106,7 +106,7 @@ def load_csv_patterns(csv_file: Path) -> Tuple[Dict[str, List[Dict]], List[str]]
     row_count = 0
     
     try:
-        with open(csv_file, 'r', encoding='utf-8-sig') as csvfile:
+        with open(csv_file, encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile)
             
             for row_num, row in enumerate(reader, start=2):  # Start at 2 (header is 1)
@@ -158,9 +158,9 @@ def load_csv_patterns(csv_file: Path) -> Tuple[Dict[str, List[Dict]], List[str]]
 
 
 def validate_import_data(
-    new_data: Dict[str, Any], 
+    new_data: dict[str, Any], 
     existing_file: Path
-) -> List[str]:
+) -> list[str]:
     """
     Validate imported data against existing structure.
     
@@ -172,7 +172,7 @@ def validate_import_data(
     # Load existing data for comparison
     if existing_file.exists():
         try:
-            with open(existing_file, 'r', encoding='utf-8') as f:
+            with open(existing_file, encoding='utf-8') as f:
                 existing_data = yaml.safe_load(f) or {}
         except:
             existing_data = {}
@@ -186,7 +186,7 @@ def validate_import_data(
 
 
 def write_yaml_file(
-    data: Dict[str, Any], 
+    data: dict[str, Any], 
     output_file: Path, 
     file_type: str = 'dictionary'
 ) -> bool:
@@ -217,7 +217,7 @@ def write_yaml_file(
 
 def generate_import_report(
     input_dir: Path,
-    results: List[Tuple[str, bool, str, List[str]]],
+    results: list[tuple[str, bool, str, list[str]]],
     dry_run: bool
 ) -> None:
     """Generate detailed import report."""

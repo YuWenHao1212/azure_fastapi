@@ -6,13 +6,11 @@ dictionary mapping and pattern-based rules to normalize technical terms.
 All mappings are loaded from external YAML files for easy maintenance.
 """
 
-import re
-import yaml
-import os
-from typing import Dict, List, Tuple, Optional
-from collections import OrderedDict
 import logging
+import re
 from pathlib import Path
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 class KeywordStandardizer:
     """Service for standardizing keywords using dictionary and pattern rules."""
     
-    def __init__(self, data_dir: Optional[str] = None):
+    def __init__(self, data_dir: str | None = None):
         """
         Initialize the standardizer by loading mappings from YAML files.
         
@@ -52,7 +50,7 @@ class KeywordStandardizer:
             f"dictionary entries and {len(self.patterns)} patterns from {self.data_dir}"
         )
     
-    def _load_yaml_dictionary(self, filename: str) -> Dict[str, str]:
+    def _load_yaml_dictionary(self, filename: str) -> dict[str, str]:
         """
         Load a dictionary from a YAML file.
         
@@ -65,13 +63,13 @@ class KeywordStandardizer:
         filepath = self.data_dir / filename
         
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding='utf-8') as f:
                 data = yaml.safe_load(f)
             
             # Flatten the nested structure
             dictionary = {}
             if isinstance(data, dict):
-                for category, mappings in data.items():
+                for _category, mappings in data.items():
                     if isinstance(mappings, dict):
                         for original, standardized in mappings.items():
                             # Convert to lowercase for case-insensitive matching
@@ -90,7 +88,7 @@ class KeywordStandardizer:
             logger.error(f"Unexpected error loading {filename}: {e}")
             return {}
     
-    def _load_patterns(self, filename: str) -> List[Tuple[re.Pattern, str, str]]:
+    def _load_patterns(self, filename: str) -> list[tuple[re.Pattern, str, str]]:
         """
         Load pattern rules from a YAML file.
         
@@ -104,11 +102,11 @@ class KeywordStandardizer:
         patterns = []
         
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding='utf-8') as f:
                 data = yaml.safe_load(f)
             
             if isinstance(data, dict):
-                for category, pattern_list in data.items():
+                for _category, pattern_list in data.items():
                     if isinstance(pattern_list, list):
                         for pattern_info in pattern_list:
                             if isinstance(pattern_info, dict) and 'pattern' in pattern_info:
@@ -164,9 +162,9 @@ class KeywordStandardizer:
     
     def standardize_keywords(
         self, 
-        keywords: List[str],
+        keywords: list[str],
         include_details: bool = False
-    ) -> Tuple[List[str], List[Dict[str, str]]]:
+    ) -> tuple[list[str], list[dict[str, str]]]:
         """
         Standardize a list of keywords.
         
@@ -199,7 +197,7 @@ class KeywordStandardizer:
         
         return standardized_keywords, standardization_details
     
-    def _standardize_single(self, keyword: str) -> Tuple[str, str, str]:
+    def _standardize_single(self, keyword: str) -> tuple[str, str, str]:
         """
         Standardize a single keyword.
         
@@ -397,7 +395,7 @@ class KeywordStandardizer:
         # Return original if no rules apply
         return keyword
     
-    def get_statistics(self) -> Dict[str, int]:
+    def get_statistics(self) -> dict[str, int]:
         """Get standardization statistics."""
         return {
             "total_dictionary_entries": len(self.combined_dictionary),
@@ -408,7 +406,7 @@ class KeywordStandardizer:
             "data_directory": str(self.data_dir)
         }
     
-    def validate_dictionaries(self) -> Dict[str, List[str]]:
+    def validate_dictionaries(self) -> dict[str, list[str]]:
         """
         Validate dictionaries for duplicates and conflicts.
         
@@ -453,7 +451,7 @@ class KeywordStandardizer:
         
         return issues
     
-    def export_to_dict(self) -> Dict[str, Dict[str, str]]:
+    def export_to_dict(self) -> dict[str, dict[str, str]]:
         """
         Export all dictionaries as a single dictionary.
         Useful for debugging or external tools.
@@ -482,14 +480,14 @@ def get_default_standardizer() -> KeywordStandardizer:
 
 
 # For backward compatibility
-def get_statistics() -> Dict[str, int]:
+def get_statistics() -> dict[str, int]:
     """Get statistics from the default standardizer."""
     return get_default_standardizer().get_statistics()
 
 
 def standardize_keywords(
-    keywords: List[str], 
+    keywords: list[str], 
     include_details: bool = False
-) -> Tuple[List[str], List[Dict[str, str]]]:
+) -> tuple[list[str], list[dict[str, str]]]:
     """Standardize keywords using the default standardizer."""
     return get_default_standardizer().standardize_keywords(keywords, include_details)

@@ -2,11 +2,11 @@
 Data models for keyword extraction functionality.
 Following Bubble.io compatibility - no Optional types.
 """
-from pydantic import BaseModel, Field, validator
-from typing import List, Dict, Any, Literal, Optional
 from datetime import datetime
 
-from src.models.response import StandardizedTerm, IntersectionStats, WarningInfo
+from pydantic import BaseModel, Field, validator
+
+from src.models.response import IntersectionStats, StandardizedTerm, WarningInfo
 
 
 class KeywordExtractionRequest(BaseModel):
@@ -30,8 +30,8 @@ class KeywordExtractionRequest(BaseModel):
         description="Whether to use 2-round intersection strategy"
     )
     prompt_version: str = Field(
-        default="latest",
-        description="Prompt version to use (e.g., '1.0.0', '1.1.0', 'latest')"
+        default="1.4.0",
+        description="Prompt version to use (e.g., '1.0.0', '1.1.0', '1.3.0', '1.4.0', 'latest')"
     )
     language: str = Field(
         default="auto",
@@ -60,7 +60,7 @@ class KeywordExtractionRequest(BaseModel):
                 "max_keywords": 16,
                 "include_standardization": True,
                 "use_multi_round_validation": True,
-                "prompt_version": "latest",
+                "prompt_version": "1.3.0",
                 "language": "auto"
             }
         }
@@ -68,7 +68,7 @@ class KeywordExtractionRequest(BaseModel):
 
 class KeywordExtractionData(BaseModel):
     """Data model for keyword extraction results."""
-    keywords: List[str] = Field(
+    keywords: list[str] = Field(
         default_factory=list,
         description="Extracted keywords"
     )
@@ -76,7 +76,7 @@ class KeywordExtractionData(BaseModel):
         default=0,
         description="Number of keywords extracted"
     )
-    standardized_terms: List[StandardizedTerm] = Field(
+    standardized_terms: list[StandardizedTerm] = Field(
         default_factory=list,
         description="Standardization mappings applied"
     )
@@ -172,7 +172,7 @@ class KeywordExtractionResponse(BaseModel):
         default_factory=KeywordExtractionData,
         description="Extraction results data"
     )
-    error: Dict[str, str] = Field(
+    error: dict[str, str] = Field(
         default_factory=lambda: {"code": "", "message": "", "details": ""},
         description="Error information if any"
     )

@@ -2,14 +2,13 @@
 Azure OpenAI Client for GPT-4o-2 model integration.
 Following FHS architecture principles.
 """
-from typing import List, Dict, Any, Union, AsyncGenerator, Optional
-import httpx
 import asyncio
 import json
 import logging
-from datetime import datetime, timedelta
+from collections.abc import AsyncGenerator
+from typing import Any
 
-from src.core.config import get_settings
+import httpx
 
 
 class AzureOpenAIError(Exception):
@@ -68,13 +67,13 @@ class AzureOpenAIClient:
     
     async def chat_completion(
         self, 
-        messages: List[Dict[str, str]], 
+        messages: list[dict[str, str]], 
         model: str = "gpt-4o-2",
         temperature: float = 0.7,
         max_tokens: int = 1000,
         stream: bool = False,
         **kwargs
-    ) -> Union[Dict[str, Any], AsyncGenerator[Dict[str, Any], None]]:
+    ) -> dict[str, Any] | AsyncGenerator[dict[str, Any], None]:
         """
         調用 chat completion API
         
@@ -129,9 +128,9 @@ class AzureOpenAIClient:
     async def _chat_completion_non_stream(
         self, 
         url: str, 
-        payload: Dict[str, Any], 
-        params: Dict[str, str]
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any], 
+        params: dict[str, str]
+    ) -> dict[str, Any]:
         """處理 non-streaming 請求"""
         for attempt in range(self.max_retries):
             try:
@@ -165,7 +164,7 @@ class AzureOpenAIClient:
                     continue
                 raise
             
-            except (AzureOpenAIAuthError, AzureOpenAIError) as e:
+            except (AzureOpenAIAuthError, AzureOpenAIError):
                 # Don't wrap these - just re-raise directly
                 raise
             
@@ -178,9 +177,9 @@ class AzureOpenAIClient:
     async def _chat_completion_stream(
         self, 
         url: str, 
-        payload: Dict[str, Any], 
-        params: Dict[str, str]
-    ) -> AsyncGenerator[Dict[str, Any], None]:
+        payload: dict[str, Any], 
+        params: dict[str, str]
+    ) -> AsyncGenerator[dict[str, Any], None]:
         """處理 streaming 請求"""
         for attempt in range(self.max_retries):
             try:
@@ -244,7 +243,7 @@ class AzureOpenAIClient:
         try:
             error_data = response.json()
             error_detail = error_data.get("error", {}).get("message", str(error_data))
-        except:
+        except Exception:
             error_detail = response.text or f"HTTP {response.status_code}"
         
         if response.status_code == 401:

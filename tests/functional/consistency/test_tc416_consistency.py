@@ -26,16 +26,15 @@ TC-416: 關鍵字提取一致性測試（多語言支援）
 Author: Claude Code
 Date: 2025-07-04
 """
+import argparse
 import asyncio
 import json
-import time
-import sys
 import os
-import argparse
-from typing import Tuple
+import sys
+import time
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from collections import Counter
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -142,7 +141,7 @@ class TC416ConsistencyTest:
         print(f"   使用 Prompt 版本: {self.prompt_version_used}")
         
         # 獲取可用的 prompt 版本資訊
-        print(f"   支援的 prompt 版本: v1.0.0, v1.2.0, v1.3.0, v1.4.0")
+        print("   支援的 prompt 版本: v1.0.0, v1.2.0, v1.3.0, v1.4.0")
         
         return result
     
@@ -178,7 +177,7 @@ class TC416ConsistencyTest:
         # 顯示 LLM 配置
         llm_config = first_result.get("llm_config_used", {})
         if llm_config:
-            print(f"\n📋 LLM 配置:")
+            print("\n📋 LLM 配置:")
             print(f"   Temperature: {llm_config.get('temperature', 'N/A')}")
             print(f"   Seed: {llm_config.get('seed', 'N/A')}")
             print(f"   Top-p: {llm_config.get('top_p', 'N/A')}")
@@ -419,7 +418,7 @@ class TC416ConsistencyTest:
         print(f"   完全相同率: {exact_match_rate*100:.1f}% {'✅' if exact_match_rate >= 0.35 else '❌'} (目標: ≥35%)")
         print(f"   平均 Jaccard 相似度: {avg_jaccard:.3f}")
         
-        print(f"\n📈 關鍵字一致性統計:")
+        print("\n📈 關鍵字一致性統計:")
         print(f"   總配對數: {total_pairs}")
         print(f"   完全相同配對數: {identical_pairs}")
         print(f"   唯一關鍵字組合數: {unique_combinations}")
@@ -427,20 +426,20 @@ class TC416ConsistencyTest:
         print(f"   → 在 95% 信心水準下，任兩次取得相同關鍵字列表的機率為 {ci_lower*100:.1f}% 到 {ci_upper*100:.1f}% 之間")
         
         # 關鍵字統計
-        print(f"\n📝 關鍵字統計:")
+        print("\n📝 關鍵字統計:")
         print(f"   平均關鍵字數量: {avg_keyword_count:.1f}")
         print(f"   關鍵字數量範圍: {min_keywords} - {max_keywords}")
         print(f"   成功測試數量: {len(successful_results)}/{self.iterations}")
         
         # 效能指標
-        print(f"\n⏱️  效能指標:")
+        print("\n⏱️  效能指標:")
         print(f"   平均處理時間: {avg_processing_time:.0f}ms")
         print(f"   處理時間範圍: {min_time}ms - {max_time}ms")
         print(f"   平均信心度: {avg_confidence:.3f}")
         print(f"   信心度範圍: {min_confidence:.3f} - {max_confidence:.3f}")
         
         # 高頻關鍵字
-        print(f"\n🔥 最高頻關鍵字 (Top 10):")
+        print("\n🔥 最高頻關鍵字 (Top 10):")
         for i, (keyword, freq) in enumerate(top_keywords, 1):
             percentage = (freq / len(successful_results)) * 100
             print(f"   {i:2d}. {keyword} ({freq}次, {percentage:.1f}%)")
@@ -451,7 +450,7 @@ class TC416ConsistencyTest:
             exact_match_rate >= 0.35
         ])
         
-        print(f"\n🏆 整體評估:")
+        print("\n🏆 整體評估:")
         print(f"   KPI 通過: {kpi_pass_count}/2")
         if kpi_pass_count == 2:
             print("   ✅ TC-416 測試通過 - AI 一致性表現良好")
@@ -501,7 +500,7 @@ class TC416ConsistencyTest:
             },
             "keyword_analysis": {
                 "top_keywords": top_keywords,
-                "unique_keywords_count": len(set([k for r in successful_results for k in r["keywords"]])),
+                "unique_keywords_count": len({k for r in successful_results for k in r["keywords"]}),
                 "total_keywords_extracted": sum([len(r["keywords"]) for r in successful_results])
             },
             "detailed_results": self.test_results,
@@ -516,7 +515,7 @@ class TC416ConsistencyTest:
         with open(report_path, 'w', encoding='utf-8') as f:
             json.dump(report_data, f, ensure_ascii=False, indent=2)
         
-        print(f"\n📄 詳細測試報告已保存:")
+        print("\n📄 詳細測試報告已保存:")
         print(f"   檔案: {report_path}")
         print(f"   大小: {os.path.getsize(report_path)} bytes")
 
@@ -576,7 +575,13 @@ async def main():
     
     # 檢查環境
     try:
-        from src.services.keyword_extraction_v2 import KeywordExtractionServiceV2
+        import importlib.util
+        
+        if not importlib.util.find_spec("src.services.keyword_extraction_v2"):
+            raise ImportError("Cannot find keyword_extraction_v2 module")
+        from src.services.keyword_extraction_v2 import (
+            KeywordExtractionServiceV2,  # noqa: F401
+        )
     except ImportError as e:
         print(f"❌ 環境檢查失敗: {e}")
         print("請確保已正確設置 Python 環境和依賴套件")
@@ -588,7 +593,7 @@ async def main():
     # 決定使用的 JD
     if args.jd_file:
         try:
-            with open(args.jd_file, 'r', encoding='utf-8') as f:
+            with open(args.jd_file, encoding='utf-8') as f:
                 test_jd = f.read()
             print(f"📄 從檔案載入 JD: {args.jd_file}")
         except Exception as e:

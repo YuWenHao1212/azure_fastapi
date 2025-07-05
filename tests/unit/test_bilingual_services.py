@@ -3,18 +3,20 @@ Unit tests for bilingual services - Language detection and bilingual functionali
 Tests core language detection capabilities and error handling.
 Simplified version that matches current implementation.
 """
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
-import sys
 import os
+import sys
+
+import pytest
 
 # Add project root to path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 sys.path.insert(0, project_root)
 
-from src.services.language_detection.detector import LanguageDetectionService, LanguageDetectionResult
-from src.services.language_detection.simple_language_detector import SimplifiedLanguageDetector
-from src.services.exceptions import UnsupportedLanguageError, LanguageDetectionError
+from src.services.exceptions import LanguageDetectionError, UnsupportedLanguageError
+from src.services.language_detection.detector import LanguageDetectionService
+from src.services.language_detection.simple_language_detector import (
+    SimplifiedLanguageDetector,
+)
 
 
 @pytest.mark.unit

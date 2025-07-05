@@ -3,7 +3,7 @@ metadata:
   author: "DevOps Team"
   created_at: "2025-07-05T10:00:00Z"
   description: "Enhanced keyword extraction with importance-based ordering requirement"
-  status: "experimental"
+  status: "active"
   changes_from_v1.3.0: |
     - Added explicit requirement to order keywords by importance (most important first)
     - All other rules remain identical to v1.3.0

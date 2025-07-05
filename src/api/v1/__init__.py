@@ -6,6 +6,8 @@ from fastapi import APIRouter
 
 # Import endpoint routers
 from .keyword_extraction import router as keyword_router
+from .prompts import router as prompts_router
+
 # from .resume_format import router as format_router
 # from .similarity import router as similarity_router
 # from .gap_analysis import router as gap_router
@@ -18,6 +20,10 @@ router = APIRouter()
 # Include keyword extraction router directly (Work Item #347)
 # This provides the main /api/v1/extract-jd-keywords endpoint
 router.include_router(keyword_router, tags=["Keyword Extraction"])
+
+# Include prompt management router
+# This provides generic prompt version management for all tasks
+router.include_router(prompts_router, tags=["Prompt Management"])
 
 # Include other routers as they are implemented
 # router.include_router(format_router, tags=["Resume Format"])
@@ -57,6 +63,24 @@ async def v1_root():
                     "path": "/api/v1/version",
                     "method": "GET",
                     "description": "Service version and capability information", 
+                    "status": "implemented"
+                },
+                "prompt_version": {
+                    "path": "/api/v1/prompt-version",
+                    "method": "GET",
+                    "description": "Get active prompt version for keyword extraction",
+                    "status": "implemented"
+                },
+                "prompts_version": {
+                    "path": "/api/v1/prompts/version",
+                    "method": "GET",
+                    "description": "Get prompt version for any task (generic)",
+                    "status": "implemented"
+                },
+                "prompts_tasks": {
+                    "path": "/api/v1/prompts/tasks",
+                    "method": "GET",
+                    "description": "List all tasks with prompt configurations",
                     "status": "implemented"
                 }
             },

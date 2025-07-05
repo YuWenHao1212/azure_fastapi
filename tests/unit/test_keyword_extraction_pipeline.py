@@ -3,18 +3,16 @@ Unit tests for Keyword Extraction Pipeline - Consolidated service and prompt man
 Tests the complete pipeline including keyword extraction, prompt management, and service integration.
 Combines tests from test_keyword_extraction_service.py and test_unified_prompt_service.py.
 """
-import pytest
 import json
-from unittest.mock import AsyncMock, Mock, patch
-from datetime import datetime
-from pathlib import Path
+from unittest.mock import Mock, patch
 
+import pytest
+
+from src.models.prompt_config import LLMConfig, PromptConfig
 from src.services.keyword_extraction_v2 import KeywordExtractionServiceV2
-from src.services.keyword_extraction import KeywordExtractionService
-from src.services.unified_prompt_service import UnifiedPromptService, get_unified_prompt_service
-from src.models.keyword_extraction import KeywordExtractionRequest, KeywordExtractionData
-from src.models.prompt_config import PromptConfig, LLMConfig, PromptMetadata
-from src.models.response import UnifiedResponse, ErrorDetail
+from src.services.unified_prompt_service import (
+    UnifiedPromptService,
+)
 
 
 @pytest.mark.unit
@@ -292,7 +290,7 @@ class TestPipelineErrorHandling:
             
             # Should include performance metrics
             assert "processing_time_ms" in result
-            assert isinstance(result["processing_time_ms"], (int, float))
+            assert isinstance(result["processing_time_ms"], int | float)
             assert result["processing_time_ms"] >= 0
             
             # Should include extraction method

@@ -2,23 +2,23 @@
 Unit tests for Pydantic models - Work Item #348.
 Tests request/response model validation, serialization, and error handling.
 """
-import pytest
-from pydantic import ValidationError
 from datetime import datetime
 
+import pytest
+from pydantic import ValidationError
+
 from src.models.keyword_extraction import (
-    KeywordExtractionRequest, 
     KeywordExtractionData,
-    KeywordExtractionResponse
+    KeywordExtractionRequest,
 )
 from src.models.response import (
-    UnifiedResponse, 
-    ErrorDetail, 
-    WarningInfo, 
+    ErrorDetail,
     IntersectionStats,
     StandardizedTerm,
+    UnifiedResponse,
+    WarningInfo,
+    create_error_response,
     create_success_response,
-    create_error_response
 )
 
 
@@ -38,14 +38,15 @@ class TestKeywordExtractionRequest:
         assert request.max_keywords == 15
         assert request.prompt_version == "v1.0.0"
     
-    def test_default_values(self, sample_job_description):
+    @pytest.mark.prompt_version_sensitive
+    def test_default_values(self, sample_job_description, default_prompt_version):
         """Test that default values are applied correctly."""
         request = KeywordExtractionRequest(job_description=sample_job_description)
         
         assert request.max_keywords == 16  # Default value
         assert request.include_standardization is True
         assert request.use_multi_round_validation is True
-        assert request.prompt_version == "latest"  # Updated to correct default
+        assert request.prompt_version == default_prompt_version  # Use fixture instead of hardcoded
     
     def test_job_description_trimming(self):
         """Test that job description is trimmed of whitespace."""
@@ -109,14 +110,15 @@ class TestKeywordExtractionRequest:
         # Note: No strict validation is implemented for prompt_version format
         # It accepts any string value
     
-    def test_model_serialization(self, sample_job_description):
+    @pytest.mark.prompt_version_sensitive
+    def test_model_serialization(self, sample_job_description, default_prompt_version):
         """Test model can be serialized to dict."""
         request = KeywordExtractionRequest(job_description=sample_job_description)
         data = request.dict()
         
         assert data["job_description"] == sample_job_description.strip()
         assert data["max_keywords"] == 16  # Default value
-        assert data["prompt_version"] == "latest"  # Updated to correct default
+        assert data["prompt_version"] == default_prompt_version  # Use fixture instead of hardcoded
 
 
 @pytest.mark.unit
