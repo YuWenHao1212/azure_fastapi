@@ -94,7 +94,7 @@ leadership_management:
   product manager: Product Manager
   product management: Product Manager
   project manager: Project Manager
-  project management: Project Manager
+  # Note: "project management" is a skill, not a position - handled in skills.yaml
   
   # Agile
   scrum master: Scrum Master

@@ -68,11 +68,19 @@ run_*.sh
 TEST_*.md
 TESTING_*.md
 COLLABORATION_LOG.md
-CLAUDE.md
+# CLAUDE.md  # 協作指南需要納入版本控制
 README_*.md
 
 # 臨時測試檔案
 test_*.py
+tests/temp/*.py
+
+# 測試結果檔案
+TC416_consistency_report_*.json
+consistency_test_results_*.json
+prompt_version_comparison_*.json
+v1.*_*.json
+round*.json
 !tests/**/test_*.py
 test_*.json
 *.test.json

@@ -118,9 +118,9 @@ class PromptVersionComparison:
                 
                 # 根據語言決定可用版本
                 if self.detected_language == "en":
-                    self.available_versions = ["1.2.0", "1.3.0"]  # 英文有兩個版本
+                    self.available_versions = ["1.2.0", "1.3.0", "1.4.0"]  # 英文有三個版本
                 elif self.detected_language == "zh-TW":
-                    self.available_versions = ["1.2.0", "1.3.0"]  # 中文也有兩個版本
+                    self.available_versions = ["1.2.0", "1.3.0", "1.4.0"]  # 中文也有三個版本
                 else:
                     self.available_versions = ["1.3.0"]  # 其他語言只有最新版
                 

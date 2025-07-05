@@ -47,45 +47,25 @@ os.environ['PYTHONPATH'] = str(project_root) + ":" + os.environ.get('PYTHONPATH'
 # Import services
 from src.services.keyword_extraction_v2 import KeywordExtractionServiceV2
 
-# 預設測試 JD（英文）
+# 預設測試 JD（中文）
 DEFAULT_JD = """
-We are seeking an experienced Senior Data Scientist to join our rapidly growing data team.
+Project Manager
+Responsible for wafer outsourcing and cost negotiation, including:
+Competitive Price: RFQ, price negotiation, cost prediction, cost reduction initiatives, CA.Capacity: long-term reservation, short-term fulfillment, acting as a bridge for internal and external parties to reach goals. Contract: NDA and short-term agreements. Project management (e.g. procurement system)
 
-Position Overview:
-As a Senior Data Scientist, you will be responsible for developing and implementing advanced machine learning models to provide data-driven insights for business decision-making. You will work closely with cross-functional teams including product managers, engineers, and business analysts to drive the success of data science projects.
+**Requirement
 
-Key Responsibilities:
-- Design, develop, and deploy machine learning models to solve complex business problems
-- Conduct exploratory data analysis to identify patterns and trends in data
-- Collaborate with engineering teams to integrate models into production environments
-- Develop automated data processing pipelines and workflows
-- Prepare data visualizations and reports for non-technical stakeholders
-- Mentor junior data scientists and share best practices
-- Research and evaluate new machine learning technologies and tools
-- Ensure continuous monitoring of data quality and model performance
-
-Required Skills:
-- Proficiency in Python programming language and related data science packages
-- Deep understanding of machine learning algorithms, including deep learning
-- Experience with big data technologies (Spark, Hadoop)
-- Familiarity with cloud platforms (AWS, Azure, or GCP)
-- Excellent data visualization skills (Tableau, Power BI)
-- Strong statistical analysis and experimental design capabilities
-- Outstanding communication and presentation skills
-
-Qualifications:
-- Master's or PhD degree in Computer Science, Statistics, Mathematics, or related field
-- 5+ years of experience in data science or machine learning roles
-- Proven track record of leading successful data science projects
+**Proactive working attitude and good communication skills, with negotiation capability being a plus.Experience in handling wafer sourcing or procurement. Project management and business acumen.
 """
 
 class TC416ConsistencyTest:
     """TC-416: 多語言關鍵字提取一致性測試"""
     
-    def __init__(self, iterations: int = 50):
+    def __init__(self, iterations: int = 50, delay_seconds: float = 1.0):
         # 關閉快取以測試真實的 AI 一致性（而非快取一致性）
         self.keyword_service = KeywordExtractionServiceV2(enable_cache=False)
         self.iterations = iterations
+        self.delay_seconds = delay_seconds
         
         # 確認快取是否真的關閉
         cache_info = self.keyword_service.get_cache_info()
@@ -120,7 +100,10 @@ class TC416ConsistencyTest:
         print(f"JD 長度: {len(self.test_jd)} 字符")
         print("=" * 70)
         print(f"⚠️  注意: 此測試將進行 {self.iterations} 次真實 AI 呼叫")
-        print(f"⏱️  預估執行時間: {self.iterations // 10 * 2} 分鐘")
+        # 預估時間包含 API 調用時間（約 2 秒）和延遲時間
+        estimated_seconds = self.iterations * (2 + self.delay_seconds)
+        estimated_minutes = estimated_seconds / 60
+        print(f"⏱️  預估執行時間: {estimated_minutes:.1f} 分鐘 (包含 {self.delay_seconds} 秒延遲)")
         print("💰 會產生 OpenAI API 使用費用")
         print("=" * 70)
         
@@ -159,7 +142,7 @@ class TC416ConsistencyTest:
         print(f"   使用 Prompt 版本: {self.prompt_version_used}")
         
         # 獲取可用的 prompt 版本資訊
-        print(f"   支援的 prompt 版本: v1.0.0, v1.2.0, v1.3.0")
+        print(f"   支援的 prompt 版本: v1.0.0, v1.2.0, v1.3.0, v1.4.0")
         
         return result
     
@@ -244,6 +227,10 @@ class TC416ConsistencyTest:
                 # 每 10 次或前 5 次顯示進度
                 if i % 10 == 0 or i <= 5:
                     self.log_progress(i, self.iterations, result)
+                
+                # 加入延遲以避免 rate limit (除了最後一次)
+                if i < self.iterations:
+                    await asyncio.sleep(self.delay_seconds)
                 
             except Exception as e:
                 error_result = {
@@ -569,6 +556,14 @@ def parse_arguments():
         help='測試次數（預設: 50）'
     )
     
+    # 延遲時間
+    parser.add_argument(
+        '-d', '--delay',
+        type=float,
+        default=2.0,
+        help='每次測試之間的延遲秒數，用於避免 rate limit（預設: 2.0）'
+    )
+    
     return parser.parse_args()
 
 async def main():
@@ -607,7 +602,7 @@ async def main():
         print("📝 使用預設英文 JD")
     
     # 執行測試
-    test = TC416ConsistencyTest(iterations=args.iterations)
+    test = TC416ConsistencyTest(iterations=args.iterations, delay_seconds=args.delay)
     test.set_test_jd(test_jd)
     await test.run_consistency_test()
     

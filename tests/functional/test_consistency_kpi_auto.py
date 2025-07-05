@@ -4,7 +4,7 @@
 會根據 JD 內容自動偵測語言，而非強制使用指定語言
 
 使用方式：
-    python test_consistency_kpi_auto.py              # 使用預設中文 JD
+    python test_consistency_kpi_auto.py              # 使用預設中文 JD (v1.4.0)
     python test_consistency_kpi_auto.py 1.3.0        # 指定版本
     python test_consistency_kpi_auto.py 1.3.0 jd.txt # 指定 JD 檔案
 """
@@ -20,32 +20,16 @@ from collections import Counter
 
 # 預設的測試 JD（中文）
 DEFAULT_JD = """
-Established in 1987 and headquartered in Taiwan, TSMC pioneered the pure-play foundry business model with an exclusive focus on manufacturing its customers’ products. In 2023, the company served 528 customers with 11,895 products for high performance computing, smartphones, IoT, automotive, and consumer electronics, and is the world’s largest provider of logic ICs with annual capacity of 16 million 12-inch equivalent wafers. TSMC operates fabs in Taiwan as well as manufacturing subsidiaries in Washington State, Japan and China, and its ESMC subsidiary plans to begin construction on a fab in Germany in 2024. In Arizona, TSMC is building three fabs, with the first starting 4nm production in 2025, the second by 2028, and the third by the end of the decade.
+Project Manager
+Responsible for wafer outsourcing and cost negotiation, including:
+Competitive Price: RFQ, price negotiation, cost prediction, cost reduction initiatives, CA.Capacity: long-term reservation, short-term fulfillment, acting as a bridge for internal and external parties to reach goals. Contract: NDA and short-term agreements. Project management (e.g. procurement system)
+**Requirement
 
-The Sr. HR Data Analyst will be responsible for analyzing large sets of HR data in order to provide insights and recommendations to the HR team and senior management independently or with other HR analysts across global HR team. The role will require a high level of technical expertise in data visualization and analysis, as well as a deep understanding of HR processes and policies.
-
-**Job Responsibilities:**
-
-1. Act as a Tableau data visualization expert and develop strategic HR dashboards with other domain experts in cross-team projects that enables data-informed decisions to stakeholders.
-2. Provide guidance, training plans and technical support to other analysts in HR team for Tableau skills development.
-3. Translate business needs into technical data requirements and work with IT data platform engineers for data preparation.
-4. Create trust and maintain strong relationships with key stakeholders across the organization.
-5. Stay up-to-date with industry trends and new analytics features as a technical advocate.
-
-**Job Qualifications:**
-
-1. Master's degree in HR, Business, Statistics, CS or related field.
-2. Minimum 5 years of experience in data analysis, with a proven track record of delivering actionable business insights and recommendations.
-3. Strong technical skills in data analysis tools such as Tableau, Power BI, Superset and SQL.
-4. Excellent communication skills with the ability to effectively communicate complex data insights to non-technical stakeholders.
-5. Strong problem-solving skills with the ability to think critically and creatively to solve complex business problems.
-6. Ability to work independently and manage multiple projects simultaneously.
-7. Strong attention to details and accuracy.
-8. Experience in leading and mentoring junior analysts is a plus
+**Proactive working attitude and good communication skills, with negotiation capability being a plus.Experience in handling wafer sourcing or procurement. Project management and business acumen.
 
 """
 
-async def test_consistency_kpi(prompt_version: str = "1.3.0", job_description: str = None, num_tests: int = 20):
+async def test_consistency_kpi(prompt_version: str = "1.4.0", job_description: str = None, num_tests: int = 20):
     """
     執行一致性 KPI 測試（使用自動語言偵測）
     """
@@ -133,6 +117,15 @@ async def test_consistency_kpi(prompt_version: str = "1.3.0", job_description: s
                 percentage = (count / successful_runs) * 100
                 print(f"   {i:2d}. {keyword}: {count} 次 ({percentage:.1f}%)")
             
+            # 計算唯一組合
+            unique_combinations = {}
+            for idx, result in enumerate(all_results):
+                # 使用排序後的關鍵字作為組合的標識
+                combo_key = tuple(sorted(result))
+                if combo_key not in unique_combinations:
+                    unique_combinations[combo_key] = []
+                unique_combinations[combo_key].append(idx + 1)
+            
             # 計算一致性和相似度
             total_pairs = successful_runs * (successful_runs - 1) // 2
             identical_pairs = 0
@@ -157,9 +150,22 @@ async def test_consistency_kpi(prompt_version: str = "1.3.0", job_description: s
             consistency_rate = identical_pairs / total_pairs if total_pairs > 0 else 0
             
             print(f"\n📊 一致性 KPI 分析:")
+            print(f"   總測試次數: {successful_runs}")
+            print(f"   唯一結果組合: {len(unique_combinations)} 個")
+            
+            # 顯示組合分布
+            sorted_combos = sorted(unique_combinations.items(), key=lambda x: len(x[1]), reverse=True)
+            print(f"\n   組合分布:")
+            for idx, (combo, occurrences) in enumerate(sorted_combos[:5], 1):
+                percentage = (len(occurrences) / successful_runs) * 100
+                print(f"   - 組合{idx}: {len(occurrences)}次 ({percentage:.1f}%)")
+            if len(sorted_combos) > 5:
+                print(f"   - 其他{len(sorted_combos)-5}個組合: 各出現較少次數")
+            
+            print(f"\n   配對統計:")
             print(f"   總配對數: {total_pairs}")
             print(f"   相同配對數: {identical_pairs}")
-            print(f"   一致性率: {consistency_rate:.1%}")
+            print(f"   完全一致率: {consistency_rate:.1%}")
             
             # 計算 95% 信心區間
             # 使用二項分佈的正態近似
@@ -220,9 +226,26 @@ async def test_consistency_kpi(prompt_version: str = "1.3.0", job_description: s
                 
                 print(f"\n📊 Jaccard 相似度分析:")
                 print(f"   平均相似度: {avg_jaccard:.1%}")
-                print(f"   最低相似度: {min_jaccard:.1%}")
-                print(f"   最高相似度: {max_jaccard:.1%}")
-                print(f"   標準差: {jaccard_std:.3f}")
+                print(f"     → 任意兩次測試平均有 {avg_jaccard:.1%} 的關鍵字重疊")
+                print(f"     → 16個關鍵字中，平均約{int(16 * avg_jaccard)}個是相同的")
+                
+                print(f"\n   最低相似度: {min_jaccard:.1%}")
+                print(f"     → 最不相似的兩次測試仍有 {min_jaccard:.1%} 重疊")
+                print(f"     → 16個關鍵字中，至少有{int(16 * min_jaccard)}個相同")
+                
+                print(f"\n   最高相似度: {max_jaccard:.1%}")
+                if max_jaccard == 1.0:
+                    print(f"     → 有些測試對的關鍵字完全相同")
+                else:
+                    print(f"     → 最相似的兩次測試有 {max_jaccard:.1%} 重疊")
+                
+                print(f"\n   標準差: {jaccard_std:.3f}")
+                if jaccard_std < 0.1:
+                    print(f"     → 相似度的離散程度很小，表示穩定性高")
+                elif jaccard_std < 0.2:
+                    print(f"     → 相似度的離散程度中等，表示有一定變化")
+                else:
+                    print(f"     → 相似度的離散程度較大，表示變化較多")
                 
                 # 分組統計
                 high_similarity = sum(1 for s in jaccard_scores if s >= 0.8)
@@ -282,7 +305,7 @@ async def test_consistency_kpi(prompt_version: str = "1.3.0", job_description: s
 async def main():
     """主程式入口"""
     # 解析命令列參數
-    prompt_version = "1.3.0"  # 預設版本
+    prompt_version = "1.4.0"  # 預設版本
     job_description = None
     
     if len(sys.argv) > 1:

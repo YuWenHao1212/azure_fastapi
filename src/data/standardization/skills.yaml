@@ -238,9 +238,13 @@ cloud_devops:
   devops practices: DevOps
   devops tools: DevOps
   ci/cd pipeline: CI/CD
+  ci/cd pipelines: CI/CD
   cicd pipeline: CI/CD
+  cicd pipelines: CI/CD
   continuous integration: CI/CD
   continuous deployment: CI/CD
+  continuous integration continuous deployment: CI/CD
+  continuous integration continuous deployment pipelines: CI/CD
   
   # Infrastructure
   infrastructure as code: IaC

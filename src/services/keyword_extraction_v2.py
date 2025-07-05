@@ -346,13 +346,18 @@ class KeywordExtractionServiceV2(BaseService):
         # 4. Determine strategy
         if intersection_count >= self.min_intersection_threshold:
             strategy_used = "pure_intersection"
-            candidate_keywords = list(intersection)
+            # Preserve order from round1
+            candidate_keywords = [kw for kw in round1_keywords if kw in intersection]
             final_keywords = candidate_keywords[:max_keywords]
             has_warning = False
             warning_message = ""
         else:
             strategy_used = "supplement"
-            all_unique = list(set(round1_keywords) | set(round2_keywords))
+            # Preserve order: intersection first (from round1), then unique from round1, then unique from round2
+            ordered_keywords = [kw for kw in round1_keywords if kw in intersection]
+            ordered_keywords.extend([kw for kw in round1_keywords if kw not in intersection])
+            ordered_keywords.extend([kw for kw in round2_keywords if kw not in round1_keywords])
+            all_unique = ordered_keywords
             
             if len(all_unique) >= self.supplement_target:
                 final_keywords = all_unique[:self.supplement_target]
