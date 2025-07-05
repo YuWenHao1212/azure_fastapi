@@ -39,11 +39,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 30
     
-    # CORS settings - simplified for Azure deployment
-    cors_origins: str = "*"
+    # CORS settings - secured for production
+    cors_origins: str = "https://airesumeadvisor.com,https://airesumeadvisor.bubbleapps.io,http://localhost:3000"
     cors_allow_credentials: bool = True
-    cors_allow_methods: str = "*"
-    cors_allow_headers: str = "*"
+    cors_allow_methods: str = "GET,POST,PUT,DELETE,OPTIONS"
+    cors_allow_headers: str = "Content-Type,Authorization,X-Requested-With"
     
     # Rate limiting
     rate_limit_requests: int = 100
