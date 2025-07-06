@@ -2,6 +2,8 @@
 Monitoring middleware for request/response tracking.
 Implements comprehensive monitoring for all API endpoints.
 """
+import json
+import re
 import time
 import uuid
 from collections.abc import Callable
@@ -138,6 +140,29 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             # Calculate duration for failed requests
             duration_ms = (time.time() - start_time) * 1000
             
+            # Extract anonymized JD preview for keyword extraction errors
+            jd_preview = ""
+            if request.url.path.endswith("extract-jd-keywords"):
+                try:
+                    # Get request body
+                    body = await request.body()
+                    data = json.loads(body)
+                    jd_text = data.get("job_description", "")
+                    
+                    # Anonymize and truncate to 100 chars
+                    if jd_text:
+                        # Remove emails, phone numbers, names (basic anonymization)
+                        # Remove email addresses
+                        jd_text = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL]', jd_text)
+                        # Remove phone numbers (various formats)
+                        jd_text = re.sub(r'[\+]?[(]?[0-9]{1,3}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}', '[PHONE]', jd_text)
+                        # Remove potential names (capitalized words)
+                        jd_text = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', '[NAME]', jd_text)
+                        # Take first 100 chars
+                        jd_preview = jd_text[:100] + ("..." if len(jd_text) > 100 else "")
+                except Exception:
+                    jd_preview = "[Failed to extract JD]"
+            
             # Track endpoint metrics for errors using EndpointMetrics
             endpoint_metrics.record_request(
                 endpoint=request.url.path,
@@ -151,17 +176,24 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 }
             )
             
+            # Prepare custom properties for error tracking
+            error_properties = {
+                "correlation_id": correlation_id,
+                "path": request.url.path,
+                "method": request.method,
+                "duration_ms": duration_ms
+            }
+            
+            # Add JD preview only for keyword extraction errors
+            if jd_preview:
+                error_properties["jd_preview"] = jd_preview
+            
             # Track error
             monitoring_service.track_error(
                 error_type=type(e).__name__,
                 error_message=str(e),
                 endpoint=endpoint,
-                custom_properties={
-                    "correlation_id": correlation_id,
-                    "path": request.url.path,
-                    "method": request.method,
-                    "duration_ms": duration_ms
-                }
+                custom_properties=error_properties
             )
             
             # Re-raise the exception

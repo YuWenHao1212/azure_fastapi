@@ -1,0 +1,295 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# API Monitoring Dashboard\n\nReal-time monitoring for FastAPI Application"
+      },
+      "name": "text - 0"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "1234abcd-1234-1234-1234-123456789012",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                },
+                {
+                  "durationMs": 900000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                },
+                {
+                  "durationMs": 1800000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                },
+                {
+                  "durationMs": 3600000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                },
+                {
+                  "durationMs": 14400000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                },
+                {
+                  "durationMs": 86400000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                },
+                {
+                  "durationMs": 604800000,
+                  "createdTime": "2021-01-01T00:00:00.000Z",
+                  "isInitialTime": false,
+                  "grain": 1,
+                  "useDashboardTimeRange": false
+                }
+              ]
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters - 1"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend \n    endpoint = tostring(customDimensions.endpoint),\n    method = tostring(customDimensions.method),\n    duration_ms = todouble(customDimensions.duration_ms),\n    status_code = toint(customDimensions.status_code),\n    success = tostring(customDimensions.success) == \"true\"\n| summarize \n    TotalRequests = count(),\n    SuccessfulRequests = countif(success == true),\n    FailedRequests = countif(success == false),\n    AvgDuration = round(avg(duration_ms), 2),\n    P95Duration = round(percentile(duration_ms, 95), 2)\n| extend SuccessRate = round(100.0 * SuccessfulRequests / TotalRequests, 2)\n| project \n    Column = pack_array(\"Total Requests\", \"Successful\", \"Failed\", \"Avg Duration (ms)\", \"P95 Duration (ms)\", \"Success Rate (%)\"),\n    Value = pack_array(TotalRequests, SuccessfulRequests, FailedRequests, AvgDuration, P95Duration, SuccessRate)\n| mv-expand Column to typeof(string), Value",
+        "size": 3,
+        "title": "Request Overview",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Column",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "Value",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
+          "showBorder": false,
+          "size": "auto"
+        }
+      },
+      "name": "query - 2"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend duration_ms = todouble(customDimensions.duration_ms)\n| summarize \n    AvgDuration = avg(duration_ms),\n    P95Duration = percentile(duration_ms, 95)\n    by bin(timestamp, 5m)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Response Time Trend",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "query - 3"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend \n    endpoint = tostring(customDimensions.endpoint),\n    success = tostring(customDimensions.success) == \"true\"\n| summarize \n    Requests = count(),\n    Failures = countif(success == false)\n    by endpoint\n| extend ErrorRate = round(100.0 * Failures / Requests, 2)\n| order by Requests desc",
+        "size": 0,
+        "title": "Requests by Endpoint",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "endpoint",
+              "formatter": 0,
+              "formatOptions": {
+                "customColumnWidthSetting": "30ch"
+              }
+            },
+            {
+              "columnMatch": "Requests",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "blue"
+              }
+            },
+            {
+              "columnMatch": "Failures",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "red"
+              }
+            },
+            {
+              "columnMatch": "ErrorRate",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  {
+                    "operator": "<=",
+                    "thresholdValue": "5",
+                    "representation": "green",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "<=",
+                    "thresholdValue": "20",
+                    "representation": "yellow",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "representation": "red",
+                    "text": "{0}{1}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "query - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| summarize RequestCount = count() by bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 1,
+        "title": "Hourly Request Volume",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "query - 5"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend \n    correlation_id = tostring(customDimensions.correlation_id),\n    endpoint = tostring(customDimensions.endpoint),\n    method = tostring(customDimensions.method),\n    duration_ms = todouble(customDimensions.duration_ms),\n    status_code = toint(customDimensions.status_code),\n    success = tostring(customDimensions.success) == \"true\"\n| project timestamp, correlation_id, endpoint, method, duration_ms, status_code, success\n| order by timestamp desc\n| take 50",
+        "size": 0,
+        "title": "Recent Requests",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "timestamp",
+              "formatter": 6,
+              "dateFormat": {
+                "showUtcTime": false,
+                "formatName": "shortDateTimePattern"
+              }
+            },
+            {
+              "columnMatch": "duration_ms",
+              "formatter": 0,
+              "numberFormat": {
+                "unit": 0,
+                "options": {
+                  "style": "decimal",
+                  "useGrouping": true,
+                  "maximumFractionDigits": 2
+                }
+              }
+            },
+            {
+              "columnMatch": "status_code",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  {
+                    "operator": "<",
+                    "thresholdValue": "400",
+                    "representation": "green",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "<",
+                    "thresholdValue": "500",
+                    "representation": "yellow",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "representation": "red",
+                    "text": "{0}{1}"
+                  }
+                ]
+              }
+            },
+            {
+              "columnMatch": "success",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  {
+                    "operator": "==",
+                    "thresholdValue": "true",
+                    "representation": "success",
+                    "text": "Success"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "representation": "failed",
+                    "text": "Failed"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "name": "query - 6"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
