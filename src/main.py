@@ -97,9 +97,10 @@ def create_app() -> FastAPI:
     @app.get("/debug/monitoring")
     async def debug_monitoring():
         """Debug endpoint to check monitoring status."""
-        from src.debug_monitoring import debug_monitoring as debug_func
-        import io
         import contextlib
+        import io
+
+        from src.debug_monitoring import debug_monitoring as debug_func
         
         # Capture output
         f = io.StringIO()

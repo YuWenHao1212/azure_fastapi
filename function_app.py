@@ -1,9 +1,9 @@
+import asyncio
 import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Tuple, Optional
-import asyncio
+from typing import Any
 
 import azure.functions as func
 
@@ -34,9 +34,9 @@ except Exception as import_exc:
 # Create the function app
 app_func = func.FunctionApp()
 
-async def create_asgi_scope(req: func.HttpRequest) -> Dict[str, Any]:
+async def create_asgi_scope(req: func.HttpRequest) -> dict[str, Any]:
     """Convert Azure Functions HttpRequest to ASGI scope."""
-    from urllib.parse import parse_qs, urlparse, unquote
+    from urllib.parse import unquote, urlparse
     
     parsed_url = urlparse(req.url)
     
@@ -76,8 +76,8 @@ class ASGIHandler:
         self.response_started = False
         self.response_complete = False
         self.response_status = 200
-        self.response_headers: List[Tuple[bytes, bytes]] = []
-        self.response_body_parts: List[bytes] = []
+        self.response_headers: list[tuple[bytes, bytes]] = []
+        self.response_body_parts: list[bytes] = []
         
     async def receive(self):
         """ASGI receive callable."""

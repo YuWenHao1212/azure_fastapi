@@ -21,7 +21,7 @@ def debug_monitoring():
     print("\n2. Monitoring Service Status:")
     try:
         from src.core.monitoring_service import monitoring_service
-        print(f"Monitoring service imported successfully")
+        print("Monitoring service imported successfully")
         print(f"Is enabled: {monitoring_service.is_enabled}")
         print(f"Instrumentation key: {monitoring_service.instrumentation_key[:8]}...")
         
@@ -41,7 +41,6 @@ def debug_monitoring():
     # Check if OpenCensus is working
     print("\n4. OpenCensus Check:")
     try:
-        from opencensus.ext.azure import metrics_exporter
         print("OpenCensus Azure exporter imported successfully")
     except Exception as e:
         print(f"Error importing OpenCensus: {e}")

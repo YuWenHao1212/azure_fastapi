@@ -59,9 +59,13 @@ class MonitoringService:
         from applicationinsights import TelemetryClient
         
         self.telemetry_client = TelemetryClient(self.instrumentation_key)
-        # Enable telemetry
-        self.telemetry_client.channel.sender.send_interval_in_milliseconds = 10000  # 10 seconds
+        # Enable telemetry with more aggressive sending
+        self.telemetry_client.channel.sender.send_interval_in_milliseconds = 5000  # 5 seconds
         self.telemetry_client.channel.sender.max_telemetry_buffer_capacity = 500
+        
+        # Force immediate send for Azure Functions
+        import atexit
+        atexit.register(lambda: self.telemetry_client.flush())
     
     def track_request(self, endpoint: str, method: str, duration_ms: float, 
                      success: bool, status_code: int, custom_properties: dict[str, Any] | None = None):
@@ -89,6 +93,12 @@ class MonitoringService:
                     "custom_dimensions": properties
                 }
             )
+        
+        # Also send as proper custom event
+        if hasattr(self, 'telemetry_client'):
+            self.telemetry_client.track_event("RequestTracked", properties)
+            # Flush immediately for Azure Functions
+            self.telemetry_client.flush()
     
     def track_keyword_extraction(self, language: str, prompt_version: str,
                                keyword_count: int, duration_ms: float,
@@ -291,6 +301,8 @@ class MonitoringService:
         # Send as proper custom event using telemetry client
         if hasattr(self, 'telemetry_client'):
             self.telemetry_client.track_event(name, event_properties)
+            # Flush immediately for Azure Functions
+            self.telemetry_client.flush()
 
 
 # Global monitoring instance
