@@ -96,3 +96,7 @@ test_api.sh
 
 # GitHub Secrets file
 GITHUB_SECRETS.md
+
+# Test scripts with sensitive data
+test_*_scenarios.sh
+test_*_tracking.sh

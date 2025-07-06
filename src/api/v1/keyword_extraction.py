@@ -272,22 +272,8 @@ async def extract_jd_keywords(
             }
         )
         
-        # Track error with JD preview before raising HTTPException
-        jd_preview = request.job_description[:100] + ("..." if len(request.job_description) > 100 else "")
-        correlation_id = getattr(http_request.state, 'correlation_id', 'unknown') if http_request else 'unknown'
-        monitoring_service.track_error(
-            error_type="VALIDATION_ERROR",
-            error_message=error_msg,
-            endpoint="POST /api/v1/extract-jd-keywords",
-            custom_properties={
-                "jd_preview": jd_preview,
-                "correlation_id": correlation_id,
-                "max_keywords": request.max_keywords,
-                "prompt_version": request.prompt_version
-            }
-        )
-        
         # Return Bubble.io compatible error response
+        # Note: JD preview tracking is handled in main.py validation_exception_handler
         error_response = create_error_response(
             code="VALIDATION_ERROR",
             message="輸入參數驗證失敗",

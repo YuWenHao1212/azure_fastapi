@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.v1 import router as v1_router
 from src.core.config import settings
+from src.core.monitoring_service import monitoring_service
 from src.middleware.monitoring_middleware import MonitoringMiddleware
 
 # Configure logging
@@ -169,6 +170,32 @@ def create_app() -> FastAPI:
     async def validation_exception_handler(request, exc):
         """Handle request validation errors with unified response format."""
         logger.warning(f"Validation error: {exc.errors()}")
+        
+        # Track error with JD preview for keyword extraction endpoint
+        if request.url.path.endswith("extract-jd-keywords"):
+            try:
+                # Try to extract JD from request body
+                body = await request.body()
+                import json
+                data = json.loads(body)
+                jd_text = data.get("job_description", "")
+                if jd_text:
+                    jd_preview = jd_text[:100] + ("..." if len(jd_text) > 100 else "")
+                    correlation_id = getattr(request.state, 'correlation_id', 'unknown')
+                    
+                    monitoring_service.track_error(
+                        error_type="VALIDATION_ERROR",
+                        error_message="Request validation failed",
+                        endpoint=f"{request.method} {request.url.path}",
+                        custom_properties={
+                            "jd_preview": jd_preview,
+                            "correlation_id": correlation_id,
+                            "validation_errors": str(exc.errors())
+                        }
+                    )
+            except Exception as e:
+                logger.debug(f"Could not extract JD for error tracking: {e}")
+        
         return JSONResponse(
             status_code=422,
             content={
