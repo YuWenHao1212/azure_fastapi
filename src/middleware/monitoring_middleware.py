@@ -142,6 +142,19 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             
             # Extract anonymized JD preview for keyword extraction errors
             jd_preview = ""
+            error_type = type(e).__name__
+            error_message = str(e)
+            
+            # For HTTPException, extract the actual error details
+            if hasattr(e, 'status_code') and hasattr(e, 'detail'):
+                status_code = e.status_code
+                if isinstance(e.detail, dict) and 'error' in e.detail:
+                    error_info = e.detail['error']
+                    error_type = error_info.get('code', error_type)
+                    error_message = error_info.get('message', error_message)
+            else:
+                status_code = 500
+            
             if request.url.path.endswith("extract-jd-keywords"):
                 try:
                     # Get request body
@@ -167,12 +180,12 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             endpoint_metrics.record_request(
                 endpoint=request.url.path,
                 method=request.method,
-                status_code=500,
+                status_code=status_code,
                 duration_ms=duration_ms,
-                error_type=type(e).__name__,
+                error_type=error_type,
                 custom_properties={
                     "correlation_id": correlation_id,
-                    "error_message": str(e)
+                    "error_message": error_message
                 }
             )
             
@@ -190,8 +203,8 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
             
             # Track error
             monitoring_service.track_error(
-                error_type=type(e).__name__,
-                error_message=str(e),
+                error_type=error_type,
+                error_message=error_message,
                 endpoint=endpoint,
                 custom_properties=error_properties
             )

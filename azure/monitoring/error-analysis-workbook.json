@@ -1,0 +1,124 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## Keyword Extraction Error Analysis\n\nDetailed view of errors with job description preview (when available)"
+      },
+      "name": "text - error-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Error Summary from Custom Events\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"RequestTracked\"\n| where customDimensions.endpoint contains \"extract-jd-keywords\"\n| extend \n    success = tostring(customDimensions.success) == \"true\",\n    status_code = toint(customDimensions.status_code)\n| where success == false or status_code >= 400\n| summarize \n    TotalErrors = count(),\n    ValidationErrors = countif(status_code == 422),\n    ServerErrors = countif(status_code >= 500),\n    OtherErrors = countif(status_code >= 400 and status_code < 500 and status_code != 422)\n| project \n    Metric = pack_array(\"Total Errors\", \"Validation Errors\", \"Server Errors\", \"Other Client Errors\"),\n    Count = pack_array(TotalErrors, ValidationErrors, ServerErrors, OtherErrors)\n| mv-expand Metric to typeof(string), Count",
+        "size": 4,
+        "title": "Error Summary (Last 24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Metric",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "red"
+            }
+          }
+        }
+      },
+      "name": "query - error-summary"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Recent Failed Requests\ncustomEvents\n| where timestamp > ago(6h)\n| where name == \"RequestTracked\"\n| where customDimensions.endpoint contains \"extract-jd-keywords\"\n| extend \n    success = tostring(customDimensions.success) == \"true\",\n    status_code = toint(customDimensions.status_code),\n    correlation_id = tostring(customDimensions.correlation_id),\n    duration_ms = todouble(customDimensions.duration_ms)\n| where success == false or status_code >= 400\n| join kind=leftouter (\n    traces\n    | where timestamp > ago(6h)\n    | where customDimensions has \"jd_preview\"\n    | extend \n        correlation_id = tostring(customDimensions.correlation_id),\n        jd_preview = tostring(customDimensions.jd_preview),\n        error_type = tostring(customDimensions.error_type),\n        error_message = tostring(customDimensions.error_message)\n) on correlation_id\n| project \n    timestamp,\n    status_code,\n    error_type = coalesce(error_type, case(\n        status_code == 422, \"Validation Error\",\n        status_code >= 500, \"Server Error\",\n        \"Client Error\"\n    )),\n    jd_preview = coalesce(jd_preview, \"[Not Available]\"),\n    duration_ms,\n    correlation_id\n| order by timestamp desc\n| take 50",
+        "size": 0,
+        "title": "Recent Failed Keyword Extractions",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "timestamp",
+              "formatter": 6,
+              "dateFormat": {
+                "showUtcTime": false,
+                "formatName": "shortDateTimePattern"
+              }
+            },
+            {
+              "columnMatch": "status_code",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  {
+                    "operator": "==",
+                    "thresholdValue": "422",
+                    "representation": "yellow",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": ">=",
+                    "thresholdValue": "500",
+                    "representation": "red",
+                    "text": "{0}"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "representation": "orange",
+                    "text": "{0}"
+                  }
+                ]
+              }
+            },
+            {
+              "columnMatch": "jd_preview",
+              "formatter": 0,
+              "formatOptions": {
+                "customColumnWidthSetting": "40ch"
+              }
+            }
+          ]
+        }
+      },
+      "name": "query - recent-errors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Error Trend\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"RequestTracked\"\n| where customDimensions.endpoint contains \"extract-jd-keywords\"\n| extend \n    success = tostring(customDimensions.success) == \"true\",\n    status_code = toint(customDimensions.status_code)\n| where success == false or status_code >= 400\n| summarize \n    ErrorCount = count(),\n    Error422 = countif(status_code == 422),\n    Error500Plus = countif(status_code >= 500)\n    by bin(timestamp, 1h)\n| render timechart",
+        "size": 1,
+        "title": "Error Trend (Hourly)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "name": "query - error-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Check if JD preview data exists\ntraces\n| where timestamp > ago(1h)\n| where customDimensions has \"jd_preview\"\n| summarize \n    EventsWithJDPreview = count(),\n    FirstSeen = min(timestamp),\n    LastSeen = max(timestamp)\n| extend Status = iff(EventsWithJDPreview > 0, \"✅ JD Preview is being logged\", \"❌ No JD Preview data found\")\n| project Status, EventsWithJDPreview, FirstSeen, LastSeen",
+        "size": 4,
+        "title": "JD Preview Logging Status",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "query - jd-status"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

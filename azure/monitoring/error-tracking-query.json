@@ -1,0 +1,51 @@
+{
+  "type": 3,
+  "content": {
+    "version": "KqlItem/1.0",
+    "query": "traces\n| where timestamp > ago(24h)\n| where severityLevel >= 3\n| where customDimensions.endpoint contains \"extract-jd-keywords\"\n| extend \n    error_type = tostring(customDimensions.error_type),\n    error_message = tostring(customDimensions.error_message),\n    jd_preview = tostring(customDimensions.jd_preview),\n    correlation_id = tostring(customDimensions.correlation_id),\n    duration_ms = todouble(customDimensions.duration_ms)\n| where isnotempty(error_type)\n| project \n    timestamp,\n    error_type,\n    error_message = substring(error_message, 0, 100),\n    jd_preview,\n    correlation_id,\n    duration_ms\n| order by timestamp desc\n| take 50",
+    "size": 0,
+    "title": "Keyword Extraction Errors with JD Preview",
+    "queryType": 0,
+    "resourceType": "microsoft.insights/components",
+    "visualization": "table",
+    "gridSettings": {
+      "formatters": [
+        {
+          "columnMatch": "timestamp",
+          "formatter": 6,
+          "dateFormat": {
+            "showUtcTime": false,
+            "formatName": "shortDateTimePattern"
+          }
+        },
+        {
+          "columnMatch": "error_message",
+          "formatter": 0,
+          "tooltipFormat": {
+            "tooltip": "{0}"
+          }
+        },
+        {
+          "columnMatch": "jd_preview",
+          "formatter": 0,
+          "formatOptions": {
+            "customColumnWidthSetting": "30ch"
+          }
+        },
+        {
+          "columnMatch": "duration_ms",
+          "formatter": 0,
+          "numberFormat": {
+            "unit": 0,
+            "options": {
+              "style": "decimal",
+              "maximumFractionDigits": 0
+            }
+          }
+        }
+      ],
+      "rowLimit": 100
+    }
+  },
+  "name": "query - keyword-errors"
+}
