@@ -10,6 +10,7 @@ azure-functions==1.17.0
 # Application Insights
 opencensus-ext-azure==1.1.13
 opencensus-ext-logging==0.1.1
+applicationinsights==0.11.10
 
 # Azure OpenAI Integration
 openai>=1.0.0

@@ -45,6 +45,7 @@ class MonitoringService:
     def _setup_monitoring(self):
         """Initialize Application Insights components."""
         try:
+            self._setup_telemetry_client()
             self._setup_logging()
             self._setup_tracing()
             self._setup_metrics()
@@ -52,6 +53,15 @@ class MonitoringService:
         except Exception as e:
             logger.error(f"Failed to initialize monitoring: {e}")
             self.is_enabled = False
+    
+    def _setup_telemetry_client(self):
+        """Setup Application Insights telemetry client for custom events."""
+        from applicationinsights import TelemetryClient
+        
+        self.telemetry_client = TelemetryClient(self.instrumentation_key)
+        # Enable telemetry
+        self.telemetry_client.channel.sender.send_interval_in_milliseconds = 10000  # 10 seconds
+        self.telemetry_client.channel.sender.max_telemetry_buffer_capacity = 500
     
     def track_request(self, endpoint: str, method: str, duration_ms: float, 
                      success: bool, status_code: int, custom_properties: dict[str, Any] | None = None):
@@ -269,6 +279,7 @@ class MonitoringService:
         if properties:
             event_properties.update(properties)
         
+        # Log to traces for debugging
         if hasattr(self, 'logger'):
             self.logger.info(
                 f"CustomEvent.{name}",
@@ -276,6 +287,10 @@ class MonitoringService:
                     "custom_dimensions": event_properties
                 }
             )
+        
+        # Send as proper custom event using telemetry client
+        if hasattr(self, 'telemetry_client'):
+            self.telemetry_client.track_event(name, event_properties)
 
 
 # Global monitoring instance
