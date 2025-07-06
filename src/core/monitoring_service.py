@@ -26,7 +26,7 @@ class MonitoringService:
     def __init__(self):
         self.instrumentation_key = os.getenv(
             "APPINSIGHTS_INSTRUMENTATIONKEY",
-            "a2fa7c8c-1440-4754-a1d8-ca58a0a82af0"  # From monitoring_setup.md
+            "e62aa619-199c-4f43-826e-bdec26344a26"  # Primary Application Insights
         )
         self.is_enabled = os.getenv("MONITORING_ENABLED", "true").lower() == "true"
         
