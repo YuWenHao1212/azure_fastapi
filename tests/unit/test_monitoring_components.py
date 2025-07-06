@@ -30,14 +30,14 @@ class TestEndpointMetrics:
         )
         
         # Check metrics
-        endpoint_stats = metrics.get_endpoint_stats()
+        endpoint_stats = metrics.get_endpoint_stats(include_summary=False)
         
         # Check endpoint specific stats
         endpoint_key = "/api/v1/extract-jd-keywords"
         assert endpoint_key in endpoint_stats
         endpoint_data = endpoint_stats[endpoint_key]
         assert endpoint_data["total_requests"] == 1
-        assert endpoint_data["error_rate"] == "0.00%"
+        assert endpoint_data["error_rate_str"] == "0.00%"
         assert float(endpoint_data["avg_duration_ms"]) == 1500.0
     
     def test_record_request_error(self):
@@ -54,14 +54,14 @@ class TestEndpointMetrics:
         )
         
         # Check metrics
-        endpoint_stats = metrics.get_endpoint_stats()
+        endpoint_stats = metrics.get_endpoint_stats(include_summary=False)
         
         # Check endpoint specific stats
         endpoint_key = "/api/v1/extract-jd-keywords"
         assert endpoint_key in endpoint_stats
         endpoint_data = endpoint_stats[endpoint_key]
         assert endpoint_data["total_requests"] == 1
-        assert endpoint_data["error_rate"] == "100.00%"
+        assert endpoint_data["error_rate_str"] == "100.00%"
         assert "errors_by_type" in endpoint_data
         assert endpoint_data["errors_by_type"]["InternalServerError"] == 1
     
@@ -88,11 +88,11 @@ class TestEndpointMetrics:
             )
         
         # Check error rate (should be 30%)
-        endpoint_stats = metrics.get_endpoint_stats()
+        endpoint_stats = metrics.get_endpoint_stats(include_summary=False)
         endpoint_key = "/api/v1/health"
         assert endpoint_key in endpoint_stats
         endpoint_data = endpoint_stats[endpoint_key]
-        assert endpoint_data["error_rate"] == "30.00%"
+        assert endpoint_data["error_rate_str"] == "30.00%"
         assert endpoint_data["total_requests"] == 10
     
     def test_response_time_percentiles(self):
@@ -109,7 +109,7 @@ class TestEndpointMetrics:
                 duration_ms=float(time_ms)
             )
         
-        endpoint_stats = metrics.get_endpoint_stats()
+        endpoint_stats = metrics.get_endpoint_stats(include_summary=False)
         endpoint_key = "/api/v1/extract-jd-keywords"
         assert endpoint_key in endpoint_stats
         endpoint_data = endpoint_stats[endpoint_key]
