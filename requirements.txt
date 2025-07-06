@@ -7,6 +7,10 @@ pydantic-settings==2.1.0
 # Azure Functions
 azure-functions==1.17.0
 
+# Application Insights
+opencensus-ext-azure==1.1.13
+opencensus-ext-logging==0.1.1
+
 # Azure OpenAI Integration
 openai>=1.0.0
 azure-identity>=1.14.1

@@ -6,7 +6,17 @@
         "isEnabled": true,
         "maxTelemetryItemsPerSecond": 20
       },
-      "enableLiveMetrics": true
+      "enableLiveMetrics": true,
+      "enableDependencyTracking": true,
+      "enablePerformanceCountersCollection": true,
+      "httpAutoCollectionOptions": {
+        "enableHttpTriggerExtendedInfoCollection": true,
+        "enableW3CDistributedTracing": true,
+        "enableResponseHeaderInjection": true
+      },
+      "snapshotConfiguration": {
+        "isEnabled": true
+      }
     },
     "logLevel": {
       "default": "Information",
