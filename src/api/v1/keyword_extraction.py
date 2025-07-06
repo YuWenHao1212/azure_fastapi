@@ -13,7 +13,7 @@ import logging
 import time
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from src.core.config import get_settings
 from src.core.monitoring.storage.failure_storage import failure_storage
@@ -128,7 +128,8 @@ router = APIRouter()
 )
 async def extract_jd_keywords(
     request: KeywordExtractionRequest,
-    settings = Depends(get_settings)
+    settings = Depends(get_settings),
+    http_request: Request = None
 ) -> UnifiedResponse:
     """
     Extract keywords from job description using 2-round intersection strategy.
@@ -266,6 +267,21 @@ async def extract_jd_keywords(
             job_description=request.job_description,
             failure_reason=error_msg,
             additional_info={
+                "max_keywords": request.max_keywords,
+                "prompt_version": request.prompt_version
+            }
+        )
+        
+        # Track error with JD preview before raising HTTPException
+        jd_preview = request.job_description[:100] + ("..." if len(request.job_description) > 100 else "")
+        correlation_id = getattr(http_request.state, 'correlation_id', 'unknown') if http_request else 'unknown'
+        monitoring_service.track_error(
+            error_type="VALIDATION_ERROR",
+            error_message=error_msg,
+            endpoint="POST /api/v1/extract-jd-keywords",
+            custom_properties={
+                "jd_preview": jd_preview,
+                "correlation_id": correlation_id,
                 "max_keywords": request.max_keywords,
                 "prompt_version": request.prompt_version
             }

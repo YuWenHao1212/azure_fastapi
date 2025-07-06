@@ -177,6 +177,9 @@ class KeywordExtractionServiceV2(BaseService):
         language_param = data.get('language', 'auto')
         prompt_version = data.get('prompt_version', self.default_prompt_version)
         
+        # Initialize language_detection_time to avoid UnboundLocalError
+        language_detection_time = 0
+        
         self.logger.info(
             f"Starting keyword extraction V2: "
             f"language={language_param}, version={prompt_version}, "
