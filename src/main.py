@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.v1 import router as v1_router
 from src.core.config import settings
+from src.middleware.monitoring_middleware import MonitoringMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -55,6 +56,9 @@ def create_app() -> FastAPI:
         allow_methods=settings.cors_allow_methods_list,
         allow_headers=settings.cors_allow_headers_list,
     )
+    
+    # Add monitoring middleware
+    app.add_middleware(MonitoringMiddleware)
     
     # Include API routers
     app.include_router(v1_router, prefix=settings.api_v1_prefix)

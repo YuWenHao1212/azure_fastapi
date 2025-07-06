@@ -1,8 +1,9 @@
-import azure.functions as func
+import json
 import logging
 import sys
-import json
 from pathlib import Path
+
+import azure.functions as func
 
 # 添加專案根目錄到 Python 路徑
 current_dir = Path(__file__).parent
@@ -80,7 +81,7 @@ async def handle_request_manually(req: func.HttpRequest) -> func.HttpResponse:
         headers = dict(req.headers)
         
         # 提取路徑
-        from urllib.parse import urlparse, parse_qs
+        from urllib.parse import parse_qs, urlparse
         parsed_url = urlparse(url)
         path = parsed_url.path
         query_params = parse_qs(parsed_url.query) if parsed_url.query else {}
@@ -92,10 +93,10 @@ async def handle_request_manually(req: func.HttpRequest) -> func.HttpResponse:
         if method in ["POST", "PUT", "PATCH"]:
             try:
                 body = req.get_json()
-            except:
+            except Exception:
                 try:
                     body = req.get_body().decode()
-                except:
+                except Exception:
                     body = None
         
         # 發送請求到 FastAPI

@@ -492,6 +492,39 @@ Skipped: 0
 ✅ All tests passed! Ready to commit.
 ```
 
+### 代碼風格規範（ruff）
+
+Claude Code 在編寫程式碼時必須遵循 ruff 的代碼風格規範，避免在提交前才發現問題：
+
+#### 常見規則
+1. **SIM (simplify) 規則**
+   - 使用 `for key in dict:` 而非 `for key in dict.keys()`
+   - 使用 `if condition:` 而非 `if condition == True:`
+   - 避免不必要的 `else` 區塊
+
+2. **F (Pyflakes) 規則**
+   - 移除未使用的 import
+   - 移除未使用的變數
+
+3. **E (pycodestyle) 規則**
+   - 保持行長度在 88 字元以內
+   - 適當的縮排和空格
+
+4. **I (isort) 規則**
+   - import 順序：標準庫 → 第三方庫 → 本地模組
+   - 每組之間空一行
+
+5. **UP (pyupgrade) 規則**
+   - 使用現代 Python 語法
+   - 使用 `dict[str, Any]` 而非 `Dict[str, Any]`
+   - 使用 f-strings 而非 `.format()`
+
+#### 編碼時注意事項
+- 在編寫程式碼時就遵循這些規範
+- 使用簡潔的語法和現代 Python 特性
+- 保持 import 整潔有序
+- 避免過長的行，適當換行
+
 ### 臨時文件管理
 - 臨時測試文件放在 `legacy/temp_tests/`
 - 正式測試放在 `tests/`
@@ -507,8 +540,8 @@ Skipped: 0
 
 ---
 
-**文檔版本**: 2.1.0  
-**最後更新**: 2025-07-05  
+**文檔版本**: 2.2.0  
+**最後更新**: 2025-07-06  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
 

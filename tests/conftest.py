@@ -301,7 +301,9 @@ def mock_environment_variables():
         "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/",
         "AZURE_OPENAI_API_KEY": "test-api-key",
         "AZURE_OPENAI_API_VERSION": "2023-12-01-preview",
-        "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-4o-2"
+        "AZURE_OPENAI_DEPLOYMENT_NAME": "gpt-4o-2",
+        "MONITORING_ENABLED": "false",  # Disable monitoring to prevent test hanging
+        "APPINSIGHTS_INSTRUMENTATIONKEY": "00000000-0000-0000-0000-000000000000"
     }
     with patch.dict("os.environ", env_vars):
         yield env_vars
