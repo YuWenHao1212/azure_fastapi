@@ -3,7 +3,6 @@ Monitoring middleware for request/response tracking.
 Implements comprehensive monitoring for all API endpoints.
 """
 import json
-import re
 import time
 import uuid
 from collections.abc import Callable
@@ -162,16 +161,8 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                     data = json.loads(body)
                     jd_text = data.get("job_description", "")
                     
-                    # Anonymize and truncate to 100 chars
+                    # Simply truncate to 100 chars - no anonymization for job descriptions
                     if jd_text:
-                        # Remove emails, phone numbers, names (basic anonymization)
-                        # Remove email addresses
-                        jd_text = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL]', jd_text)
-                        # Remove phone numbers (various formats)
-                        jd_text = re.sub(r'[\+]?[(]?[0-9]{1,3}[)]?[-\s\.]?[(]?[0-9]{1,4}[)]?[-\s\.]?[0-9]{1,4}[-\s\.]?[0-9]{1,9}', '[PHONE]', jd_text)
-                        # Remove potential names (capitalized words)
-                        jd_text = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', '[NAME]', jd_text)
-                        # Take first 100 chars
                         jd_preview = jd_text[:100] + ("..." if len(jd_text) > 100 else "")
                 except Exception:
                     jd_preview = "[Failed to extract JD]"

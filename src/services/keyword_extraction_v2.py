@@ -18,7 +18,6 @@ from src.services.exceptions import (
     LanguageDetectionError,
     LowConfidenceDetectionError,
     UnsupportedLanguageError,
-    create_unsupported_language_response,
 )
 from src.services.keyword_standardizer import KeywordStandardizer
 from src.services.language_detection import LanguageValidator
@@ -288,11 +287,40 @@ class KeywordExtractionServiceV2(BaseService):
         
         except UnsupportedLanguageError as e:
             processing_time = int((time.time() - start_time) * 1000)
-            self.logger.warning(f"Unsupported language request: {e.detected_language}")
+            self.logger.warning(f"Unsupported language detected: {e.detected_language}, skipping LLM calls")
             
-            error_response = create_unsupported_language_response(e)
-            error_response['data']['processing_time_ms'] = processing_time
-            return error_response['data']
+            # Return immediately with empty keywords - no LLM call needed
+            return {
+                'keywords': [],
+                'keyword_count': 0,
+                'standardized_terms': [],
+                'confidence_score': 0.0,
+                'extraction_method': 'skipped_unsupported_language',
+                'intersection_stats': {
+                    'intersection_count': 0,
+                    'round1_count': 0,
+                    'round2_count': 0,
+                    'total_available': 0,
+                    'final_count': 0,
+                    'supplement_count': 0,
+                    'strategy_used': 'none',
+                    'warning': True,
+                    'warning_message': f'Language {e.detected_language} is not supported. Only English and Traditional Chinese are supported.'
+                },
+                'warning': {
+                    'has_warning': True,
+                    'message': f'Language {e.detected_language} is not supported. Only English and Traditional Chinese are supported.',
+                    'expected_minimum': 12,
+                    'actual_extracted': 0,
+                    'suggestion': 'Please provide job description in English or Traditional Chinese'
+                },
+                'processing_time_ms': processing_time,
+                'detected_language': e.detected_language,
+                'input_language': language_param,
+                'language_detection_time_ms': language_detection_time,
+                'cache_hit': False,
+                'prompt_version': prompt_version
+            }
             
         except Exception as e:
             processing_time = int((time.time() - start_time) * 1000)
