@@ -93,6 +93,28 @@ def create_app() -> FastAPI:
             "timestamp": datetime.utcnow().isoformat()
         }
     
+    # Debug endpoint for monitoring
+    @app.get("/debug/monitoring")
+    async def debug_monitoring():
+        """Debug endpoint to check monitoring status."""
+        from src.debug_monitoring import debug_monitoring as debug_func
+        import io
+        import contextlib
+        
+        # Capture output
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            debug_func()
+        output = f.getvalue()
+        
+        return {
+            "success": True,
+            "data": {
+                "debug_output": output.split('\n')
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
     # Starlette HTTP Exception handler (for method not allowed, etc.)
     @app.exception_handler(StarletteHTTPException)
     async def starlette_exception_handler(request, exc):

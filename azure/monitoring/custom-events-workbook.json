@@ -1,0 +1,143 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# API Monitoring Dashboard\n\nBased on Custom Events and Metrics"
+      },
+      "name": "Title"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "timeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 300000 },
+                { "durationMs": 900000 },
+                { "durationMs": 1800000 },
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 }
+              ]
+            }
+          }
+        ]
+      },
+      "name": "Parameters"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend \n    endpoint = tostring(customDimensions.endpoint),\n    method = tostring(customDimensions.method),\n    duration_ms = todouble(customDimensions.duration_ms),\n    status_code = toint(customDimensions.status_code),\n    success = tobool(customDimensions.success)\n| summarize \n    TotalRequests = count(),\n    SuccessfulRequests = countif(success == true),\n    FailedRequests = countif(success == false),\n    AvgDuration = round(avg(duration_ms), 2),\n    P95Duration = round(percentile(duration_ms, 95), 2)\n| extend SuccessRate = round(100.0 * SuccessfulRequests / TotalRequests, 2)",
+        "size": 4,
+        "title": "Request Overview",
+        "queryType": 0,
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Column",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "Value",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          }
+        }
+      },
+      "name": "Overview"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend duration_ms = todouble(customDimensions.duration_ms)\n| summarize \n    AvgDuration = avg(duration_ms),\n    P95Duration = percentile(duration_ms, 95)\n    by bin(timestamp, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Response Time Trend",
+        "queryType": 0,
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "ResponseTime"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| extend \n    endpoint = tostring(customDimensions.endpoint),\n    success = tobool(customDimensions.success)\n| summarize \n    Requests = count(),\n    Failures = countif(success == false)\n    by endpoint\n| extend ErrorRate = round(100.0 * Failures / Requests, 2)\n| order by Requests desc",
+        "size": 0,
+        "title": "Requests by Endpoint",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "ErrorRate",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "customWidth": "50",
+      "name": "EndpointTable"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"RequestTracked\"\n| summarize RequestCount = count() by bin(timestamp, 1h)\n| render columnchart",
+        "size": 0,
+        "title": "Hourly Request Volume",
+        "queryType": 0,
+        "visualization": "barchart"
+      },
+      "name": "HourlyVolume"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"security_threat_detected\"\n| extend \n    threat_type = tostring(customDimensions.threat_type),\n    risk_level = tostring(customDimensions.risk_level)\n| summarize ThreatCount = count() by threat_type, risk_level\n| order by ThreatCount desc",
+        "size": 0,
+        "title": "Security Events",
+        "queryType": 0,
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "SecurityEvents"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customMetrics\n| where timestamp {TimeRange}\n| summarize \n    AvgValue = round(avg(value), 2),\n    MaxValue = round(max(value), 2)\n    by name\n| order by name",
+        "size": 0,
+        "title": "Custom Metrics",
+        "queryType": 0,
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "Metrics"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
