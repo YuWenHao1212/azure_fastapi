@@ -1,0 +1,82 @@
+{
+  "alerts": [
+    {
+      "name": "HighErrorRate",
+      "description": "Alert when error rate exceeds 5% in 5 minutes",
+      "query": "requests | where timestamp > ago(5m) | summarize FailureRate = countif(success == false) * 100.0 / count() | where FailureRate > 5",
+      "severity": 2,
+      "frequency": "PT5M",
+      "windowSize": "PT5M",
+      "threshold": {
+        "operator": "GreaterThan",
+        "value": 0
+      }
+    },
+    {
+      "name": "HighResponseTime",
+      "description": "Alert when P95 response time exceeds 5 seconds",
+      "query": "requests | where timestamp > ago(5m) | summarize P95 = percentile(duration, 95) | where P95 > 5000",
+      "severity": 3,
+      "frequency": "PT5M",
+      "windowSize": "PT5M",
+      "threshold": {
+        "operator": "GreaterThan",
+        "value": 0
+      }
+    },
+    {
+      "name": "SecurityThreatDetected",
+      "description": "Alert on high-risk security threats",
+      "query": "customEvents | where name == 'request_blocked' or (name == 'RequestStarted' and tostring(customDimensions.security_risk) == 'high') | where timestamp > ago(5m)",
+      "severity": 1,
+      "frequency": "PT1M",
+      "windowSize": "PT5M",
+      "threshold": {
+        "operator": "GreaterThan",
+        "value": 0
+      }
+    },
+    {
+      "name": "CachePerformanceDegraded",
+      "description": "Alert when cache hit rate drops below 50%",
+      "query": "customEvents | where name == 'cache_hourly_report' | where timestamp > ago(1h) | extend hit_rate = todouble(customDimensions.hit_rate_percent) | where hit_rate < 50",
+      "severity": 3,
+      "frequency": "PT1H",
+      "windowSize": "PT1H",
+      "threshold": {
+        "operator": "GreaterThan",
+        "value": 0
+      }
+    },
+    {
+      "name": "APIQuotaExceeded",
+      "description": "Alert when API calls exceed rate limits",
+      "query": "customEvents | where name contains 'rate_limit' | where timestamp > ago(5m) | summarize Count = count() | where Count > 10",
+      "severity": 2,
+      "frequency": "PT5M",
+      "windowSize": "PT5M",
+      "threshold": {
+        "operator": "GreaterThan",
+        "value": 0
+      }
+    }
+  ],
+  "actionGroup": {
+    "name": "APIMonitoringActionGroup",
+    "shortName": "APIMonitor",
+    "emailReceivers": [
+      {
+        "name": "DevTeam",
+        "emailAddress": "dev-team@airesumeadvisor.com",
+        "useCommonAlertSchema": true
+      }
+    ],
+    "webhookReceivers": [
+      {
+        "name": "SlackWebhook",
+        "serviceUri": "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
+        "useCommonAlertSchema": true
+      }
+    ]
+  }
+}

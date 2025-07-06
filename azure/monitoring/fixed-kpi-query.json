@@ -1,0 +1,27 @@
+{
+  "type": 3,
+  "content": {
+    "version": "KqlItem/1.0",
+    "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"api\"\n| summarize \n    TotalRequests = count(),\n    SuccessRequests = countif(success == true),\n    FailedRequests = countif(success == false),\n    AvgDuration = round(avg(duration), 2),\n    P95Duration = round(percentile(duration, 95), 2)\n| extend SuccessRate = round(100.0 * SuccessRequests / TotalRequests, 2)\n| project \n    TotalRequests,\n    SuccessRate,\n    FailedRequests,\n    AvgDuration,\n    P95Duration\n| evaluate narrow()\n| extend \n    DisplayName = case(\n        Column == \"TotalRequests\", \"📊 Total Requests\",\n        Column == \"SuccessRate\", \"✅ Success Rate\",\n        Column == \"FailedRequests\", \"❌ Failed Requests\",\n        Column == \"AvgDuration\", \"⏱️ Avg Duration\",\n        Column == \"P95Duration\", \"📈 P95 Duration\",\n        Column\n    ),\n    DisplayValue = case(\n        Column == \"SuccessRate\", strcat(Value, \"%\"),\n        Column == \"AvgDuration\" or Column == \"P95Duration\", strcat(Value, \" ms\"),\n        tostring(Value)\n    )\n| project Column = DisplayName, Value = DisplayValue",
+    "size": 4,
+    "title": "API Performance KPIs",
+    "queryType": 0,
+    "resourceType": "microsoft.insights/components",
+    "visualization": "tiles",
+    "tileSettings": {
+      "titleContent": {
+        "columnMatch": "Column",
+        "formatter": 1
+      },
+      "leftContent": {
+        "columnMatch": "Value",
+        "formatter": 12,
+        "formatOptions": {
+          "palette": "auto"
+        }
+      },
+      "showBorder": true
+    }
+  },
+  "name": "KPIs"
+}

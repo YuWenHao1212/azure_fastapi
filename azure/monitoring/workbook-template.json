@@ -1,0 +1,237 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# AI Resume Advisor API Monitoring Dashboard\n\n---\n\n### 🚀 Real-time API Performance and Health Monitoring\n\nThis dashboard provides comprehensive monitoring for the FastAPI application deployed on Azure Functions."
+      },
+      "name": "Header"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "title": "Overview Metrics",
+        "items": [
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let totalRequests = requests | where timestamp > ago(1h) | count;\nlet failedRequests = requests | where timestamp > ago(1h) | where success == false | count;\nlet avgDuration = requests | where timestamp > ago(1h) | summarize avg(duration);\nlet p95Duration = requests | where timestamp > ago(1h) | summarize percentile(duration, 95);\ndatatable(Metric:string, Value:string)\n[\n    \"Total Requests (1h)\", tostring(toscalar(totalRequests)),\n    \"Failed Requests (1h)\", tostring(toscalar(failedRequests)),\n    \"Average Duration (ms)\", tostring(round(toscalar(avgDuration), 2)),\n    \"P95 Duration (ms)\", tostring(round(toscalar(p95Duration), 2))\n]",
+              "size": 4,
+              "title": "Key Performance Indicators",
+              "timeContext": {
+                "durationMs": 3600000
+              },
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "tiles",
+              "tileSettings": {
+                "titleContent": {
+                  "columnMatch": "Metric",
+                  "formatter": 1
+                },
+                "leftContent": {
+                  "columnMatch": "Value",
+                  "formatter": 12,
+                  "formatOptions": {
+                    "palette": "auto"
+                  }
+                },
+                "showBorder": true
+              }
+            },
+            "name": "KPIs"
+          }
+        ]
+      },
+      "name": "Overview"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(1h)\n| summarize \n    RequestCount = count(), \n    AvgDuration = avg(duration), \n    P95Duration = percentile(duration, 95),\n    FailureRate = countif(success == false) * 100.0 / count()\n  by bin(timestamp, 5m)\n| project \n    timestamp,\n    ['Requests'] = RequestCount,\n    ['Avg Duration (ms)'] = round(AvgDuration, 2),\n    ['P95 Duration (ms)'] = round(P95Duration, 2),\n    ['Failure Rate (%)'] = round(FailureRate, 2)\n| render timechart",
+        "size": 0,
+        "title": "Request Trends - Last Hour",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "name": "RequestTrends"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(24h)\n| extend endpoint = tostring(parse_url(url).Path)\n| summarize \n    Count = count(),\n    AvgDuration = round(avg(duration), 2),\n    P95Duration = round(percentile(duration, 95), 2),\n    ErrorRate = round(countif(success == false) * 100.0 / count(), 2)\n  by endpoint, resultCode\n| order by Count desc\n| take 20",
+        "size": 0,
+        "title": "Endpoint Performance Summary",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Count",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "blue"
+              }
+            },
+            {
+              "columnMatch": "AvgDuration",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "yellowGreen"
+              }
+            },
+            {
+              "columnMatch": "ErrorRate",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "name": "EndpointPerformance"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp > ago(24h)\n| where name == \"keyword_extraction_request\" or name == \"RequestStarted\" or name == \"cache_hourly_report\"\n| extend eventType = name\n| summarize Count = count() by eventType, bin(timestamp, 1h)\n| render columnchart",
+        "size": 0,
+        "title": "Custom Events Distribution",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "CustomEvents"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(1h)\n| where success == false\n| extend endpoint = tostring(parse_url(url).Path)\n| summarize ErrorCount = count() by endpoint, resultCode, cloud_RoleName\n| order by ErrorCount desc\n| take 10",
+        "size": 0,
+        "title": "Recent Errors",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "ErrorCount",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "red"
+              }
+            }
+          ]
+        }
+      },
+      "name": "Errors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "dependencies\n| where timestamp > ago(1h)\n| where type == \"HTTP\" or name contains \"openai\" or name contains \"cognitive\"\n| summarize \n    AvgDuration = avg(duration), \n    Count = count(),\n    FailureRate = countif(success == false) * 100.0 / count()\n  by name, type\n| order by Count desc",
+        "size": 0,
+        "title": "External Dependencies",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "AvgDuration",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "yellowGreen"
+              }
+            },
+            {
+              "columnMatch": "FailureRate",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "redGreen"
+              }
+            }
+          ]
+        }
+      },
+      "name": "Dependencies"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Cache Performance Metrics\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"cache_hourly_report\"\n| extend \n    HitRate = todouble(customDimensions.hit_rate_percent),\n    TotalRequests = toint(customDimensions.total_requests),\n    CostSaved = todouble(customDimensions.total_cost_saved)\n| project timestamp, HitRate, TotalRequests, CostSaved\n| render timechart",
+        "size": 0,
+        "title": "Cache Performance Trends",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart"
+      },
+      "name": "CacheMetrics"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Security Events\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"request_blocked\" or name contains \"security\"\n| extend \n    ThreatType = tostring(customDimensions.threats),\n    ClientIP = tostring(customDimensions.client_ip),\n    RiskLevel = tostring(customDimensions.risk_level)\n| summarize ThreatCount = count() by ThreatType, RiskLevel\n| render piechart",
+        "size": 0,
+        "title": "Security Threats Distribution",
+        "timeContext": {
+          "durationMs": 86400000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "name": "SecurityThreats"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Response Time Distribution\nrequests\n| where timestamp > ago(1h)\n| where duration > 0\n| extend DurationBucket = case(\n    duration <= 100, \"0-100ms\",\n    duration <= 500, \"100-500ms\",\n    duration <= 1000, \"500-1000ms\",\n    duration <= 2000, \"1-2s\",\n    duration <= 5000, \"2-5s\",\n    \">5s\"\n)\n| summarize Count = count() by DurationBucket\n| order by DurationBucket",
+        "size": 0,
+        "title": "Response Time Distribution",
+        "timeContext": {
+          "durationMs": 3600000
+        },
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "name": "ResponseTimeDistribution"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

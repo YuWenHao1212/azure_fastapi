@@ -1,0 +1,261 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# 🚀 AI Resume Advisor API Monitoring Dashboard\n\n---\n\n### Real-time monitoring for Azure FastAPI application\n\nLast updated: {TimeRange:label}"
+      },
+      "name": "Header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "1ca69445-60fc-4806-b43d-ac7e6aad630a",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
+                },
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                }
+              ],
+              "allowCustom": true
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "TimeRangeParameter"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"api\"\n| summarize \n    TotalRequests = count(),\n    SuccessRequests = countif(success == true),\n    FailedRequests = countif(success == false),\n    AvgDuration = round(avg(duration), 2),\n    P95Duration = round(percentile(duration, 95), 2)\n| extend SuccessRate = round(100.0 * SuccessRequests / TotalRequests, 2)\n| project \n    ['📊 Total Requests'] = TotalRequests,\n    ['✅ Success Rate'] = strcat(SuccessRate, '%'),\n    ['❌ Failed Requests'] = FailedRequests,\n    ['⏱️ Avg Duration'] = strcat(AvgDuration, ' ms'),\n    ['📈 P95 Duration'] = strcat(P95Duration, ' ms')",
+        "size": 0,
+        "title": "API Performance KPIs",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Column",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "Value",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
+          "showBorder": true,
+          "size": "auto"
+        }
+      },
+      "customWidth": "100",
+      "name": "KPIs"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"api\"\n| summarize \n    Requests = count(),\n    AvgDuration = avg(duration),\n    Errors = countif(success == false)\n    by bin(timestamp, 5m)\n| project \n    timestamp,\n    ['Requests'] = Requests,\n    ['Avg Duration (ms)'] = round(AvgDuration, 2),\n    ['Errors'] = Errors\n| render timechart",
+        "size": 0,
+        "title": "Request Trends",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "customWidth": "50",
+      "name": "RequestTrends"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"api\" and success == true\n| extend ResponseTimeBucket = case(\n    duration <= 100, \"0-100ms\",\n    duration <= 500, \"100-500ms\", \n    duration <= 1000, \"500ms-1s\",\n    duration <= 2000, \"1-2s\",\n    duration <= 5000, \"2-5s\",\n    \">5s\")\n| summarize Count = count() by ResponseTimeBucket\n| sort by ResponseTimeBucket",
+        "size": 0,
+        "title": "Response Time Distribution",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "customWidth": "50",
+      "name": "ResponseTimeDistribution"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"api\"\n| extend endpoint = tostring(split(parse_url(url).Path, \"?\")[0])\n| summarize \n    RequestCount = count(),\n    AvgDuration = round(avg(duration), 2),\n    P95Duration = round(percentile(duration, 95), 2),\n    ErrorRate = round(countif(success == false) * 100.0 / count(), 2),\n    Errors = countif(success == false)\n    by endpoint\n| project \n    Endpoint = endpoint,\n    ['Total Requests'] = RequestCount,\n    ['Avg Duration (ms)'] = AvgDuration,\n    ['P95 Duration (ms)'] = P95Duration,\n    ['Error Rate (%)'] = ErrorRate,\n    ['Error Count'] = Errors\n| order by ['Total Requests'] desc",
+        "size": 0,
+        "title": "Endpoint Performance Analysis",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Total Requests",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "blue"
+              }
+            },
+            {
+              "columnMatch": "Avg Duration",
+              "formatter": 4,
+              "formatOptions": {
+                "palette": "yellow"
+              }
+            },
+            {
+              "columnMatch": "Error Rate",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  {
+                    "operator": "<=",
+                    "thresholdValue": "1",
+                    "representation": "green",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "<=",
+                    "thresholdValue": "5",
+                    "representation": "yellow",
+                    "text": "{0}{1}"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "representation": "red",
+                    "text": "{0}{1}"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "name": "EndpointAnalysis"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where success == false\n| extend endpoint = tostring(split(parse_url(url).Path, \"?\")[0])\n| summarize ErrorCount = count() by endpoint, resultCode\n| order by ErrorCount desc\n| take 10",
+        "size": 0,
+        "title": "Top Errors",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "customWidth": "50",
+      "name": "TopErrors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"extract-jd-keywords\"\n| extend \n    endpoint = tostring(split(parse_url(url).Path, \"?\")[0]),\n    hasError = iff(success == false, 1, 0)\n| summarize \n    TotalRequests = count(),\n    Errors = sum(hasError),\n    AvgDuration = avg(duration),\n    P95Duration = percentile(duration, 95)\n    by bin(timestamp, 15m)\n| project \n    timestamp,\n    ['Keyword Extractions'] = TotalRequests,\n    ['Avg Duration (ms)'] = round(AvgDuration, 2),\n    ['Errors'] = Errors\n| render timechart",
+        "size": 0,
+        "title": "Keyword Extraction Performance",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "customWidth": "50",
+      "name": "KeywordExtractionPerformance"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "traces\n| where timestamp {TimeRange}\n| where message contains \"RequestTracked\" or message contains \"RequestStarted\" or message contains \"security\" or message contains \"blocked\"\n| extend \n    EventType = case(\n        message contains \"RequestTracked\", \"Request Tracked\",\n        message contains \"RequestStarted\", \"Request Started\",\n        message contains \"blocked\", \"Security Blocked\",\n        message contains \"security\", \"Security Event\",\n        \"Other\"\n    )\n| summarize Count = count() by EventType\n| render piechart",
+        "size": 0,
+        "title": "Monitoring Events Distribution",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "customWidth": "50",
+      "name": "MonitoringEvents"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "dependencies\n| where timestamp {TimeRange}\n| where name contains \"openai\" or type == \"HTTP\"\n| summarize \n    CallCount = count(),\n    AvgDuration = avg(duration),\n    FailureCount = countif(success == false),\n    FailureRate = round(countif(success == false) * 100.0 / count(), 2)\n    by name, type\n| project \n    ['Dependency'] = name,\n    ['Type'] = type,\n    ['Total Calls'] = CallCount,\n    ['Avg Duration (ms)'] = round(AvgDuration, 2),\n    ['Failures'] = FailureCount,\n    ['Failure Rate (%)'] = FailureRate\n| order by ['Total Calls'] desc",
+        "size": 0,
+        "title": "External Dependencies",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "customWidth": "50",
+      "name": "Dependencies"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Health Status Check\nlet recentRequests = requests\n| where timestamp > ago(5m)\n| where url contains \"api\"\n| summarize \n    LastRequest = max(timestamp),\n    RecentRequests = count(),\n    RecentErrors = countif(success == false);\nlet healthStatus = recentRequests\n| extend \n    MinutesSinceLastRequest = datetime_diff('minute', now(), LastRequest),\n    ErrorRate = iff(RecentRequests > 0, round(RecentErrors * 100.0 / RecentRequests, 2), 0.0),\n    Status = case(\n        MinutesSinceLastRequest > 5, \"⚠️ No Recent Activity\",\n        ErrorRate > 10, \"❌ High Error Rate\",\n        ErrorRate > 5, \"⚠️ Warning\",\n        \"✅ Healthy\"\n    )\n| project \n    ['Status'] = Status,\n    ['Last Request'] = strcat(MinutesSinceLastRequest, ' minutes ago'),\n    ['Recent Requests (5m)'] = RecentRequests,\n    ['Error Rate'] = strcat(ErrorRate, '%');\nhealthStatus",
+        "size": 0,
+        "title": "System Health Status",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Status",
+              "formatter": 1
+            }
+          ]
+        }
+      },
+      "name": "HealthStatus"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

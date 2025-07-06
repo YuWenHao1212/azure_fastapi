@@ -3,6 +3,7 @@ Azure Application Insights integration for monitoring and telemetry.
 """
 import logging
 import os
+import sys
 from datetime import datetime, timezone
 from typing import Any
 
@@ -30,10 +31,16 @@ class MonitoringService:
         )
         self.is_enabled = os.getenv("MONITORING_ENABLED", "true").lower() == "true"
         
+        # Disable monitoring during tests
+        if "pytest" in sys.modules:
+            self.is_enabled = False
+            logger.info("Monitoring disabled in test environment")
+        
         if self.is_enabled:
             self._setup_monitoring()
         else:
-            logger.info("Monitoring is disabled")
+            if "pytest" not in sys.modules:
+                logger.info("Monitoring is disabled")
     
     def _setup_monitoring(self):
         """Initialize Application Insights components."""

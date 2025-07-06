@@ -2,7 +2,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import asyncio
 
 import azure.functions as func
@@ -15,8 +15,9 @@ sys.path.insert(0, str(current_dir))
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import FastAPI app
+# Import FastAPI app with proper error handling
 import_error = None
+app = None
 try:
     from src.main import app
     logger.info("Successfully imported FastAPI app")
@@ -39,7 +40,7 @@ async def create_asgi_scope(req: func.HttpRequest) -> Dict[str, Any]:
     
     parsed_url = urlparse(req.url)
     
-    # Extract headers
+    # Extract headers - ensure they're lowercase
     headers = []
     for name, value in req.headers.items():
         headers.append((name.lower().encode(), value.encode()))
@@ -47,26 +48,85 @@ async def create_asgi_scope(req: func.HttpRequest) -> Dict[str, Any]:
     # Parse query string
     query_string = parsed_url.query.encode() if parsed_url.query else b""
     
-    # Get body
-    body = req.get_body()
-    
-    # Create ASGI scope
+    # Create ASGI scope following ASGI spec exactly
     scope = {
         "type": "http",
         "asgi": {"version": "3.0", "spec_version": "2.3"},
         "http_version": "1.1",
         "method": req.method.upper(),
-        "scheme": parsed_url.scheme,
-        "path": unquote(parsed_url.path),
+        "scheme": parsed_url.scheme or "https",
+        "path": unquote(parsed_url.path) or "/",
         "query_string": query_string,
         "root_path": "",
         "headers": headers,
         "server": (parsed_url.hostname or "localhost", parsed_url.port or 443),
-        "client": ("127.0.0.1", 0),  # Azure Functions doesn't provide client info
-        "azure_functions_request": req  # Store original request for reference
+        "client": ("127.0.0.1", 0),
+        "azure_functions_request": req
     }
     
     return scope
+
+class ASGIHandler:
+    """Handler for ASGI communication with proper state management."""
+    
+    def __init__(self, req: func.HttpRequest):
+        self.req = req
+        self.body = req.get_body()
+        self.body_sent = False
+        self.response_started = False
+        self.response_complete = False
+        self.response_status = 200
+        self.response_headers: List[Tuple[bytes, bytes]] = []
+        self.response_body_parts: List[bytes] = []
+        
+    async def receive(self):
+        """ASGI receive callable."""
+        if not self.body_sent:
+            self.body_sent = True
+            return {
+                "type": "http.request",
+                "body": self.body,
+                "more_body": False
+            }
+        
+        # Don't send disconnect immediately - wait for response to complete
+        # This is important for ASGI apps that might call receive() multiple times
+        await asyncio.sleep(0)  # Yield control
+        return {
+            "type": "http.request",
+            "body": b"",
+            "more_body": False
+        }
+    
+    async def send(self, message):
+        """ASGI send callable."""
+        if message["type"] == "http.response.start":
+            self.response_started = True
+            self.response_status = message["status"]
+            self.response_headers = message.get("headers", [])
+            
+        elif message["type"] == "http.response.body":
+            body = message.get("body", b"")
+            if body:
+                self.response_body_parts.append(body)
+            
+            # Check if response is complete
+            if not message.get("more_body", False):
+                self.response_complete = True
+    
+    def get_response(self) -> func.HttpResponse:
+        """Build Azure Functions HTTP response."""
+        headers_dict = {}
+        for name, value in self.response_headers:
+            headers_dict[name.decode()] = value.decode()
+        
+        body = b"".join(self.response_body_parts)
+        
+        return func.HttpResponse(
+            body,
+            status_code=self.response_status,
+            headers=headers_dict
+        )
 
 async def process_http_request_asgi(req: func.HttpRequest) -> func.HttpResponse:
     """
@@ -75,56 +135,45 @@ async def process_http_request_asgi(req: func.HttpRequest) -> func.HttpResponse:
     """
     logger.info(f"HTTP trigger received: {req.method} {req.url}")
     
+    # If app failed to import, return error immediately
+    if app is None:
+        return func.HttpResponse(
+            json.dumps({
+                "success": False,
+                "error": {
+                    "has_error": True,
+                    "code": "APP_IMPORT_ERROR",
+                    "message": import_error or "Failed to import FastAPI app",
+                    "details": ""
+                },
+                "warning": {"has_warning": False, "message": "", "suggestion": ""},
+                "data": {},
+                "timestamp": "2025-01-06T10:00:00Z"
+            }),
+            status_code=500,
+            headers={"Content-Type": "application/json"}
+        )
+    
     try:
         # Create ASGI scope
         scope = await create_asgi_scope(req)
         
-        # Create response holder
-        response_started = False
-        response_status = 200
-        response_headers: List[Tuple[bytes, bytes]] = []
-        response_body = []
-        
-        async def receive():
-            """ASGI receive callable."""
-            body = req.get_body()
-            return {
-                "type": "http.request",
-                "body": body,
-                "more_body": False,
-            }
-        
-        async def send(message):
-            """ASGI send callable."""
-            nonlocal response_started, response_status, response_headers, response_body
-            
-            if message["type"] == "http.response.start":
-                response_started = True
-                response_status = message["status"]
-                response_headers = message.get("headers", [])
-            elif message["type"] == "http.response.body":
-                body = message.get("body", b"")
-                if body:
-                    response_body.append(body)
+        # Create handler
+        handler = ASGIHandler(req)
         
         # Call the ASGI app
-        await app(scope, receive, send)
+        await app(scope, handler.receive, handler.send)
         
-        # Build response
-        headers_dict = {}
-        for name, value in response_headers:
-            headers_dict[name.decode()] = value.decode()
+        # Wait a bit for any final sends
+        await asyncio.sleep(0.01)
         
-        body = b"".join(response_body)
+        # Get response
+        response = handler.get_response()
         
         # Log telemetry info
-        logger.info(f"Response status: {response_status}, body size: {len(body)} bytes")
+        logger.info(f"Response status: {response.status_code}")
         
-        return func.HttpResponse(
-            body,
-            status_code=response_status,
-            headers=headers_dict
-        )
+        return response
         
     except Exception as e:
         logger.error(f"Error in ASGI processing: {str(e)}", exc_info=True)
@@ -143,13 +192,13 @@ async def process_http_request_asgi(req: func.HttpRequest) -> func.HttpResponse:
                     "suggestion": ""
                 },
                 "data": {},
-                "timestamp": "2025-07-06T10:00:00Z"
+                "timestamp": "2025-01-06T10:00:00Z"
             }),
             status_code=500,
             headers={"Content-Type": "application/json"}
         )
 
-# Azure Function HTTP trigger with improved telemetry
+# Azure Function HTTP trigger
 @app_func.function_name(name="HttpTrigger")
 @app_func.route(route="{*route}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 async def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
@@ -168,7 +217,7 @@ async def http_trigger(req: func.HttpRequest) -> func.HttpResponse:
     
     return response
 
-# Backward compatibility
+# Backward compatibility functions
 async def process_http_request(req: func.HttpRequest) -> func.HttpResponse:
     """Legacy function for compatibility."""
     return await process_http_request_asgi(req)
@@ -176,14 +225,32 @@ async def process_http_request(req: func.HttpRequest) -> func.HttpResponse:
 def main(req: func.HttpRequest, context: func.Context = None) -> func.HttpResponse:
     """Legacy main function for testing compatibility."""
     import asyncio
+    
+    # For testing environments, we need to handle the event loop carefully
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(asyncio.run, process_http_request_asgi(req))
-                return future.result()
-        else:
-            return asyncio.run(process_http_request_asgi(req))
+        # Check if there's already a running loop
+        loop = asyncio.get_running_loop()
     except RuntimeError:
+        # No loop running, create one
+        loop = None
+    
+    if loop is not None:
+        # We're in an async context (like pytest-asyncio)
+        # Use nest_asyncio to allow nested loops
+        try:
+            import nest_asyncio
+            nest_asyncio.apply()
+        except ImportError:
+            pass
+        
+        # Create a new task in the existing loop
+        future = asyncio.ensure_future(process_http_request_asgi(req))
+        
+        # Run until complete
+        while not future.done():
+            loop._run_once()
+        
+        return future.result()
+    else:
+        # No existing loop, run normally
         return asyncio.run(process_http_request_asgi(req))

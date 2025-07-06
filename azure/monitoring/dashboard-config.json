@@ -1,0 +1,93 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# AI Resume Advisor API Monitoring Dashboard\n\nReal-time monitoring and analytics for the FastAPI application."
+      },
+      "name": "text - 0"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(1h)\n| summarize RequestCount = count(), \n            AvgDuration = avg(duration), \n            P95Duration = percentile(duration, 95),\n            FailureRate = countif(success == false) * 100.0 / count()\n  by bin(timestamp, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Request Overview - Last Hour",
+        "timeContext": {
+          "durationMs": 3600000
+        }
+      },
+      "name": "query - 1"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"keyword_extraction_request\"\n| extend endpoint = tostring(customDimensions.endpoint),\n         status_code = toint(customDimensions.status_code),\n         duration_ms = todouble(customDimensions.duration_ms)\n| summarize Count = count(), \n            AvgDuration = avg(duration_ms),\n            SuccessRate = countif(status_code == 200) * 100.0 / count()\n  by endpoint\n| order by Count desc",
+        "size": 0,
+        "title": "Keyword Extraction Metrics",
+        "timeContext": {
+          "durationMs": 86400000
+        }
+      },
+      "name": "query - 2"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"cache_hourly_report\"\n| extend hit_rate = todouble(customDimensions.hit_rate_percent),\n         requests = toint(customDimensions.total_requests),\n         cost_saved = todouble(customDimensions.total_cost_saved)\n| project timestamp, hit_rate, requests, cost_saved\n| render timechart",
+        "size": 0,
+        "title": "Cache Performance",
+        "timeContext": {
+          "durationMs": 604800000
+        }
+      },
+      "name": "query - 3"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name startswith \"security_\"\n| extend threat_type = tostring(customDimensions.threat_type),\n         client_ip = tostring(customDimensions.client_ip)\n| summarize ThreatCount = count() by threat_type\n| render piechart",
+        "size": 0,
+        "title": "Security Threats Distribution",
+        "timeContext": {
+          "durationMs": 86400000
+        }
+      },
+      "name": "query - 4"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp > ago(1h)\n| summarize ErrorCount = countif(success == false) by name, resultCode\n| where ErrorCount > 0\n| order by ErrorCount desc\n| take 10",
+        "size": 0,
+        "title": "Top Errors - Last Hour",
+        "timeContext": {
+          "durationMs": 3600000
+        }
+      },
+      "name": "query - 5"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "dependencies\n| where timestamp > ago(1h)\n| where type == \"HTTP\" or name contains \"openai\"\n| summarize AvgDuration = avg(duration), \n            Count = count(),\n            FailureRate = countif(success == false) * 100.0 / count()\n  by name\n| order by Count desc",
+        "size": 0,
+        "title": "External Dependencies Performance",
+        "timeContext": {
+          "durationMs": 3600000
+        }
+      },
+      "name": "query - 6"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/airesumeadvisorfastapi/providers/Microsoft.Insights/components/airesumeadvisorfastapi"
+  ]
+}
