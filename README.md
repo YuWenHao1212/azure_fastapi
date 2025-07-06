@@ -18,6 +18,7 @@
 - **AI 引擎**: Azure OpenAI GPT-4
 - **語言檢測**: 進階繁體中文特徵字符集
 - **標準化**: 180+ 繁體中文術語映射
+- **監控**: Application Insights with ASGI telemetry
 
 ### 📊 **性能指標**
 - **繁體中文一致性**: 100% (16/16 關鍵字完全一致)
