@@ -292,6 +292,20 @@ class KeywordExtractionServiceV2(BaseService):
             processing_time = int((time.time() - start_time) * 1000)
             self.logger.warning(f"Unsupported language detected: {e.detected_language}, skipping LLM calls")
             
+            # Track unsupported language event with JD preview
+            from src.core.monitoring_service import monitoring_service
+            jd_preview = job_description[:100] + ("..." if len(job_description) > 100 else "")
+            monitoring_service.track_event(
+                "UnsupportedLanguageSkipped",
+                {
+                    "detected_language": e.detected_language,
+                    "jd_preview": jd_preview,
+                    "jd_length": len(job_description),
+                    "requested_language": language_param,
+                    "processing_time_ms": processing_time
+                }
+            )
+            
             # Return immediately with empty keywords - no LLM call needed
             return {
                 'keywords': [],
