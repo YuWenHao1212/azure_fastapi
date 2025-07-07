@@ -6,6 +6,11 @@ on:
     - cron: '0 * * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 env:
   FUNCTION_APP_URL: https://airesumeadvisor-fastapi.azurewebsites.net
 
@@ -17,17 +22,44 @@ jobs:
     - name: Check API Health
       id: health_check
       run: |
-        # Perform health check
-        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.FUNCTION_APP_URL }}/api/v1/health)
+        # Perform health check with function key
+        FUNCTION_KEY="${{ secrets.AZURE_FUNCTION_KEY }}"
+        
+        # Debug: Check if key is available
+        if [ -z "${FUNCTION_KEY}" ]; then
+          echo "❌ ERROR: AZURE_FUNCTION_KEY secret is not available"
+          echo "Please ensure the secret is configured in: Settings → Secrets and variables → Actions"
+          exit 1
+        else
+          echo "✅ Function key is available (length: ${#FUNCTION_KEY})"
+        fi
+        
+        # Test with key
+        echo "Testing health endpoint with function key..."
+        HEALTH_URL="${{ env.FUNCTION_APP_URL }}/api/v1/health?code=${FUNCTION_KEY}"
+        echo "URL: ${{ env.FUNCTION_APP_URL }}/api/v1/health?code=[REDACTED]"
+        
+        response=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTH_URL}")
         
         echo "HTTP Status Code: $response"
         echo "status_code=$response" >> $GITHUB_OUTPUT
+        
+        # Also capture the response body for debugging
+        if [ "$response" != "200" ]; then
+          echo "Response body:"
+          curl -s "${HEALTH_URL}" | jq . || curl -s "${HEALTH_URL}"
+        fi
         
         if [ "$response" = "200" ]; then
           echo "✅ Health check passed"
           exit 0
         else
           echo "❌ Health check failed with status code: $response"
+          echo ""
+          echo "Troubleshooting steps:"
+          echo "1. Verify AZURE_FUNCTION_KEY secret is set in GitHub repository settings"
+          echo "2. Ensure the key matches the one in Azure Portal"
+          echo "3. Check if the Function App is running in Azure Portal"
           exit 1
         fi
     
@@ -56,82 +88,27 @@ jobs:
           exit 1
         fi
     
-    - name: Create issue if health check fails
+    - name: Report failure in workflow summary
       if: failure()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          // Check if there's already an open issue
-          const issues = await github.rest.issues.listForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            state: 'open',
-            labels: ['health-check', 'api-down']
-          });
-          
-          if (issues.data.length === 0) {
-            // Create new issue only if none exists
-            const title = `🚨 API Health Check Failed - ${new Date().toISOString()}`;
-            const body = `
-            ## ⚠️ API Health Check Failed
-            
-            The hourly health check has detected that the API is not responding correctly.
-            
-            **Details:**
-            - Time: ${new Date().toISOString()}
-            - Workflow Run: [#${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
-            - Environment: Production (Azure Function App)
-            
-            **Affected Endpoints:**
-            - Health Check: ${{ steps.health_check.outputs.status_code || 'Failed' }}
-            - Keyword Extraction: ${{ steps.keyword_check.outcome || 'Not tested' }}
-            
-            **Action Required:**
-            1. Check Azure Function App status in Azure Portal
-            2. Review recent deployments
-            3. Check Application Insights for errors
-            
-            cc: @YuWenHao1212
-            `;
-            
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: title,
-              body: body,
-              labels: ['health-check', 'api-down', 'urgent']
-            });
-          }
+      run: |
+        echo "## ❌ Health Check Failed" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "**Status Code**: ${{ steps.health_check.outputs.status_code || 'Unknown' }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Action Required:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check if AZURE_FUNCTION_KEY secret is configured correctly" >> $GITHUB_STEP_SUMMARY
+        echo "2. Verify Function App is running in Azure Portal" >> $GITHUB_STEP_SUMMARY
+        echo "3. Check Application Insights for detailed errors" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Debugging Commands:" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo '# Test locally with your function key:' >> $GITHUB_STEP_SUMMARY
+        echo 'curl "https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/health?code=YOUR_FUNCTION_KEY"' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
     
-    - name: Close resolved issues if health check passes
-      if: success()
-      uses: actions/github-script@v6
-      with:
-        script: |
-          // Find open health check issues
-          const issues = await github.rest.issues.listForRepo({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            state: 'open',
-            labels: ['health-check', 'api-down']
-          });
-          
-          // Close them with a comment
-          for (const issue of issues.data) {
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              body: `✅ API is back online! Health check passed at ${new Date().toISOString()}`
-            });
-            
-            await github.rest.issues.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: issue.number,
-              state: 'closed'
-            });
-          }
+    # Removed automatic issue management due to permissions
+    # Issues can be manually created if needed
     
     - name: Summary
       if: always()
