@@ -52,8 +52,8 @@ htmlcov/
 *.bak
 
 # 開發工具和文檔 (不需要部署)
-docs/
-legacy/
+# docs/  # 現在需要追蹤文檔
+# legacy/  # 現在需要追蹤歷史文檔
 tests/temp/
 tests/functional/test_jds*/
 tools/
@@ -100,3 +100,12 @@ GITHUB_SECRETS.md
 # Test scripts with sensitive data
 test_*_scenarios.sh
 test_*_tracking.sh
+
+# Documentation - 現在需要版本控制
+\!docs/
+\!legacy/docs/
+
+# 但忽略 legacy 中的實驗性內容
+legacy/experimental/
+legacy/test_results/
+legacy/old_code/
