@@ -174,10 +174,20 @@ def create_app() -> FastAPI:
         # Track error with JD preview for keyword extraction endpoint
         if request.url.path.endswith("extract-jd-keywords"):
             try:
-                # Try to extract JD from request body
-                body = await request.body()
-                import json
-                data = json.loads(body)
+                # Use cached request body from middleware if available
+                request_body = getattr(request.state, 'request_body', None)
+                
+                if request_body:
+                    import json
+                    data = json.loads(request_body)
+                else:
+                    # Fallback: try to read body (might fail if already read)
+                    try:
+                        body = await request.body()
+                        data = json.loads(body)
+                    except Exception:
+                        data = {}
+                
                 jd_text = data.get("job_description", "")
                 if jd_text:
                     jd_preview = jd_text[:100] + ("..." if len(jd_text) > 100 else "")
@@ -189,8 +199,24 @@ def create_app() -> FastAPI:
                         endpoint=f"{request.method} {request.url.path}",
                         custom_properties={
                             "jd_preview": jd_preview,
+                            "jd_length": len(jd_text),
                             "correlation_id": correlation_id,
-                            "validation_errors": str(exc.errors())
+                            "validation_errors": str(exc.errors()),
+                            "requested_language": data.get("language", "unknown")
+                        }
+                    )
+                else:
+                    # Even if no JD, track the validation error with available info
+                    correlation_id = getattr(request.state, 'correlation_id', 'unknown')
+                    monitoring_service.track_error(
+                        error_type="VALIDATION_ERROR",
+                        error_message="Request validation failed",
+                        endpoint=f"{request.method} {request.url.path}",
+                        custom_properties={
+                            "jd_preview": "[No job_description provided]",
+                            "correlation_id": correlation_id,
+                            "validation_errors": str(exc.errors()),
+                            "requested_language": data.get("language", "unknown")
                         }
                     )
             except Exception as e:

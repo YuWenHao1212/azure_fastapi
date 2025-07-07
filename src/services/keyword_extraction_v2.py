@@ -345,8 +345,15 @@ class KeywordExtractionServiceV2(BaseService):
             raise
     
     async def _detect_and_validate_language(self, text: str, language_param: str) -> tuple[str, int]:
-        """Detect and validate language."""
+        """Detect and validate language with unified event tracking."""
         start_time = time.time()
+        
+        # Initialize tracking variables
+        detected_language = None
+        language_composition = {}
+        decision_reason = ""
+        will_process = True
+        jd_preview = None
         
         if language_param != 'auto':
             validation = await self.language_validator.validate_with_detection(text, language_param)
@@ -354,8 +361,46 @@ class KeywordExtractionServiceV2(BaseService):
                 self.logger.warning(f"Language validation failed for {language_param}: {validation.errors}")
         
         try:
+            # Get detailed language analysis
+            stats = self.language_detector.analyze_language_composition(text)
+            
+            # Calculate percentages for tracking
+            if stats.total_chars > 0:
+                language_composition = {
+                    "en_percent": round((stats.english_chars / stats.total_chars) * 100, 1),
+                    "zh_tw_percent": round((stats.traditional_chinese_chars / stats.total_chars) * 100, 1),
+                    "zh_cn_percent": round((stats.simplified_chinese_chars / stats.total_chars) * 100, 1),
+                    "ja_percent": round((stats.japanese_chars / stats.total_chars) * 100, 1),
+                    "ko_percent": round((stats.korean_chars / stats.total_chars) * 100, 1),
+                    "es_percent": round((stats.spanish_chars / stats.total_chars) * 100, 1),
+                    "other_percent": round((stats.other_chars / stats.total_chars) * 100, 1),
+                }
+            
             detection_result = await self.language_detector.detect_language(text)
             detected_language = detection_result.language
+            
+            # Determine decision reason
+            # Calculate total unsupported characters
+            unsupported_chars = (stats.simplified_chinese_chars + stats.japanese_chars + 
+                               stats.korean_chars + stats.spanish_chars + stats.other_chars)
+            unsupported_ratio = unsupported_chars / stats.total_chars if stats.total_chars > 0 else 0
+            
+            if unsupported_ratio > 0.10:
+                decision_reason = "unsupported_content"
+            elif stats.traditional_chinese_chars > 0:
+                # Calculate supported content (EN + zh-TW + numbers/symbols)
+                # Note: numbers/symbols are not in total_chars, so supported = total - unsupported
+                supported_chars = stats.total_chars - unsupported_chars
+                if supported_chars > 0:
+                    zh_tw_ratio = stats.traditional_chinese_chars / supported_chars
+                    if zh_tw_ratio >= 0.20:
+                        decision_reason = "zh_tw_dominant"
+                    else:
+                        decision_reason = "english_default"
+                else:
+                    decision_reason = "english_default"
+            else:
+                decision_reason = "english_default"
             
             if language_param != 'auto' and language_param != detected_language:
                 self.logger.warning(
@@ -366,17 +411,55 @@ class KeywordExtractionServiceV2(BaseService):
         
         except UnsupportedLanguageError as e:
             self.logger.warning(f"Unsupported language detected: {e.detected_language}")
+            detected_language = e.detected_language
+            will_process = False
+            decision_reason = "unsupported_content"
+            jd_preview = text[:100] + ("..." if len(text) > 100 else "")
+            
+            # Track unified event for unsupported language
+            from src.core.monitoring_service import monitoring_service
+            monitoring_service.track_event(
+                "LanguageDetected",
+                {
+                    "detected_language": "other",  # Group all unsupported as "other"
+                    "language_composition": language_composition,
+                    "decision_reason": decision_reason,
+                    "will_process": will_process,
+                    "requested_language": language_param,
+                    "jd_length": len(text),
+                    "jd_preview": jd_preview
+                }
+            )
+            
             raise e
                 
         except (LanguageDetectionError, LowConfidenceDetectionError) as e:
             self.logger.warning(f"Language detection issue: {str(e)}")
             detected_language = language_param if language_param != 'auto' else 'en'
+            decision_reason = "detection_error_fallback"
             
         except Exception as e:
             self.logger.error(f"Unexpected language detection error: {str(e)}")
             detected_language = language_param if language_param != 'auto' else 'en'
+            decision_reason = "detection_error_fallback"
         
         detection_time = int((time.time() - start_time) * 1000)
+        
+        # Track unified event for supported languages
+        if detected_language in ["en", "zh-TW"]:
+            from src.core.monitoring_service import monitoring_service
+            monitoring_service.track_event(
+                "LanguageDetected",
+                {
+                    "detected_language": detected_language,
+                    "language_composition": language_composition,
+                    "decision_reason": decision_reason,
+                    "will_process": will_process,
+                    "requested_language": language_param,
+                    "jd_length": len(text),
+                    "jd_preview": None  # No preview for supported languages
+                }
+            )
         
         self.logger.debug(f"Language detection: {detected_language} (time: {detection_time}ms)")
         return detected_language, detection_time

@@ -1,0 +1,162 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "## JD Preview Error Tracking Dashboard\n\nThis dashboard shows job description previews for errors and unsupported language requests"
+      },
+      "name": "text - header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Unsupported Language Requests with JD Preview\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"UnsupportedLanguageSkipped\"\n| extend \n    detected_language = tostring(customDimensions.detected_language),\n    jd_preview = tostring(customDimensions.jd_preview),\n    jd_length = toint(customDimensions.jd_length),\n    requested_language = tostring(customDimensions.requested_language)\n| project timestamp, detected_language, jd_preview, jd_length, requested_language\n| order by timestamp desc\n| take 50",
+        "size": 0,
+        "title": "Unsupported Language Requests (with JD Preview)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "timestamp",
+              "formatter": 6,
+              "dateFormat": {
+                "showUtcTime": false,
+                "formatName": "shortDateTimePattern"
+              }
+            },
+            {
+              "columnMatch": "detected_language",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  {
+                    "operator": "==",
+                    "thresholdValue": "ja",
+                    "representation": "orange",
+                    "text": "Japanese"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "ko",
+                    "representation": "yellow",
+                    "text": "Korean"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "es",
+                    "representation": "blue",
+                    "text": "Spanish"
+                  },
+                  {
+                    "operator": "==",
+                    "thresholdValue": "other",
+                    "representation": "gray",
+                    "text": "Other"
+                  },
+                  {
+                    "operator": "Default",
+                    "thresholdValue": null,
+                    "text": "{0}"
+                  }
+                ]
+              }
+            },
+            {
+              "columnMatch": "jd_preview",
+              "formatter": 0,
+              "formatOptions": {
+                "customColumnWidthSetting": "50ch"
+              }
+            }
+          ]
+        }
+      },
+      "name": "query - unsupported-languages"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Language Distribution\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"UnsupportedLanguageSkipped\"\n| extend detected_language = tostring(customDimensions.detected_language)\n| summarize Count = count() by detected_language\n| render piechart",
+        "size": 3,
+        "title": "Unsupported Language Distribution",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "customWidth": "50",
+      "name": "query - language-distribution"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Trend of Unsupported Language Requests\ncustomEvents\n| where timestamp > ago(7d)\n| where name == \"UnsupportedLanguageSkipped\"\n| summarize Count = count() by bin(timestamp, 1h)\n| render timechart",
+        "size": 3,
+        "title": "Unsupported Language Requests Trend (7 days)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "query - language-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// Validation Errors (422) - Currently not tracking JD preview\n// This will show validation errors once the ErrorTracked implementation is fixed\ncustomEvents\n| where timestamp > ago(24h)\n| where name == \"ErrorTracked\"\n| where customDimensions.error_type == \"VALIDATION_ERROR\"\n| extend \n    jd_preview = tostring(customDimensions.jd_preview),\n    correlation_id = tostring(customDimensions.correlation_id),\n    validation_errors = tostring(customDimensions.validation_errors)\n| project timestamp, jd_preview, correlation_id, validation_errors\n| order by timestamp desc\n| take 50",
+        "size": 0,
+        "title": "Validation Errors (422) - JD Preview [Currently Not Working]",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "timestamp",
+              "formatter": 6,
+              "dateFormat": {
+                "showUtcTime": false,
+                "formatName": "shortDateTimePattern"
+              }
+            }
+          ]
+        }
+      },
+      "name": "query - validation-errors"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "// All Failed Requests Summary\nunion \n(customEvents\n| where timestamp > ago(24h)\n| where name == \"RequestTracked\"\n| where customDimensions.success == \"false\" or toint(customDimensions.status_code) >= 400\n| extend \n    endpoint = tostring(customDimensions.endpoint),\n    status_code = toint(customDimensions.status_code),\n    correlation_id = tostring(customDimensions.correlation_id)\n| summarize FailedRequests = count() by status_code),\n(customEvents\n| where timestamp > ago(24h)\n| where name == \"UnsupportedLanguageSkipped\"\n| summarize UnsupportedLanguages = count()\n| extend status_code = 200)\n| project \n    ErrorType = case(\n        status_code == 200, \"Unsupported Language (200 with warning)\",\n        status_code == 422, \"Validation Error\",\n        status_code >= 500, \"Server Error\",\n        \"Client Error\"\n    ),\n    Count = coalesce(FailedRequests, UnsupportedLanguages)",
+        "size": 4,
+        "title": "Error Summary (Last 24h)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "ErrorType",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          }
+        }
+      },
+      "name": "query - error-summary"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

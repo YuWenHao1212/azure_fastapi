@@ -35,6 +35,25 @@
 - **專案**: API
 - **URL**: https://dev.azure.com/airesumeadvisor/API
 
+### Azure 資源資訊
+- **Subscription ID**: 5396d388-8261-464e-8ee4-112770674fba
+- **Resource Group**: airesumeadvisorfastapi
+- **Application Insights**: airesumeadvisorfastapi
+- **Tenant**: wenhaoairesumeadvisor.onmicrosoft.com
+- **Portal URL**: https://portal.azure.com/#@wenhaoairesumeadvisor.onmicrosoft.com/resource/subscriptions/5396d388-8261-464e-8ee4-112770674fba/resourceGroups/airesumeadvisorfastapi/providers/Microsoft.Insights/components/airesumeadvisorfastapi/overview
+
+### Azure Function App 資訊
+- **Function App 名稱**: airesumeadvisor-fastapi
+- **基礎 URL**: https://airesumeadvisor-fastapi.azurewebsites.net
+- **Host Keys**: 請勿提交到版本控制！存放在：
+  - Azure Portal → Function App → Function Keys
+  - 本地環境變數或 `.env` 檔案（已加入 .gitignore）
+  - Azure Key Vault（生產環境）
+- **API URL 格式**:
+  ```
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/[endpoint]?code=[YOUR_HOST_KEY]
+  ```
+
 ### FHS + FastAPI 架構規範
 
 ```
@@ -346,6 +365,8 @@ How: [怎麼做的]
 ### 初始設置
 ```bash
 az login
+az account set --subscription "5396d388-8261-464e-8ee4-112770674fba"
+az configure --defaults group=airesumeadvisorfastapi
 az devops configure --defaults organization=https://dev.azure.com/airesumeadvisor project=API
 ```
 
@@ -363,6 +384,24 @@ az boards work-item update --id [ID] --state [狀態]
 
 # 查詢 Work Items
 az boards query --wiql "[查詢語句]"
+```
+
+### Application Insights 查詢
+```bash
+# 查詢最近的 customEvents
+az monitor app-insights query \
+  --app airesumeadvisorfastapi \
+  --analytics-query "customEvents | take 10"
+
+# 查詢不支援語言的 JD preview
+az monitor app-insights query \
+  --app airesumeadvisorfastapi \
+  --analytics-query "customEvents | where name == 'UnsupportedLanguageSkipped' | project timestamp, customDimensions.detected_language, customDimensions.jd_preview | take 5"
+
+# 查詢 API 效能指標
+az monitor app-insights query \
+  --app airesumeadvisorfastapi \
+  --analytics-query "customEvents | where name == 'RequestTracked' | summarize avg(todouble(customDimensions.duration_ms)) by tostring(customDimensions.endpoint)"
 ```
 
 ### 常用查詢
@@ -383,6 +422,11 @@ az boards query --wiql "[查詢語句]"
 # 本地測試
 pytest tests/unit/
 uvicorn src.main:app --reload
+
+# 測試 Azure Function App
+curl -X POST "https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]" \
+  -H "Content-Type: application/json" \
+  -d '{"job_description": "Python developer needed", "language": "en"}'
 
 # Git 提交（含 Work Item）
 git commit -m "AB#[ID] [說明]"
@@ -459,13 +503,95 @@ class DataModel(BaseModel):
 
 ### 預提交測試流程
 
-#### 執行測試
+#### 測試策略規則
+
+**使用 `./run_precommit_tests.sh --no-api` 的情況：**
+
+1. **文檔類修改**：
+   - `*.md` 檔案（README, CLAUDE.md, 文檔）
+   - `docs/` 目錄下的任何檔案
+   - `.txt`, `.json` 配置檔（不影響代碼邏輯）
+
+2. **配置檔修改**：
+   - `.gitignore`, `.env.example`
+   - `azure/monitoring/*.json` (workbook 配置)
+   - 不影響程式執行的 YAML/JSON 檔案
+
+3. **測試檔案修改**：
+   - 只修改 `tests/` 目錄下的測試檔案
+   - 添加新的測試案例（不修改主程式碼）
+
+4. **工具腳本修改**：
+   - `tools/` 目錄下的獨立腳本
+   - Shell 腳本（`.sh` 檔案）
+
+**必須使用完整測試 `./run_precommit_tests.sh` 的情況：**
+
+1. **核心程式碼修改**：
+   - `src/` 目錄下的任何 `.py` 檔案
+   - API 端點修改 (`src/api/`)
+   - 服務層修改 (`src/services/`)
+   - 模型修改 (`src/models/`)
+
+2. **關鍵配置修改**：
+   - `src/core/config.py`
+   - `local.settings.json`
+   - `requirements.txt` 或依賴相關檔案
+
+3. **部署相關修改**：
+   - `azure-functions/` 目錄
+   - `main.py` 或 `function_app.py`
+   - Azure 部署配置
+
+4. **整合相關修改**：
+   - 中介軟體 (`src/middleware/`)
+   - 監控服務 (`monitoring_service.py`)
+   - 錯誤處理邏輯
+
+5. **最終提交前**：
+   - 無論修改什麼，最終 push 前必須執行完整測試
+   - 確保所有功能正常運作
+
+#### 執行測試命令
 ```bash
-# 完整測試（推薦）- 自動啟動 API
+# 完整測試（修改程式碼後必須執行）
 ./run_precommit_tests.sh
 
-# 快速測試 - 跳過需要 API 的測試
+# 快速測試（僅修改文檔/配置時可用）
 ./run_precommit_tests.sh --no-api
+```
+
+#### 測試決策流程圖
+```
+修改了檔案？
+├─ 是 src/*.py 檔案？ → 完整測試
+├─ 是 requirements.txt？ → 完整測試  
+├─ 是 main.py？ → 完整測試
+├─ 是 middleware/*.py？ → 完整測試
+├─ 只是 *.md 檔案？ → --no-api
+├─ 只是 docs/* 檔案？ → --no-api
+├─ 只是 tests/* 檔案？ → --no-api
+├─ 只是 .json 配置？ → --no-api
+└─ 準備 push？ → 完整測試（無論之前如何）
+```
+
+#### 實際範例
+```bash
+# 情境 1: 修改了 monitoring_service.py
+git status  # modified: src/core/monitoring_service.py
+./run_precommit_tests.sh  # 必須完整測試
+
+# 情境 2: 只更新了文檔
+git status  # modified: docs/monitoring-summary.md
+./run_precommit_tests.sh --no-api  # 快速測試即可
+
+# 情境 3: 修改了多個檔案
+git status  # modified: CLAUDE.md, src/api/endpoints.py
+./run_precommit_tests.sh  # 因為有 src/ 檔案，必須完整測試
+
+# 情境 4: 準備最終提交
+git status  # 任何檔案
+./run_precommit_tests.sh  # 最終提交前，一律完整測試
 ```
 
 #### 測試涵蓋範圍
@@ -579,8 +705,14 @@ pytest tests/integration/ --env=local
 # 手動部署
 claude "生成 Azure 部署步驟"
 
-# 配置環境
-az functionapp config appsettings set ...
+# 配置環境變數
+az functionapp config appsettings set \
+  --name airesumeadvisorfastapi \
+  --resource-group airesumeadvisorfastapi \
+  --settings KEY=VALUE
+
+# 查看 Function App 日誌
+az functionapp logs --name airesumeadvisorfastapi --type application
 
 # 驗證部署
 claude "生成部署驗證清單"

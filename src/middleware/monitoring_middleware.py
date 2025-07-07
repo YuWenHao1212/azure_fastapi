@@ -65,6 +65,22 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
         request.state.correlation_id = correlation_id
         request.state.security_result = security_result
         
+        # Save request body for potential error tracking (especially for 422 errors)
+        # This is needed because FastAPI's request body can only be read once
+        request_body = None
+        if request.method in ["POST", "PUT", "PATCH"] and request.url.path.endswith("extract-jd-keywords"):
+            try:
+                body_bytes = await request.body()
+                request_body = body_bytes.decode('utf-8')
+                # Store in request state for later use
+                request.state.request_body = request_body
+                # Create a new receive function that returns the cached body
+                async def receive():
+                    return {"type": "http.request", "body": body_bytes}
+                request._receive = receive
+            except Exception:
+                pass
+        
         # Extract request information
         endpoint = f"{request.method} {request.url.path}"
         start_time = time.time()

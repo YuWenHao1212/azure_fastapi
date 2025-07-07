@@ -140,7 +140,10 @@ class MonitoringService:
         if custom_properties:
             properties.update(custom_properties)
         
-        # Send error to Application Insights
+        # Track as custom event for better querying
+        self.track_event("ErrorTracked", properties)
+        
+        # Also send error to Application Insights logs
         if hasattr(self, 'logger'):
             self.logger.error(
                 f"Error: {error_type}",

@@ -23,6 +23,9 @@ class SimpleLanguageStats(NamedTuple):
     traditional_chinese_chars: int
     simplified_chinese_chars: int
     english_chars: int
+    japanese_chars: int
+    korean_chars: int
+    spanish_chars: int
     other_chars: int
     traditional_chinese_ratio: float
     english_ratio: float
@@ -54,79 +57,84 @@ class SimplifiedLanguageDetector(LanguageDetectionService):
         Focus on detecting Traditional Chinese, English, and unwanted languages.
         """
         if not text:
-            return SimpleLanguageStats(0, 0, 0, 0, 0, 0.0, 0.0, False, False)
+            return SimpleLanguageStats(0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, False, False)
         
         total_chars = 0
         traditional_chinese_chars = 0
         simplified_chinese_chars = 0
         english_chars = 0
-        has_japanese = False
-        has_korean = False
-        has_other = False
+        japanese_chars = 0
+        korean_chars = 0
+        spanish_chars = 0
+        other_chars = 0
         
-        # Convert to set for faster lookup
-        text_chars = set(text)
-        
-        # Check for Simplified Chinese characters
-        simplified_found = len(text_chars.intersection(self.SIMPLIFIED_CHARS))
-        traditional_found = len(text_chars.intersection(self.TRADITIONAL_CHARS))
+        # Spanish special characters
+        spanish_special = set('ñÑáéíóúÁÉÍÓÚüÜ¿¡')
         
         # Character-by-character analysis
         for char in text:
-            # Skip whitespace and punctuation
-            if char.isspace() or not char.isalnum():
+            # Skip whitespace and common punctuation
+            if char.isspace() or char in '.,;:!?"\'()-[]{}/@#$%^&*+=<>|\\~`_':
                 continue
                 
             total_chars += 1
             
             # Check for Chinese characters
             if '\u4e00' <= char <= '\u9fff':
-                # This is a Chinese character, will be counted in traditional/simplified
-                # For simplified detection: characters that are exclusively simplified
-                # For traditional detection: characters that appear in traditional or are shared
-                
-                if char in self.SIMPLIFIED_CHARS:
+                # Determine if it's traditional or simplified
+                if char in self.SIMPLIFIED_CHARS and char not in self.TRADITIONAL_CHARS:
+                    # Exclusively simplified character
                     simplified_chinese_chars += 1
-                # Count all Chinese characters as traditional for composition analysis
-                # (this includes shared characters and traditional-only characters)
-                traditional_chinese_chars += 1
+                elif char in self.TRADITIONAL_CHARS:
+                    # Traditional character (including shared characters)
+                    traditional_chinese_chars += 1
+                else:
+                    # Shared character - count as traditional
+                    traditional_chinese_chars += 1
             
             # Check for English
             elif char.isalpha() and ord(char) < 128:
                 english_chars += 1
             
-            # Check for Japanese
+            # Check for Japanese (including Kanji range that overlaps with Chinese)
             elif (self.JAPANESE_HIRAGANA_RANGE[0] <= char <= self.JAPANESE_HIRAGANA_RANGE[1] or
                   self.JAPANESE_KATAKANA_RANGE[0] <= char <= self.JAPANESE_KATAKANA_RANGE[1]):
-                has_japanese = True
+                japanese_chars += 1
             
             # Check for Korean
             elif self.KOREAN_HANGUL_RANGE[0] <= char <= self.KOREAN_HANGUL_RANGE[1]:
-                has_korean = True
+                korean_chars += 1
+                
+            # Check for Spanish special characters
+            elif char in spanish_special:
+                spanish_chars += 1
             
-            # Other characters (numbers, symbols are OK, but other scripts are not)
+            # Check for numbers (allowed, not counted as "other")
+            elif char.isdigit():
+                continue  # Numbers are OK, don't count them
+            
+            # Other alphabetic characters
             elif char.isalpha():
-                # It's an alphabetic character but not English or Chinese
-                has_other = True
+                other_chars += 1
         
-        # Calculate ratios
+        # Calculate ratios based on total characters
         trad_chinese_ratio = traditional_chinese_chars / total_chars if total_chars > 0 else 0.0
         english_ratio = english_chars / total_chars if total_chars > 0 else 0.0
         
         # Determine if we have unwanted content
-        # Only reject if simplified chars significantly outnumber traditional chars
-        has_simplified = simplified_found > traditional_found and simplified_chinese_chars > 10
-        has_other_languages = has_japanese or has_korean or has_other
-        
-        # Calculate other chars correctly (since we now double-count Chinese chars)
-        chinese_chars = sum(1 for char in text if '\u4e00' <= char <= '\u9fff' and not char.isspace())
-        other_chars = total_chars - chinese_chars - english_chars
+        # Has simplified Chinese if there are any simplified chars detected
+        has_simplified = simplified_chinese_chars > 0
+        # Has other languages if any non-English, non-Traditional Chinese detected
+        has_other_languages = (japanese_chars + korean_chars + spanish_chars + other_chars) > 0
         
         return SimpleLanguageStats(
             total_chars=total_chars,
             traditional_chinese_chars=traditional_chinese_chars,
             simplified_chinese_chars=simplified_chinese_chars,
             english_chars=english_chars,
+            japanese_chars=japanese_chars,
+            korean_chars=korean_chars,
+            spanish_chars=spanish_chars,
             other_chars=other_chars,
             traditional_chinese_ratio=trad_chinese_ratio,
             english_ratio=english_ratio,
@@ -136,9 +144,9 @@ class SimplifiedLanguageDetector(LanguageDetectionService):
     
     async def detect_language(self, text: str) -> LanguageDetectionResult:
         """
-        Detect language with simplified rules:
-        - Only accept Pure Traditional Chinese, Pure English, or Trad Chinese + English mix
-        - Reject everything else
+        Detect language with new two-step logic:
+        Step 1: Reject if unsupported languages > 10% of total
+        Step 2: Use zh-TW if zh-TW >= 20% of (EN + zh-TW + numbers/symbols)
         """
         start_time = time.time()
         
@@ -161,23 +169,23 @@ class SimplifiedLanguageDetector(LanguageDetectionService):
                 f"Other={stats.other_chars}"
             )
             
-            # 3. Reject if contains simplified Chinese
-            if stats.has_simplified:
-                logger.warning(f"Rejected: Contains Simplified Chinese ({stats.simplified_chinese_chars} chars)")
-                raise UnsupportedLanguageError(
-                    detected_language="zh-CN",
-                    supported_languages=["en", "zh-TW"],
-                    confidence=0.9,
-                    user_specified=False
-                )
+            # 3. Step 1: Check unsupported language threshold (10% of total)
+            unsupported_chars = (stats.simplified_chinese_chars + stats.japanese_chars + 
+                               stats.korean_chars + stats.spanish_chars + stats.other_chars)
+            unsupported_ratio = unsupported_chars / stats.total_chars if stats.total_chars > 0 else 0.0
             
-            # 4. Reject if contains other languages
-            if stats.has_other_languages:
-                logger.warning("Rejected: Contains Japanese, Korean, or other non-supported languages")
-                # Determine which unsupported language was detected
+            if unsupported_ratio > 0.10:  # More than 10% unsupported content
+                logger.warning(
+                    f"Rejected: Unsupported content {unsupported_ratio:.1%} > 10% "
+                    f"(Simplified: {stats.simplified_chinese_chars}, Other: {stats.other_chars})"
+                )
+                
+                # Determine specific unsupported language for tracking
                 detected_lang = "other"
-                if stats.other_chars > 0:
-                    # Try to identify the specific language
+                if stats.simplified_chinese_chars > stats.other_chars:
+                    detected_lang = "zh-CN"
+                else:
+                    # Try to identify specific language
                     for char in text:
                         if self.JAPANESE_HIRAGANA_RANGE[0] <= char <= self.JAPANESE_HIRAGANA_RANGE[1] or \
                            self.JAPANESE_KATAKANA_RANGE[0] <= char <= self.JAPANESE_KATAKANA_RANGE[1]:
@@ -185,6 +193,9 @@ class SimplifiedLanguageDetector(LanguageDetectionService):
                             break
                         elif self.KOREAN_HANGUL_RANGE[0] <= char <= self.KOREAN_HANGUL_RANGE[1]:
                             detected_lang = "ko"
+                            break
+                        elif char in 'ñÑáéíóúÁÉÍÓÚüÜ¿¡':
+                            detected_lang = "es"
                             break
                 
                 raise UnsupportedLanguageError(
@@ -194,55 +205,40 @@ class SimplifiedLanguageDetector(LanguageDetectionService):
                     user_specified=False
                 )
             
-            # 5. Determine language based on composition
-            total_valid_chars = stats.traditional_chinese_chars + stats.english_chars
+            # 4. Step 2: Determine language from supported content
+            # Calculate supported content (EN + zh-TW + numbers/symbols)
+            # Since we already excluded unsupported chars, supported = total - unsupported
+            supported_chars = stats.total_chars - unsupported_chars
             
-            if total_valid_chars == 0:
+            if supported_chars == 0:
                 # No valid content
                 raise LanguageDetectionError(
                     text_length=len(text),
                     reason="No valid Traditional Chinese or English content found"
                 )
             
-            # Calculate ratios based on valid characters only
-            trad_chinese_ratio = stats.traditional_chinese_chars / total_valid_chars
-            english_ratio = stats.english_chars / total_valid_chars
+            # Calculate zh-TW percentage of supported content
+            # Note: supported_chars = english_chars + traditional_chinese_chars + (numbers/symbols)
+            # Since numbers/symbols are not counted in stats, supported_chars here is just EN + zh-TW
+            trad_chinese_ratio_of_supported = stats.traditional_chinese_chars / supported_chars
             
-            # 6. Determine language
-            if trad_chinese_ratio >= 0.95:
-                # Pure Traditional Chinese (95%+ Traditional Chinese)
+            # 5. Apply 20% threshold rule
+            if trad_chinese_ratio_of_supported >= self.TRADITIONAL_CHINESE_THRESHOLD:
+                # Traditional Chinese >= 20% of supported content
                 detected_lang = 'zh-TW'
-                confidence = 0.95
-                logger.info(f"Detected: Pure Traditional Chinese ({trad_chinese_ratio:.1%})")
-            
-            elif english_ratio >= 0.95:
-                # Pure English (95%+ English)
-                detected_lang = 'en'
-                confidence = 0.95
-                logger.info(f"Detected: Pure English ({english_ratio:.1%})")
-            
-            elif trad_chinese_ratio > 0 and english_ratio > 0:
-                # Mixed Traditional Chinese + English
-                if trad_chinese_ratio >= self.TRADITIONAL_CHINESE_THRESHOLD:
-                    # Traditional Chinese >= 20%, use Traditional Chinese prompt
-                    detected_lang = 'zh-TW'
-                    confidence = 0.9
-                    logger.info(
-                        f"Detected: Mixed content with {trad_chinese_ratio:.1%} Traditional Chinese "
-                        f"(>= 20%), using zh-TW"
-                    )
-                else:
-                    # Traditional Chinese < 20%, use English prompt
-                    detected_lang = 'en'
-                    confidence = 0.9
-                    logger.info(
-                        f"Detected: Mixed content with {trad_chinese_ratio:.1%} Traditional Chinese "
-                        f"(< 20%), using en"
-                    )
+                confidence = 0.9
+                logger.info(
+                    f"Detected: zh-TW (Traditional Chinese {trad_chinese_ratio_of_supported:.1%} "
+                    f"of supported content >= 20%)"
+                )
             else:
-                # Shouldn't reach here, but handle edge case
-                detected_lang = 'en' if english_ratio > trad_chinese_ratio else 'zh-TW'
-                confidence = 0.8
+                # Traditional Chinese < 20%, use English as default
+                detected_lang = 'en'
+                confidence = 0.9
+                logger.info(
+                    f"Detected: en (Traditional Chinese {trad_chinese_ratio_of_supported:.1%} "
+                    f"of supported content < 20%)"
+                )
             
             detection_time_ms = int((time.time() - start_time) * 1000)
             
