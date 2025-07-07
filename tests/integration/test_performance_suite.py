@@ -285,7 +285,7 @@ class TestAPIPerformance:
             # Calculate speedup
             cache_speedup = avg_first_time / avg_cached_time if avg_cached_time > 0 else 100
             
-            print(f"\nCache Performance Results:")
+            print("\nCache Performance Results:")
             print(f"  Average first request time: {avg_first_time:.3f}s")
             print(f"  Average cached request time: {avg_cached_time:.3f}s")
             print(f"  Cache speedup: {cache_speedup:.2f}x")

@@ -143,7 +143,12 @@ class TestKeywordExtractionAPI:
         # Custom error format
         assert data["success"] is False
         assert data["error"]["code"] == "VALIDATION_ERROR"
-        assert "job_description" in data["error"]["details"]
+        # New detailed error format
+        assert "details" in data["error"]
+        assert "errors" in data["error"]["details"]
+        assert len(data["error"]["details"]["errors"]) > 0
+        assert data["error"]["details"]["errors"][0]["field"] == "body.job_description"
+        assert data["error"]["details"]["errors"][0]["type"] == "missing"
     
     def test_extract_keywords_short_description_error(self, client):
         """Test validation error for short job description."""

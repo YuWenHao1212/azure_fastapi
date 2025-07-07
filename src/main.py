@@ -121,7 +121,41 @@ def create_app() -> FastAPI:
     @app.exception_handler(StarletteHTTPException)
     async def starlette_exception_handler(request, exc):
         """Handle Starlette HTTP exceptions with unified response format."""
+        from src.utils.error_formatting import get_error_context
+        
         logger.warning(f"Starlette HTTP exception: {exc.status_code} - {exc.detail}")
+        
+        # Track HTTP errors with context
+        if monitoring_service:
+            error_category = "ClientError" if 400 <= exc.status_code < 500 else "ServerError"
+            error_type = {
+                400: "BadRequest",
+                401: "Unauthorized", 
+                403: "Forbidden",
+                404: "NotFound",
+                405: "MethodNotAllowed",
+                408: "RequestTimeout",
+                409: "Conflict",
+                429: "TooManyRequests",
+                500: "InternalServerError",
+                502: "BadGateway",
+                503: "ServiceUnavailable",
+                504: "GatewayTimeout"
+            }.get(exc.status_code, f"HTTP_{exc.status_code}")
+            
+            # Get enriched error context
+            error_context = get_error_context(exc.status_code, request, exc)
+            
+            monitoring_service.track_event(
+                "HTTPErrorTracked",
+                {
+                    "status_code": exc.status_code,
+                    "error_type": error_type,
+                    "error_category": error_category,
+                    "error_message": str(exc.detail),
+                    **error_context  # Include all context fields
+                }
+            )
         
         return JSONResponse(
             status_code=exc.status_code,
@@ -131,7 +165,11 @@ def create_app() -> FastAPI:
                 "error": {
                     "code": f"HTTP_{exc.status_code}",
                     "message": str(exc.detail),
-                    "details": ""
+                    "type": "http_error",
+                    "details": {
+                        "status_code": exc.status_code,
+                        "error_category": "client_error" if 400 <= exc.status_code < 500 else "server_error"
+                    }
                 },
                 "timestamp": datetime.utcnow().isoformat()
             }
@@ -141,7 +179,41 @@ def create_app() -> FastAPI:
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request, exc):
         """Handle HTTP exceptions with unified response format."""
+        from src.utils.error_formatting import get_error_context
+        
         logger.warning(f"HTTP exception: {exc.status_code} - {exc.detail}")
+        
+        # Track HTTP errors with categorization and context
+        if monitoring_service:
+            error_category = "ClientError" if 400 <= exc.status_code < 500 else "ServerError"
+            error_type = {
+                400: "BadRequest",
+                401: "Unauthorized", 
+                403: "Forbidden",
+                404: "NotFound",
+                405: "MethodNotAllowed",
+                408: "RequestTimeout",
+                409: "Conflict",
+                429: "TooManyRequests",
+                500: "InternalServerError",
+                502: "BadGateway",
+                503: "ServiceUnavailable",
+                504: "GatewayTimeout"
+            }.get(exc.status_code, f"HTTP_{exc.status_code}")
+            
+            # Get enriched error context
+            error_context = get_error_context(exc.status_code, request, exc)
+            
+            monitoring_service.track_event(
+                "HTTPErrorTracked",
+                {
+                    "status_code": exc.status_code,
+                    "error_type": error_type,
+                    "error_category": error_category,
+                    "error_message": str(exc.detail),
+                    **error_context  # Include all context fields
+                }
+            )
         
         # If detail is already a dict (from our custom error responses), use it
         if isinstance(exc.detail, dict):
@@ -159,7 +231,11 @@ def create_app() -> FastAPI:
                 "error": {
                     "code": f"HTTP_{exc.status_code}",
                     "message": str(exc.detail),
-                    "details": ""
+                    "type": "http_error",
+                    "details": {
+                        "status_code": exc.status_code,
+                        "error_category": "client_error" if 400 <= exc.status_code < 500 else "server_error"
+                    }
                 },
                 "timestamp": datetime.utcnow().isoformat()
             }
@@ -169,69 +245,54 @@ def create_app() -> FastAPI:
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request, exc):
         """Handle request validation errors with unified response format."""
+
+        from src.utils.error_formatting import (
+            create_validation_error_response,
+            get_error_context,
+            get_validation_error_metrics,
+        )
+        
         logger.warning(f"Validation error: {exc.errors()}")
         
-        # Track error with JD preview for keyword extraction endpoint
-        if request.url.path.endswith("extract-jd-keywords"):
-            try:
-                # Use cached request body from middleware if available
-                request_body = getattr(request.state, 'request_body', None)
-                
-                if request_body:
-                    import json
-                    data = json.loads(request_body)
-                else:
-                    # Fallback: try to read body (might fail if already read)
-                    try:
-                        body = await request.body()
-                        data = json.loads(body)
-                    except Exception:
-                        data = {}
-                
-                jd_text = data.get("job_description", "")
-                if jd_text:
-                    jd_preview = jd_text[:100] + ("..." if len(jd_text) > 100 else "")
-                    correlation_id = getattr(request.state, 'correlation_id', 'unknown')
-                    
-                    monitoring_service.track_error(
-                        error_type="VALIDATION_ERROR",
-                        error_message="Request validation failed",
-                        endpoint=f"{request.method} {request.url.path}",
-                        custom_properties={
-                            "jd_preview": jd_preview,
-                            "jd_length": len(jd_text),
-                            "correlation_id": correlation_id,
-                            "validation_errors": str(exc.errors()),
-                            "requested_language": data.get("language", "unknown")
-                        }
-                    )
-                else:
-                    # Even if no JD, track the validation error with available info
-                    correlation_id = getattr(request.state, 'correlation_id', 'unknown')
-                    monitoring_service.track_error(
-                        error_type="VALIDATION_ERROR",
-                        error_message="Request validation failed",
-                        endpoint=f"{request.method} {request.url.path}",
-                        custom_properties={
-                            "jd_preview": "[No job_description provided]",
-                            "correlation_id": correlation_id,
-                            "validation_errors": str(exc.errors()),
-                            "requested_language": data.get("language", "unknown")
-                        }
-                    )
-            except Exception as e:
-                logger.debug(f"Could not extract JD for error tracking: {e}")
+        # Extract validation error metrics
+        error_metrics = get_validation_error_metrics(exc)
+        
+        # Get enriched error context
+        error_context = get_error_context(422, request, exc)
+        
+        # Track error with enhanced context
+        if monitoring_service:
+            monitoring_service.track_error(
+                error_type="VALIDATION_ERROR",
+                error_message=f"Validation failed: {error_metrics['primary_error_type']}",
+                endpoint=f"{request.method} {request.url.path}",
+                custom_properties={
+                    **error_metrics,  # Include all error metrics
+                    **error_context   # Include enhanced context
+                }
+            )
+            
+            # Track detailed validation error event
+            monitoring_service.track_event(
+                "ValidationErrorDetails",
+                {
+                    "primary_error_type": error_metrics['primary_error_type'],
+                    "all_error_types": error_metrics['all_error_types'],
+                    "error_count": error_metrics['error_count'],
+                    "affected_fields": error_metrics['error_fields'],
+                    **error_context  # Include context here too
+                }
+            )
+        
+        # Create detailed error response
+        error_response = create_validation_error_response(exc)
         
         return JSONResponse(
             status_code=422,
             content={
                 "success": False,
                 "data": {},
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": "Request validation failed",
-                    "details": str(exc.errors())
-                },
+                "error": error_response,
                 "timestamp": datetime.utcnow().isoformat()
             }
         )
@@ -240,17 +301,63 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def global_exception_handler(request, exc):
         """Handle all unhandled exceptions."""
+        from src.utils.error_formatting import (
+            classify_exception,
+            create_error_response,
+            get_error_context,
+        )
+        
         logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+        
+        # Classify the exception
+        exc_details = classify_exception(exc)
+        
+        # Get enriched error context
+        error_context = get_error_context(500, request, exc)
+        
+        # Track error with detailed type information and context
+        if monitoring_service:
+            monitoring_service.track_error(
+                error_type=exc_details["exception_type"],
+                error_message=str(exc),
+                endpoint=f"{request.method} {request.url.path}",
+                custom_properties={
+                    "exception_category": exc_details["exception_category"],
+                    "exception_module": exc_details["exception_module"],
+                    "is_retryable": exc_details["is_retryable"],
+                    "is_client_error": exc_details["is_client_error"],
+                    "is_server_error": exc_details["is_server_error"],
+                    **error_context  # Include enhanced context
+                }
+            )
+            
+            # Track a specific event for exception categorization
+            monitoring_service.track_event(
+                "ExceptionCategorized",
+                {
+                    "exception_type": exc_details["exception_type"],
+                    "exception_category": exc_details["exception_category"],
+                    "endpoint": f"{request.method} {request.url.path}",
+                    "is_retryable": exc_details["is_retryable"],
+                    **error_context  # Include context here too
+                }
+            )
+        
+        # Create error response with details
+        error_response = create_error_response(
+            error_code="INTERNAL_SERVER_ERROR",
+            message="An unexpected error occurred",
+            exc=exc,
+            status_code=500,
+            include_details=settings.debug
+        )
+        
         return JSONResponse(
             status_code=500,
             content={
                 "success": False,
                 "data": {},
-                "error": {
-                    "code": "INTERNAL_SERVER_ERROR",
-                    "message": "An unexpected error occurred",
-                    "details": str(exc) if settings.debug else ""
-                },
+                "error": error_response,
                 "timestamp": datetime.utcnow().isoformat()
             }
         )
