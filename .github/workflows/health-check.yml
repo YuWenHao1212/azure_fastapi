@@ -1,0 +1,150 @@
+name: Hourly Health Check
+
+on:
+  schedule:
+    # Run every hour
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+env:
+  FUNCTION_APP_URL: https://airesumeadvisor-fastapi.azurewebsites.net
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check API Health
+      id: health_check
+      run: |
+        # Perform health check
+        response=$(curl -s -o /dev/null -w "%{http_code}" ${{ env.FUNCTION_APP_URL }}/api/v1/health)
+        
+        echo "HTTP Status Code: $response"
+        echo "status_code=$response" >> $GITHUB_OUTPUT
+        
+        if [ "$response" = "200" ]; then
+          echo "✅ Health check passed"
+          exit 0
+        else
+          echo "❌ Health check failed with status code: $response"
+          exit 1
+        fi
+    
+    - name: Check Keyword Extraction Endpoint
+      id: keyword_check
+      if: success()
+      env:
+        AZURE_FUNCTION_KEY: ${{ secrets.AZURE_FUNCTION_KEY }}
+      run: |
+        # Test keyword extraction with minimal request
+        response=$(curl -s -X POST "${{ env.FUNCTION_APP_URL }}/api/v1/extract-jd-keywords?code=${{ env.AZURE_FUNCTION_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "job_description": "We are looking for a Python developer with FastAPI experience",
+            "language": "en",
+            "max_keywords": 5
+          }')
+        
+        # Check if response contains success field
+        if echo "$response" | grep -q '"success":true'; then
+          echo "✅ Keyword extraction endpoint is working"
+          exit 0
+        else
+          echo "❌ Keyword extraction endpoint failed"
+          echo "Response: $response"
+          exit 1
+        fi
+    
+    - name: Create issue if health check fails
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          // Check if there's already an open issue
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: ['health-check', 'api-down']
+          });
+          
+          if (issues.data.length === 0) {
+            // Create new issue only if none exists
+            const title = `🚨 API Health Check Failed - ${new Date().toISOString()}`;
+            const body = `
+            ## ⚠️ API Health Check Failed
+            
+            The hourly health check has detected that the API is not responding correctly.
+            
+            **Details:**
+            - Time: ${new Date().toISOString()}
+            - Workflow Run: [#${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            - Environment: Production (Azure Function App)
+            
+            **Affected Endpoints:**
+            - Health Check: ${{ steps.health_check.outputs.status_code || 'Failed' }}
+            - Keyword Extraction: ${{ steps.keyword_check.outcome || 'Not tested' }}
+            
+            **Action Required:**
+            1. Check Azure Function App status in Azure Portal
+            2. Review recent deployments
+            3. Check Application Insights for errors
+            
+            cc: @YuWenHao1212
+            `;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['health-check', 'api-down', 'urgent']
+            });
+          }
+    
+    - name: Close resolved issues if health check passes
+      if: success()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          // Find open health check issues
+          const issues = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            state: 'open',
+            labels: ['health-check', 'api-down']
+          });
+          
+          // Close them with a comment
+          for (const issue of issues.data) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `✅ API is back online! Health check passed at ${new Date().toISOString()}`
+            });
+            
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              state: 'closed'
+            });
+          }
+    
+    - name: Summary
+      if: always()
+      run: |
+        echo "## Health Check Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Health Endpoint**: ${{ steps.health_check.outcome }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Keyword Extraction**: ${{ steps.keyword_check.outcome }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ steps.health_check.outcome }}" = "success" ] && [ "${{ steps.keyword_check.outcome }}" = "success" ]; then
+          echo "✅ **All checks passed**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Some checks failed**" >> $GITHUB_STEP_SUMMARY
+        fi

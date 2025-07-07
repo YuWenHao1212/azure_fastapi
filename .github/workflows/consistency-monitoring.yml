@@ -1,9 +1,9 @@
-name: Consistency Monitoring
+name: Daily Consistency Check
 
 on:
   schedule:
-    # Run every 6 hours
-    - cron: '0 */6 * * *'
+    # Run once daily at 2 AM UTC (10 AM Taiwan time)
+    - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_type:
