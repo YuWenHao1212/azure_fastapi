@@ -666,8 +666,52 @@ Claude Code 在編寫程式碼時必須遵循 ruff 的代碼風格規範，避�
 
 ---
 
-**文檔版本**: 2.2.0  
-**最後更新**: 2025-07-06  
+## Azure Monitor Workbook 格式注意事項
+
+### Workbook JSON 格式要求
+
+在建立或編輯 Azure Monitor Workbook 時，使用 Advanced Editor 需要注意以下 JSON 格式要求：
+
+1. **查詢字串格式**：
+   - `query` 欄位的值必須是**單行字串**（不能有換行符號）
+   - 所有 KQL 查詢語句必須在同一行，使用空格分隔不同的子句
+   - 範例：
+     ```json
+     "query": "customEvents | where timestamp {TimeRange} | where name == \"RequestTracked\" | summarize count() by endpoint"
+     ```
+
+2. **字串中的引號處理**：
+   - 在查詢字串中的引號必須使用反斜線逃脫：`\"`
+   - 正確：`"query": "customEvents | where name == \"RequestTracked\""`
+   - 錯誤：`"query": "customEvents | where name == "RequestTracked""`
+
+3. **物件格式一致性**：
+   - 保持 JSON 物件的格式一致
+   - 陣列元素格式：`{"durationMs": 300000}` 而非 `{"durationMs":300000}`
+
+4. **常見錯誤訊息**：
+   - `Bad control character in string literal in JSON` - 通常是因為查詢字串中有換行符號
+   - 解決方法：將多行查詢合併為單行，使用管道符號 `|` 和空格分隔
+
+### 最佳實踐
+
+1. **先在 Query Explorer 測試**：
+   - 在 Application Insights 的 Logs 介面測試 KQL 查詢
+   - 確認查詢正確後，再複製到 Workbook
+
+2. **逐步建立 Workbook**：
+   - 使用 UI 介面逐個添加元件，而非直接編輯 JSON
+   - 每個元件測試無誤後再添加下一個
+
+3. **JSON 編輯技巧**：
+   - 使用 JSON 格式化工具先驗證格式
+   - 將長查詢先在文字編輯器中編寫為單行
+   - 使用查找替換功能處理引號逃脫
+
+---
+
+**文檔版本**: 2.3.0  
+**最後更新**: 2025-07-07  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
 

@@ -15,6 +15,8 @@ from starlette.types import ASGIApp
 from src.core.metrics.endpoint_metrics import endpoint_metrics
 from src.core.monitoring.security_monitor import security_monitor
 from src.core.monitoring_service import monitoring_service
+from src.utils.response_validator import validate_bubble_compatibility
+from src.utils.user_agent_parser import get_client_category, parse_user_agent
 
 
 class MonitoringMiddleware(BaseHTTPMiddleware):
@@ -85,7 +87,12 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
         endpoint = f"{request.method} {request.url.path}"
         start_time = time.time()
         
-        # Track request start
+        # Parse User-Agent
+        user_agent = request.headers.get("user-agent", "")
+        client_info = parse_user_agent(user_agent)
+        client_category = get_client_category(client_info["client_type"])
+        
+        # Track request start with enhanced client info
         monitoring_service.track_event(
             "RequestStarted",
             {
@@ -94,7 +101,12 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "correlation_id": correlation_id,
                 "origin": request.headers.get("origin", "unknown"),
-                "user_agent": request.headers.get("user-agent", "unknown"),
+                "user_agent": user_agent,
+                "client_type": client_info["client_type"],
+                "client_details": client_info["client_details"],
+                "client_category": client_category,
+                "is_api_client": client_info["is_api_client"],
+                "is_browser": client_info["is_browser"],
                 "security_risk": security_result.get("risk_level", "low"),
                 "is_suspicious": security_result.get("is_suspicious", False)
             }
@@ -118,7 +130,35 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 }
             )
             
-            # Track successful request
+            # Validate response for Bubble.io compatibility (only for keyword extraction 200 responses)
+            validation_result = None
+            if request.url.path == "/api/v1/extract-jd-keywords" and response.status_code == 200:
+                try:
+                    # Try to read response body for validation
+                    # Note: This is tricky with streaming responses
+                    if hasattr(response, 'body'):
+                        # For regular responses
+                        body = response.body
+                        if isinstance(body, bytes):
+                            body_json = json.loads(body.decode('utf-8'))
+                            validation_result = validate_bubble_compatibility(body_json)
+                            
+                            # Track validation result
+                            if not validation_result.get("bubble_compatible", True):
+                                monitoring_service.track_event(
+                                    "ResponseValidationFailed",
+                                    {
+                                        "endpoint": endpoint,
+                                        "correlation_id": correlation_id,
+                                        "validation_issues": validation_result.get("issues", []),
+                                        "client_type": client_info["client_type"]
+                                    }
+                                )
+                except Exception as e:
+                    # If we can't validate, just log it
+                    validation_result = {"error": f"Could not validate response: {str(e)}"}
+            
+            # Track successful request with enhanced properties
             monitoring_service.track_request(
                 endpoint=endpoint,
                 method=request.method,
@@ -129,7 +169,11 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                     "correlation_id": correlation_id,
                     "path": request.url.path,
                     "query_params": str(request.url.query),
-                    "response_headers": dict(response.headers)
+                    "response_headers": dict(response.headers),
+                    "client_type": client_info["client_type"],
+                    "client_category": client_category,
+                    "bubble_compatible": validation_result.get("bubble_compatible") if validation_result else None,
+                    "validation_issues": validation_result.get("issues") if validation_result and not validation_result.get("bubble_compatible") else None
                 }
             )
             
@@ -145,7 +189,33 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                     {
                         "status_code": response.status_code,
                         "duration_ms": duration_ms,
-                        "endpoint": endpoint
+                        "endpoint": endpoint,
+                        "client_type": client_info["client_type"]
+                    }
+                )
+            
+            # Track client type usage
+            monitoring_service.track_event(
+                "ClientTypeUsage",
+                {
+                    "client_type": client_info["client_type"],
+                    "client_category": client_category,
+                    "endpoint": endpoint,
+                    "status_code": response.status_code,
+                    "success": response.status_code < 400
+                }
+            )
+            
+            # Special tracking for Bubble.io requests
+            if client_info["client_type"] == "bubble.io":
+                monitoring_service.track_event(
+                    "BubbleIORequest",
+                    {
+                        "endpoint": endpoint,
+                        "status_code": response.status_code,
+                        "duration_ms": duration_ms,
+                        "bubble_compatible": validation_result.get("bubble_compatible") if validation_result else None,
+                        "has_validation_issues": len(validation_result.get("issues", [])) > 0 if validation_result else None
                     }
                 )
             
@@ -201,7 +271,9 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 "correlation_id": correlation_id,
                 "path": request.url.path,
                 "method": request.method,
-                "duration_ms": duration_ms
+                "duration_ms": duration_ms,
+                "client_type": client_info["client_type"],
+                "client_category": client_category
             }
             
             # Add JD preview only for keyword extraction errors
