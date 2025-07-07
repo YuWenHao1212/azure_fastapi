@@ -186,11 +186,11 @@ async def extract_jd_keywords(
     
     # Create V2 service with requested prompt version and performance optimizations
     # V2 uses UnifiedPromptService for YAML-based configuration
-    # Cache disabled for LLM consistency testing - re-enable for production
+    # Cache re-enabled for production performance - provides 50-100x speedup for repeated requests
     service = get_keyword_extraction_service_v2(
         prompt_version=request.prompt_version,
-        enable_cache=False,  # ❌ Cache disabled for LLM testing
-        cache_ttl_minutes=60,  # Cache for 1 hour (when re-enabled)
+        enable_cache=True,  # ✅ Cache enabled for production performance
+        cache_ttl_minutes=60,  # Cache for 1 hour
         enable_parallel_processing=True  # ✅ Keep parallel processing for speed
     )
     
