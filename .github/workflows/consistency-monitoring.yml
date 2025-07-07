@@ -56,6 +56,13 @@ jobs:
         echo "Environment configured"
     
     - name: Start API server
+      env:
+        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+        AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+        MONITORING_ENABLED: false
+        ENVIRONMENT: production
       run: |
         # Start the FastAPI server in background
         uvicorn src.main:app --host 0.0.0.0 --port 8000 &
@@ -67,7 +74,7 @@ jobs:
     - name: Run consistency tests
       id: consistency_test
       run: |
-        cd monitoring/consistency
+        cd tools/monitoring
         python consistency_monitor.py --report > test_output.txt
         cat test_output.txt
         
@@ -79,13 +86,13 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: consistency-report-${{ github.run_number }}
-        path: monitoring/consistency/consistency_report_*.md
+        path: tools/monitoring/consistency_report_*.md
         retention-days: 30
     
     - name: Check KPI thresholds
       run: |
         # Parse KPIs and check thresholds
-        cd monitoring/consistency
+        cd tools/monitoring
         python -c "
         import re
         
@@ -177,10 +184,10 @@ jobs:
       run: |
         echo "## Consistency Monitoring Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        if [ -f monitoring/consistency/test_output.txt ]; then
+        if [ -f tools/monitoring/test_output.txt ]; then
           echo "### KPI Results" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          grep -E "(Short Text Consistency|Long Text Consistency|Core Keyword Stability|Two Test Same Probability)" monitoring/consistency/test_output.txt | head -4 >> $GITHUB_STEP_SUMMARY
+          grep -E "(Short Text Consistency|Long Text Consistency|Core Keyword Stability|Two Test Same Probability)" tools/monitoring/test_output.txt | head -4 >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
         fi
         echo "" >> $GITHUB_STEP_SUMMARY
