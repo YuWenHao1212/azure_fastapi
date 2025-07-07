@@ -130,33 +130,46 @@ class MonitoringMiddleware(BaseHTTPMiddleware):
                 }
             )
             
-            # Validate response for Bubble.io compatibility (only for keyword extraction 200 responses)
+            # Read response body for validation (only for keyword extraction 200 responses)
             validation_result = None
-            if request.url.path == "/api/v1/extract-jd-keywords" and response.status_code == 200:
+            response_body = None
+            
+            # Store original body_iterator
+            if hasattr(response, "body_iterator"):
+                # Collect the body
+                body_parts = []
+                async for chunk in response.body_iterator:
+                    body_parts.append(chunk)
+                
+                # Reconstruct the body
+                response_body = b"".join(body_parts)
+                
+                # Create new iterator for the response
+                async def new_body_iterator():
+                    yield response_body
+                
+                response.body_iterator = new_body_iterator()
+            
+            # Validate response for Bubble.io compatibility
+            if request.url.path == "/api/v1/extract-jd-keywords" and response.status_code == 200 and response_body:
                 try:
-                    # Try to read response body for validation
-                    # Note: This is tricky with streaming responses
-                    if hasattr(response, 'body'):
-                        # For regular responses
-                        body = response.body
-                        if isinstance(body, bytes):
-                            body_json = json.loads(body.decode('utf-8'))
-                            validation_result = validate_bubble_compatibility(body_json)
-                            
-                            # Track validation result
-                            if not validation_result.get("bubble_compatible", True):
-                                monitoring_service.track_event(
-                                    "ResponseValidationFailed",
-                                    {
-                                        "endpoint": endpoint,
-                                        "correlation_id": correlation_id,
-                                        "validation_issues": validation_result.get("issues", []),
-                                        "client_type": client_info["client_type"]
-                                    }
-                                )
+                    body_json = json.loads(response_body.decode('utf-8'))
+                    validation_result = validate_bubble_compatibility(body_json)
+                    
+                    # Track validation result
+                    if not validation_result.get("bubble_compatible", True):
+                        monitoring_service.track_event(
+                            "ResponseValidationFailed",
+                            {
+                                "endpoint": endpoint,
+                                "correlation_id": correlation_id,
+                                "validation_issues": validation_result.get("issues", []),
+                                "client_type": client_info["client_type"]
+                            }
+                        )
                 except Exception as e:
-                    # If we can't validate, just log it
-                    validation_result = {"error": f"Could not validate response: {str(e)}"}
+                    # If we can't validate, log the error
+                    validation_result = {"error": f"Could not validate response: {str(e)}", "bubble_compatible": None}
             
             # Track successful request with enhanced properties
             monitoring_service.track_request(
