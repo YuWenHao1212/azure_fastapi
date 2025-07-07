@@ -247,6 +247,20 @@ async def extract_jd_keywords(
                 suggestion="Consider providing a more detailed job description with specific requirements and technologies"
             )
         
+        # Track extracted keywords for analysis (rolling window of last 100)
+        if result.get('keywords'):
+            monitoring_service.track_event(
+                "KeywordsExtracted",
+                {
+                    "keywords": result['keywords'],
+                    "keyword_count": len(result['keywords']),
+                    "language": result.get('detected_language', 'unknown'),
+                    "extraction_method": result.get('extraction_method', 'unknown'),
+                    "client_type": getattr(request.state, 'client_type', 'unknown') if hasattr(request, 'state') else 'unknown',
+                    "correlation_id": getattr(request.state, 'correlation_id', '') if hasattr(request, 'state') else ''
+                }
+            )
+        
         # Create response with warning information
         return UnifiedResponse(
             success=True,
