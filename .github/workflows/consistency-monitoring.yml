@@ -1,9 +1,9 @@
-name: Daily Consistency Check
+name: Daily Consistency Check (Disabled)
 
 on:
-  schedule:
-    # Run once daily at 2 AM UTC (10 AM Taiwan time)
-    - cron: '0 2 * * *'
+  # schedule:
+  #   # Run once daily at 2 AM UTC (10 AM Taiwan time)
+  #   - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
       test_type:
