@@ -117,9 +117,6 @@ def parse_gap_response(content: str) -> dict[str, Any]:
             logging.warning("Overall assessment tag found but content is empty")
     else:
         logging.warning("Overall assessment tag not found in response")
-        # Fallback: Generate a basic assessment based on the analysis
-        if strengths and gaps:
-            assessment_text = f"The candidate shows strengths in {len(strengths)} areas but has {len(gaps)} key gaps that need to be addressed. Please review the detailed analysis above for specific recommendations."
     
     # Process skill development priorities
     skill_queries = []
@@ -249,8 +246,10 @@ class GapAnalysisService(TokenTrackingMixin):
             
             # Extract response content
             llm_response = response['choices'][0]['message']['content']
+            finish_reason = response['choices'][0].get('finish_reason', 'unknown')
             
             self.logger.info(f"Raw LLM response: {llm_response[:200]}...")
+            self.logger.info(f"LLM finish reason: {finish_reason}, response length: {len(llm_response)}")
             
             # Clean LLM output
             llm_response = clean_llm_output(llm_response)

@@ -119,6 +119,8 @@ prompts:
     - 所有回應必須使用繁體中文（Traditional Chinese）
     - 避免使用簡體中文字符
     - 使用台灣常用的詞彙和表達方式
+    
+    重要：您必須包含所有部分及其 XML 標籤，特別是 <overall_assessment>。請勿跳過任何部分。
 
   user: |
     <job_description>
