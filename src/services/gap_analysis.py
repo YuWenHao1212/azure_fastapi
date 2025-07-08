@@ -108,9 +108,15 @@ def parse_gap_response(content: str) -> dict[str, Any]:
     # Process overall assessment (paragraph format)
     assessment_text = ''
     if oa:
-        assessment_text = convert_markdown_to_html(
-            ' '.join(line.strip() for line in oa.group(1).splitlines() if line.strip())
-        )
+        raw_assessment = oa.group(1).strip()
+        if raw_assessment:
+            assessment_text = convert_markdown_to_html(
+                ' '.join(line.strip() for line in raw_assessment.splitlines() if line.strip())
+            )
+        else:
+            logging.warning("Overall assessment tag found but content is empty")
+    else:
+        logging.warning("Overall assessment tag not found in response")
     
     # Process skill development priorities
     skill_queries = []
@@ -192,8 +198,10 @@ class GapAnalysisService(TokenTrackingMixin):
         Returns:
             Formatted gap analysis results
         """
-        # Validate language
-        if language not in ["en", "zh-TW"]:
+        # Validate and normalize language (case-insensitive)
+        if language.lower() == "zh-tw":
+            language = "zh-TW"
+        elif language.lower() != "en":
             language = "en"
         
         # Prepare prompt data
@@ -238,11 +246,25 @@ class GapAnalysisService(TokenTrackingMixin):
             
             # Extract response content
             llm_response = response['choices'][0]['message']['content']
+            finish_reason = response['choices'][0].get('finish_reason', 'unknown')
             
             self.logger.info(f"Raw LLM response: {llm_response[:200]}...")
+            self.logger.info(f"LLM finish reason: {finish_reason}, response length: {len(llm_response)}")
             
             # Clean LLM output
             llm_response = clean_llm_output(llm_response)
+            
+            # Log if overall_assessment is missing
+            if '<overall_assessment>' not in llm_response:
+                self.logger.warning("LLM response missing <overall_assessment> tag")
+                self.logger.debug(f"Full LLM response: {llm_response}")
+            else:
+                # Check if the tag exists but content is empty
+                import re
+                oa_match = re.search(r'<overall_assessment>(.*?)</overall_assessment>', llm_response, re.S)
+                if oa_match and not oa_match.group(1).strip():
+                    self.logger.warning("Overall assessment tag found but content is empty")
+                    self.logger.debug(f"Response around overall_assessment: {llm_response[max(0, llm_response.find('<overall_assessment>')-100):llm_response.find('</overall_assessment>')+50]}")
             
             # Track token usage and metrics
             token_info = self.track_openai_usage(

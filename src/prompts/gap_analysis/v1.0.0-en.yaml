@@ -112,6 +112,8 @@ prompts:
     - Include 3-6 skills maximum
 
     Each section is equally important - provide thorough, high-quality analysis for all five areas.
+    
+    IMPORTANT: You MUST include ALL sections with their XML tags, especially <overall_assessment>. Do not skip any section.
 
   user: |
     <job_description>
