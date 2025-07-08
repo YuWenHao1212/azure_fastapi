@@ -1,0 +1,21 @@
+customEvents
+| where timestamp {TimeRange}
+| where name == "RequestTracked"
+| extend
+    success = tostring(customDimensions.success) == "true",
+    cache_hit = tostring(customDimensions.cache_hit) == "true",
+    duration_ms = todouble(customDimensions.duration_ms)
+| summarize
+    TotalRequests = count(),
+    SuccessfulRequests = countif(success == true),
+    FailedRequests = countif(success == false),
+    CacheHits = countif(cache_hit == true),
+    AvgDuration = round(avg(duration_ms), 2),
+    P95Duration = round(percentile(duration_ms, 95), 2)
+| extend
+    SuccessRate = round(100.0 * SuccessfulRequests / TotalRequests, 2),
+    CacheHitRate = round(100.0 * CacheHits / TotalRequests, 2)
+| project
+    Metric = pack_array("總請求數", "成功次數", "失敗次數", "成功率 (%)", "快取命中率 (%)", "平均回應時間 (s)", "P95 回應時間 (s)"),
+    Value = pack_array(TotalRequests, SuccessfulRequests, FailedRequests, round(SuccessRate), CacheHitRate, round(AvgDuration/1000,1), round(P95Duration/1000,1))
+| mv-expand Metric to typeof(string), Value

@@ -1,0 +1,19 @@
+customEvents
+| where timestamp {TimeRange}
+| where name == "RequestTracked"
+| extend endpoint = tostring(customDimensions.endpoint)
+| summarize 
+    TotalRequests = count(),
+    SuccessRequests = countif(toint(customDimensions.status_code) < 400),
+    ErrorRequests = countif(toint(customDimensions.status_code) >= 400)
+  by endpoint
+| extend SuccessRate = round(100.0 * SuccessRequests / TotalRequests, 2)
+| extend ErrorRate = round(100.0 * ErrorRequests / TotalRequests, 2)
+| order by TotalRequests desc
+| project 
+    Endpoint = endpoint,
+    ["Total Requests"] = TotalRequests,
+    ["Success Rate %"] = SuccessRate,
+    ["Error Rate %"] = ErrorRate,
+    ["Success Count"] = SuccessRequests,
+    ["Error Count"] = ErrorRequests

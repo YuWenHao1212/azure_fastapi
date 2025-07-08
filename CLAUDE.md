@@ -501,6 +501,54 @@ class DataModel(BaseModel):
    - 獲得用戶明確同意後才能執行
    - 提交訊息需包含清晰的變更說明
 
+### 環境變數問題解決方案
+
+#### 問題：EMBEDDING_API_KEY environment variable is required
+
+**根本原因**：
+1. `embedding_client.py` 使用 `os.getenv()` 直接讀取環境變數
+2. `main.py` 沒有載入 `.env` 檔案
+3. pydantic_settings 只對 Settings 類別有效，不影響 `os.getenv()`
+
+**解決方案**：
+
+1. **本地開發** - 在啟動前載入 .env：
+   ```bash
+   # 方法 1: 使用 python-dotenv
+   python -c "from dotenv import load_dotenv; load_dotenv()" && uvicorn src.main:app --reload
+   
+   # 方法 2: 設置環境變數
+   export EMBEDDING_API_KEY="your-api-key"
+   uvicorn src.main:app --reload
+   
+   # 方法 3: 在 main.py 添加 (推薦)
+   from dotenv import load_dotenv
+   load_dotenv()  # 在 import 後立即載入
+   ```
+
+2. **生產環境** - Azure Function App 配置：
+   ```bash
+   az functionapp config appsettings set \
+     --name airesumeadvisorfastapi \
+     --resource-group airesumeadvisorfastapi \
+     --settings EMBEDDING_API_KEY="your-api-key"
+   ```
+
+3. **統一解決方案** - 修改 embedding_client.py 使用 settings：
+   ```python
+   # 改為從 settings 讀取
+   from src.core.config import get_settings
+   
+   def get_azure_embedding_client():
+       settings = get_settings()
+       return AzureEmbeddingClient(
+           endpoint=settings.embedding_endpoint,
+           api_key=settings.embedding_api_key
+       )
+   ```
+
+**建議**：使用方法 3，確保所有環境變數都通過統一的 Settings 管理。
+
 ### 預提交測試流程
 
 #### 測試策略規則

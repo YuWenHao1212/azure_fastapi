@@ -109,3 +109,11 @@ test_*_tracking.sh
 legacy/experimental/
 legacy/test_results/
 legacy/old_code/
+legacy/Legacy_Code/azure_openai_pool.py
+legacy/Legacy_Code/config.py
+legacy/Legacy_Code/error_handler.py
+legacy/Legacy_Code/prompts.py
+legacy/Legacy_Code/function_app.py
+
+# Wiki export (contains embedded git repo)
+wiki-export/

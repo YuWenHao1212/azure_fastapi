@@ -33,6 +33,17 @@ class Settings(BaseSettings):
     # Embedding settings
     embedding_endpoint: str = "https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2023-05-15"
     embedding_api_key: str = ""
+    embedding_model: str = "text-embedding-3-large"
+    
+    # Similarity calculation settings
+    sigmoid_x0: float = 0.373
+    sigmoid_k: float = 15.0
+    keyword_match_case_sensitive: bool = False
+    enable_plural_matching: bool = True
+    
+    # Gap Analysis settings
+    gap_analysis_temperature: float = 0.7
+    gap_analysis_max_tokens: int = 2000
     
     # Security settings
     jwt_secret_key: str = ""

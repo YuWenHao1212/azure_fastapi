@@ -25,17 +25,21 @@ class UnifiedPromptService:
     # Task path for all languages (now using unified directory with language-specific filenames)
     TASK_PATH = "keyword_extraction"
     
-    def __init__(self, prompts_base_dir: str | None = None):
+    def __init__(self, prompts_base_dir: str | None = None, task_path: str | None = None):
         """
         Initialize the unified prompt service.
         
         Args:
             prompts_base_dir: Base directory for prompts (default: src/prompts)
+            task_path: Task-specific path (default: keyword_extraction)
         """
         if prompts_base_dir is None:
             prompts_base_dir = "src/prompts"
         self.simple_prompt_manager = SimplePromptManager(prompts_base_dir)
         self._cache = {}  # Cache for loaded configs
+        # Allow overriding the default task path
+        if task_path:
+            self.TASK_PATH = task_path
         
         logger.info(
             f"Initialized UnifiedPromptService with languages: {self.SUPPORTED_LANGUAGES}"
