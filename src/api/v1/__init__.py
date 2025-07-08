@@ -4,13 +4,14 @@ Aggregates all v1 endpoints for Work Item #347 integration.
 """
 from fastapi import APIRouter
 
+from .index_cal_and_gap_analysis import router as index_gap_router
+from .index_calculation import router as index_calculation_router
+
 # Import endpoint routers
 from .keyword_extraction import router as keyword_router
 from .prompts import router as prompts_router
 
 # from .resume_format import router as format_router
-# from .similarity import router as similarity_router
-# from .gap_analysis import router as gap_router
 # from .resume_tailoring import router as tailoring_router
 # from .course_matching import router as course_router
 
@@ -25,10 +26,12 @@ router.include_router(keyword_router, tags=["Keyword Extraction"])
 # This provides generic prompt version management for all tasks
 router.include_router(prompts_router, tags=["Prompt Management"])
 
+# Include index calculation and gap analysis routers
+router.include_router(index_calculation_router, tags=["Index Calculation"])
+router.include_router(index_gap_router, tags=["Gap Analysis"])
+
 # Include other routers as they are implemented
 # router.include_router(format_router, tags=["Resume Format"])
-# router.include_router(similarity_router, tags=["Similarity"])
-# router.include_router(gap_router, tags=["Gap Analysis"])
 # router.include_router(tailoring_router, tags=["Resume Tailoring"])
 # router.include_router(course_router, tags=["Course Matching"])
 
@@ -82,12 +85,22 @@ async def v1_root():
                     "method": "GET",
                     "description": "List all tasks with prompt configurations",
                     "status": "implemented"
+                },
+                "index_calculation": {
+                    "path": "/api/v1/index-calculation",
+                    "method": "POST",
+                    "description": "Calculate similarity index and keyword coverage",
+                    "status": "implemented"
+                },
+                "index_cal_and_gap_analysis": {
+                    "path": "/api/v1/index-cal-and-gap-analysis",
+                    "method": "POST",
+                    "description": "Calculate index and perform gap analysis",
+                    "status": "implemented"
                 }
             },
             "planned_endpoints": {
                 "resume_format": "/api/v1/format-resume",
-                "similarity": "/api/v1/calculate-similarity",
-                "gap_analysis": "/api/v1/analyze-gaps",
                 "resume_tailoring": "/api/v1/tailor-resume",
                 "course_matching": "/api/v1/match-courses"
             },

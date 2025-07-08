@@ -1,0 +1,24 @@
+customEvents
+| where timestamp {TimeRange}
+| where name == "ClientTypeUsage"
+| extend 
+    client_type = tostring(customDimensions.client_type),
+    client_details = tostring(customDimensions.client_details),
+    client_category = tostring(customDimensions.client_category),
+    endpoint = tostring(customDimensions.endpoint),
+    success = tobool(customDimensions.success)
+| summarize 
+    TotalRequests = count(),
+    SuccessCount = countif(success),
+    FailureCount = countif(not(success)),
+    UniqueEndpoints = dcount(endpoint)
+  by client_type, client_details, client_category
+| extend SuccessRate = round(100.0 * SuccessCount / TotalRequests, 2)
+| project 
+    client_type,
+    client_details,
+    client_category,
+    TotalRequests,
+    SuccessRate,
+    UniqueEndpoints
+| order by TotalRequests desc

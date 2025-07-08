@@ -1,0 +1,129 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Index Calculation & Gap Analysis Dashboard\n\nMonitoring dashboard for resume similarity calculation and gap analysis API endpoints."
+      }
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "timeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "label": "Time Range",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 300000 },
+                { "durationMs": 900000 },
+                { "durationMs": 1800000 },
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"IndexCalculationCompleted\", \"IndexCalAndGapAnalysisCompleted\")\n| summarize Success = count(), Total = count() by bin(timestamp, 5m), name\n| extend SuccessRate = 100.0 * Success / Total\n| project timestamp, name, SuccessRate\n| render timechart",
+        "size": 0,
+        "title": "API Success Rate Over Time",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"OpenAITokenUsage\"\n| summarize \n    TotalPromptTokens = sum(toint(customDimensions.prompt_tokens)),\n    TotalCompletionTokens = sum(toint(customDimensions.completion_tokens)),\n    TotalTokens = sum(toint(customDimensions.total_tokens))\n  by bin(timestamp, 5m)\n| project timestamp, TotalTokens, TotalPromptTokens, TotalCompletionTokens\n| render timechart",
+        "size": 0,
+        "title": "Token Usage Trend",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"IndexCalculationCompleted\", \"IndexCalAndGapAnalysisCompleted\")\n| extend processing_time = todouble(customDimensions.processing_time_ms)\n| summarize \n    avg_time = avg(processing_time),\n    p50_time = percentile(processing_time, 50),\n    p90_time = percentile(processing_time, 90),\n    p95_time = percentile(processing_time, 95),\n    p99_time = percentile(processing_time, 99),\n    count = count()\n  by name\n| project name, avg_time, p50_time, p90_time, p95_time, p99_time, count\n| order by name",
+        "size": 0,
+        "title": "API Response Time Statistics",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"EmbeddingPerformance\"\n| extend \n    processing_time = todouble(customDimensions.processing_time_ms),\n    total_chars = toint(customDimensions['text_lengths'].resume) + toint(customDimensions['text_lengths'].job_description)\n| summarize \n    avg_time = avg(processing_time),\n    avg_chars = avg(total_chars),\n    count = count()\n  by bin(timestamp, 5m)\n| project timestamp, avg_time, avg_chars, count\n| render timechart",
+        "size": 0,
+        "title": "Embedding Performance",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"GapAnalysisCompleted\"\n| extend \n    prompt_tokens = toint(customDimensions.prompt_tokens),\n    completion_tokens = toint(customDimensions.completion_tokens),\n    estimated_cost = todouble(customDimensions.estimated_cost_usd),\n    language = tostring(customDimensions.language)\n| summarize \n    TotalCost = sum(estimated_cost),\n    AvgPromptTokens = avg(prompt_tokens),\n    AvgCompletionTokens = avg(completion_tokens),\n    RequestCount = count()\n  by language\n| project language, TotalCost, AvgPromptTokens, AvgCompletionTokens, RequestCount",
+        "size": 0,
+        "title": "Gap Analysis Cost by Language",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name contains \"Error\"\n| summarize ErrorCount = count() by name, bin(timestamp, 5m)\n| render timechart",
+        "size": 0,
+        "title": "Error Events Over Time",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"IndexCalculationCompleted\", \"IndexCalAndGapAnalysisCompleted\")\n| extend \n    similarity = toint(customDimensions.transformed_similarity),\n    coverage = toint(customDimensions.keyword_coverage)\n| summarize \n    avg_similarity = avg(similarity),\n    avg_coverage = avg(coverage),\n    p50_similarity = percentile(similarity, 50),\n    p50_coverage = percentile(coverage, 50)\n  by bin(timestamp, 10m)\n| project timestamp, avg_similarity, avg_coverage, p50_similarity, p50_coverage\n| render timechart",
+        "size": 0,
+        "title": "Similarity & Coverage Trends",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"IndexCalAndGapAnalysisCompleted\"\n| extend \n    total_time = todouble(customDimensions.total_time_ms),\n    index_time = todouble(customDimensions.index_calc_time_ms),\n    gap_time = todouble(customDimensions.gap_analysis_time_ms)\n| summarize \n    avg_total = avg(total_time),\n    avg_index = avg(index_time),\n    avg_gap = avg(gap_time)\n  by bin(timestamp, 5m)\n| project timestamp, avg_total, avg_index, avg_gap\n| render timechart",
+        "size": 0,
+        "title": "Processing Time Breakdown",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      }
+    }
+  ]
+}

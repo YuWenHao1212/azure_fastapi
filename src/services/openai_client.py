@@ -151,6 +151,25 @@ class AzureOpenAIClient:
                     f"finish_reason={result.get('choices', [{}])[0].get('finish_reason', 'unknown')}"
                 )
                 
+                # Track token usage
+                from src.core.monitoring_service import monitoring_service
+                usage = result.get('usage', {})
+                if usage:
+                    monitoring_service.track_event(
+                        "OpenAITokenUsage",
+                        {
+                            "deployment": self.deployment_id,
+                            "operation": "chat_completion",
+                            "prompt_tokens": usage.get('prompt_tokens', 0),
+                            "completion_tokens": usage.get('completion_tokens', 0),
+                            "total_tokens": usage.get('total_tokens', 0),
+                            "model": result.get("model", self.deployment_id),
+                            "finish_reason": result.get('choices', [{}])[0].get('finish_reason', 'unknown'),
+                            "temperature": payload.get('temperature', 0.7),
+                            "max_tokens": payload.get('max_tokens', 1000)
+                        }
+                    )
+                
                 return result
                 
             except (AzureOpenAIRateLimitError, AzureOpenAIServerError) as e:

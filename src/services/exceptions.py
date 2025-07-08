@@ -6,6 +6,11 @@ Provides specialized error handling for language detection and extraction.
 from typing import Any
 
 
+class ServiceError(Exception):
+    """Base exception for all service errors."""
+    pass
+
+
 class BilingualServiceError(Exception):
     """Base exception for bilingual service errors."""
     
