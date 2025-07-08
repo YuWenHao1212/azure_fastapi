@@ -392,9 +392,10 @@ class TestGapAnalysisService:
         assert "優秀的候選人" in result["OverallAssessment"]
         
         # Verify prompt service was called with correct language
+        # zh-TW now uses v1.2.0 for improved stability
         mock_prompt_instance.get_prompt_config.assert_called_with(
             language="zh-TW",
-            version="1.0.0"
+            version="1.2.0"
         )
     
     @patch('src.services.gap_analysis.get_azure_openai_client')

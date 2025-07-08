@@ -214,10 +214,15 @@ class GapAnalysisService(TokenTrackingMixin):
         }
         
         # Get prompt from UnifiedPromptService
+        # Use v1.2.0 for zh-TW to improve stability and output English skills
+        version = "1.2.0" if language == "zh-TW" else "1.0.0"
         prompt_config = self.prompt_service.get_prompt_config(
             language=language,
-            version="1.0.0"
+            version=version
         )
+        
+        # Log the prompt version being used
+        self.logger.info(f"Using gap analysis prompt version: {version} for language: {language}")
         
         if not prompt_config:
             raise ValueError(f"Gap analysis prompt not found for language: {language}")
@@ -247,6 +252,9 @@ class GapAnalysisService(TokenTrackingMixin):
             # Extract response content
             llm_response = response['choices'][0]['message']['content']
             finish_reason = response['choices'][0].get('finish_reason', 'unknown')
+            
+            # Save raw response for debugging if needed
+            raw_response_before_clean = llm_response
             
             self.logger.info(f"Raw LLM response: {llm_response[:200]}...")
             self.logger.info(f"LLM finish reason: {finish_reason}, response length: {len(llm_response)}")
@@ -280,6 +288,15 @@ class GapAnalysisService(TokenTrackingMixin):
             
             # Parse response
             parsed_response = parse_gap_response(llm_response)
+            
+            # Debug: Check if any field is empty and log raw response
+            if (not parsed_response.get('assessment') or 
+                not parsed_response.get('improvements') or
+                len(parsed_response.get('strengths', [])) == 0 or
+                len(parsed_response.get('gaps', [])) == 0):
+                self.logger.warning("Empty fields detected in parsed response")
+                self.logger.debug(f"Raw LLM response before cleaning: {raw_response_before_clean}")
+                self.logger.debug(f"LLM response after cleaning: {llm_response}")
             
             # Track detailed gap analysis completion
             monitoring_service.track_event(
