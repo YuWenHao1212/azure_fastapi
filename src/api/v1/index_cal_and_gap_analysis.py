@@ -101,8 +101,10 @@ async def calculate_index_and_analyze_gap(
     start_time = time.time()
     
     try:
-        # Validate language
-        if request.language not in ["en", "zh-TW"]:
+        # Validate and normalize language (case-insensitive)
+        if request.language.lower() == "zh-tw":
+            request.language = "zh-TW"
+        elif request.language.lower() != "en":
             request.language = "en"
         
         # Log request
