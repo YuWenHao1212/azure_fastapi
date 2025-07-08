@@ -117,6 +117,9 @@ def parse_gap_response(content: str) -> dict[str, Any]:
             logging.warning("Overall assessment tag found but content is empty")
     else:
         logging.warning("Overall assessment tag not found in response")
+        # Fallback: Generate a basic assessment based on the analysis
+        if strengths and gaps:
+            assessment_text = f"The candidate shows strengths in {len(strengths)} areas but has {len(gaps)} key gaps that need to be addressed. Please review the detailed analysis above for specific recommendations."
     
     # Process skill development priorities
     skill_queries = []
