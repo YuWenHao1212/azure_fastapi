@@ -7,10 +7,10 @@ metadata:
   notes: "Using English prompt structure to improve Azure OpenAI stability. Skill names and descriptions in English for course recommendation system."
 
 llm_config:
-  temperature: 0.7
-  max_tokens: 2000
+  temperature: 0.0
+  max_tokens: 3000
   seed: 42
-  top_p: 1.0
+  top_p: 0.1
   frequency_penalty: 0.0
   presence_penalty: 0.0
 
