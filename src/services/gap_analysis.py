@@ -109,14 +109,34 @@ def parse_gap_response(content: str) -> dict[str, Any]:
     assessment_text = ''
     if oa:
         raw_assessment = oa.group(1).strip()
+        logging.info(f"[GAP_ANALYSIS] Raw assessment length: {len(raw_assessment)}")
+        
         if raw_assessment:
-            assessment_text = convert_markdown_to_html(
-                ' '.join(line.strip() for line in raw_assessment.splitlines() if line.strip())
-            )
+            # Log FULL assessment for debugging (not just preview)
+            logging.info(f"[GAP_ANALYSIS] Raw assessment FULL content: {repr(raw_assessment)}")
+            
+            # Join lines
+            joined_text = ' '.join(line.strip() for line in raw_assessment.splitlines() if line.strip())
+            logging.info(f"[GAP_ANALYSIS] Joined text length: {len(joined_text)}")
+            logging.debug(f"[GAP_ANALYSIS] Joined text FULL: {repr(joined_text)}")
+            
+            # Convert to HTML
+            assessment_text = convert_markdown_to_html(joined_text)
+            logging.info(f"[GAP_ANALYSIS] HTML converted length: {len(assessment_text)}")
+            logging.debug(f"[GAP_ANALYSIS] HTML converted FULL: {repr(assessment_text)}")
+            
+            # Fallback if conversion resulted in empty
+            if not assessment_text and joined_text:
+                logging.warning("[GAP_ANALYSIS] Markdown conversion resulted in empty text, using raw content")
+                assessment_text = joined_text
         else:
-            logging.warning("Overall assessment tag found but content is empty")
+            logging.warning("[GAP_ANALYSIS] Overall assessment tag found but content is empty")
+            # Provide a default message instead of empty
+            assessment_text = "Unable to generate overall assessment. Please review the strengths and gaps above."
     else:
-        logging.warning("Overall assessment tag not found in response")
+        logging.warning("[GAP_ANALYSIS] Overall assessment tag not found in response")
+        # Provide a default message
+        assessment_text = "Overall assessment not available. Please refer to the detailed analysis above."
     
     # Process skill development priorities
     skill_queries = []
@@ -149,13 +169,33 @@ def format_gap_analysis_html(parsed_response: dict[str, Any]) -> dict[str, Any]:
     Returns:
         HTML formatted gap analysis
     """
-    # Convert lists to HTML ordered lists
-    core_strengths = '<ol>' + ''.join(f'<li>{s}</li>' for s in parsed_response['strengths']) + '</ol>'
-    key_gaps = '<ol>' + ''.join(f'<li>{g}</li>' for g in parsed_response['gaps']) + '</ol>'
-    quick_improvements = '<ol>' + ''.join(f'<li>{i}</li>' for i in parsed_response['improvements']) + '</ol>'
+    # Convert lists to HTML ordered lists with fallback for empty lists
+    def format_list_with_fallback(items: list[str], field_name: str) -> str:
+        if items:
+            return '<ol>' + ''.join(f'<li>{item}</li>' for item in items) + '</ol>'
+        else:
+            logging.warning(f"[GAP_ANALYSIS] {field_name} is empty")
+            return f'<ol><li>Unable to analyze {field_name.lower().replace("_", " ")}. Please try again.</li></ol>'
+    
+    core_strengths = format_list_with_fallback(parsed_response.get('strengths', []), 'core_strengths')
+    key_gaps = format_list_with_fallback(parsed_response.get('gaps', []), 'key_gaps')
+    quick_improvements = format_list_with_fallback(parsed_response.get('improvements', []), 'quick_improvements')
     
     # Overall assessment is already in paragraph format
-    overall_assessment = f'<p>{parsed_response["assessment"]}</p>' if parsed_response['assessment'] else '<p></p>'
+    assessment = parsed_response.get('assessment', '')
+    if assessment and assessment not in ["", "Unable to generate overall assessment. Please review the strengths and gaps above.", "Overall assessment not available. Please refer to the detailed analysis above."]:
+        overall_assessment = f'<p>{assessment}</p>'
+    else:
+        logging.warning("[GAP_ANALYSIS] Empty or default overall assessment detected in formatting")
+        overall_assessment = '<p>Unable to generate a comprehensive assessment. Please review the individual sections above for detailed analysis.</p>'
+    
+    # Log the final HTML output
+    logging.info(f"[GAP_ANALYSIS_HTML] Final OverallAssessment HTML: {repr(overall_assessment[:200])}...")
+    
+    # Log if we're still producing empty result
+    if overall_assessment == '<p></p>':
+        logging.error("[GAP_ANALYSIS] CRITICAL: Still producing empty <p></p> for OverallAssessment!")
+        logging.error(f"[GAP_ANALYSIS] Assessment value was: {repr(assessment)}")
     
     return {
         "CoreStrengths": core_strengths,
@@ -256,8 +296,10 @@ class GapAnalysisService(TokenTrackingMixin):
             # Save raw response for debugging if needed
             raw_response_before_clean = llm_response
             
-            self.logger.info(f"Raw LLM response: {llm_response[:200]}...")
-            self.logger.info(f"LLM finish reason: {finish_reason}, response length: {len(llm_response)}")
+            # Log FULL LLM response for debugging
+            self.logger.info(f"[GAP_ANALYSIS_LLM] Full raw LLM response ({len(llm_response)} chars):")
+            self.logger.info(f"[GAP_ANALYSIS_LLM] {repr(llm_response)}")
+            self.logger.info(f"LLM finish reason: {finish_reason}")
             
             # Clean LLM output
             llm_response = clean_llm_output(llm_response)
@@ -322,6 +364,40 @@ class GapAnalysisService(TokenTrackingMixin):
             
             # Format as HTML
             formatted_response = format_gap_analysis_html(parsed_response)
+            
+            # Monitor and log empty fields
+            empty_fields = []
+            field_checks = {
+                "CoreStrengths": (formatted_response.get("CoreStrengths"), ["<ol></ol>", "<ol><li>Unable to analyze core strengths. Please try again.</li></ol>"]),
+                "KeyGaps": (formatted_response.get("KeyGaps"), ["<ol></ol>", "<ol><li>Unable to analyze key gaps. Please try again.</li></ol>"]),
+                "QuickImprovements": (formatted_response.get("QuickImprovements"), ["<ol></ol>", "<ol><li>Unable to analyze quick improvements. Please try again.</li></ol>"]),
+                "OverallAssessment": (formatted_response.get("OverallAssessment"), ["<p></p>", "<p>Unable to generate a comprehensive assessment. Please review the individual sections above for detailed analysis.</p>"])
+            }
+            
+            for field_name, (value, empty_values) in field_checks.items():
+                if not value or value in empty_values:
+                    empty_fields.append(field_name)
+            
+            if empty_fields:
+                self.logger.error(f"[GAP_ANALYSIS_EMPTY] Empty fields detected: {empty_fields}")
+                self.logger.info(f"[GAP_ANALYSIS_DEBUG] Raw response length: {len(llm_response)}")
+                # Log FULL LLM response when empty fields are detected
+                self.logger.error("[GAP_ANALYSIS_EMPTY_DEBUG] Full LLM response when empty fields detected:")
+                self.logger.error(f"[GAP_ANALYSIS_EMPTY_DEBUG] {repr(llm_response)}")
+                self.logger.error("[GAP_ANALYSIS_EMPTY_DEBUG] Raw response before cleaning:")
+                self.logger.error(f"[GAP_ANALYSIS_EMPTY_DEBUG] {repr(raw_response_before_clean)}")
+                
+                # Log to monitoring service
+                monitoring_service.track_custom_event(
+                    "GapAnalysisEmptyFields",
+                    {
+                        "empty_fields": ",".join(empty_fields),
+                        "language": language,
+                        "raw_response_length": len(llm_response),
+                        "has_overall_assessment_tag": '<overall_assessment>' in llm_response,
+                        "finish_reason": finish_reason
+                    }
+                )
             
             self.logger.info("Gap analysis completed successfully")
             

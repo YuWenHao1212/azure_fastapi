@@ -1,0 +1,71 @@
+{
+  "success": true,
+  "data": {
+    "raw_similarity_percentage": 63,
+    "similarity_percentage": 98,
+    "keyword_coverage": {
+      "total_keywords": 8,
+      "covered_count": 4,
+      "coverage_percentage": 50,
+      "covered_keywords": [
+        "Python",
+        "Microservices",
+        "CI/CD",
+        "REST API"
+      ],
+      "missed_keywords": [
+        "FastAPI",
+        "Docker",
+        "Kubernetes",
+        "AWS"
+      ]
+    },
+    "gap_analysis": {
+      "CoreStrengths": "<ol><li><strong>Python Expertise</strong>: The candidate has 4 years of experience in Python and has contributed to distributed systems serving millions of users, demonstrating strong foundational skills in the primary language for this role.</li><li><strong>Microservices Development</strong>: Experience in developing microservices aligns well with the job's requirement, particularly in distributed systems.</li><li><strong>CI/CD Knowledge</strong>: Skilled in CI/CD pipelines using Jenkins and GitLab, which matches a core requirement for the role.</li><li><strong>Database Proficiency</strong>: Strong experience with PostgreSQL, MongoDB, and Redis, which complements backend development and microservices.</li><li><strong>Scalability Experience</strong>: Worked on distributed systems at scale, which speaks to the ability to handle high-demand environments, a likely requirement for cloud-based solutions.</li></ol>",
+      "KeyGaps": "<ol><li><strong>FastAPI Experience</strong>: The candidate lacks explicit experience with FastAPI, which is a key framework for this role.</li><li><strong>Cloud Platforms</strong>: Missing experience with AWS or Azure, which is critical for cloud-based solutions.</li><li><strong>Containerization</strong>: No mention of Docker or Kubernetes experience, which is essential for microservices and deployment in modern environments.</li><li><strong>Monitoring Tools</strong>: Absence of experience with monitoring tools, which is a requirement for ensuring system health and performance.</li><li><strong>Team Leadership</strong>: No evidence of team leadership experience, which is a critical component of this senior role.</li></ol>",
+      "QuickImprovements": "<ol><li><strong>Highlight Scalability Projects</strong>: Add specific examples of distributed systems, emphasizing scalability and high-demand use cases.</li><li><strong>Incorporate Missing Keywords</strong>: Include references to FastAPI, Docker, Kubernetes, AWS, and monitoring tools, even if experience is limited (e.g., \"familiarity with Docker/Kubernetes\").</li><li><strong>Quantify Achievements</strong>: Include metrics such as \"Improved system uptime by X%\" or \"Automated deployment process, reducing deployment time by Y%.\"</li><li><strong>Reorganize Resume</strong>: Create a \"Key Skills\" section at the top, prioritizing Python, microservices, and CI/CD to immediately align with job requirements.</li><li><strong>Leadership Experience</strong>: Add any informal leadership roles (e.g., mentoring junior developers or leading small projects) to address the leadership gap.</li></ol>",
+      "OverallAssessment": "<p>The candidate demonstrates several strengths that align well with the job requirements, such as Python expertise, microservices development, and CI/CD pipeline implementation. They also bring valuable experience with distributed systems and databases, which are essential for backend development roles. However, there are critical gaps, including the absence of FastAPI knowledge, cloud platform experience (AWS/Azure), and containerization tools (Docker/Kubernetes). These technical gaps are compounded by a lack of demonstrated team leadership experience, which is pivotal for a senior role. To improve candidacy, the candidate should immediately address these gaps by gaining familiarity with FastAPI, Docker, and Kubernetes through online resources or hands-on projects. Short-term certifications in AWS or Azure could also demonstrate initiative and foundational knowledge. Highlighting any informal leadership roles and quantifying their technical achievements would strengthen the resume. With targeted effort, the timeline to address these gaps could be 3-6 months, depending on the learning intensity. Based on the current resume, the candidate is moderately competitive but may struggle against applicants with direct experience in all key areas. Strengthening the identified gaps and refining the resume for better alignment with the job description would significantly improve their chances of success.</p>",
+      "SkillSearchQueries": [
+        {
+          "skill_name": "FastAPI",
+          "skill_category": "TECHNICAL",
+          "description": "Learn FastAPI framework for building high-performance REST APIs and microservices"
+        },
+        {
+          "skill_name": "Docker",
+          "skill_category": "TECHNICAL",
+          "description": "Develop containerization skills for application deployment and environment consistency"
+        },
+        {
+          "skill_name": "Kubernetes",
+          "skill_category": "TECHNICAL",
+          "description": "Understand Kubernetes orchestration for managing containerized applications at scale"
+        },
+        {
+          "skill_name": "AWS",
+          "skill_category": "TECHNICAL",
+          "description": "Gain foundational knowledge of AWS services for cloud-based application development"
+        },
+        {
+          "skill_name": "Team Leadership",
+          "skill_category": "NON_TECHNICAL",
+          "description": "Develop leadership skills for managing teams and mentoring developers"
+        }
+      ]
+    }
+  },
+  "error": {
+    "has_error": false,
+    "code": "",
+    "message": "",
+    "details": ""
+  },
+  "warning": {
+    "has_warning": false,
+    "message": "",
+    "expected_minimum": 12,
+    "actual_extracted": 0,
+    "suggestion": ""
+  },
+  "timestamp": "2025-07-09T01:40:22.731418"
+}

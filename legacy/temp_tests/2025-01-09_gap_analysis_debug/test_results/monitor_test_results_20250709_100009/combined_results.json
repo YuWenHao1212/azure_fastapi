@@ -1,0 +1,22 @@
+{
+  "test_datetime": "2025-07-09T10:00:09.607238",
+  "test_results": [
+    {
+      "test_number": 1,
+      "timestamp": "2025-07-09T09:59:23.284928",
+      "duration": 23.601915,
+      "status": "success",
+      "empty_fields": [],
+      "correlation_id": "60db4b11-a2de-4376-ba1d-f940640a761e"
+    },
+    {
+      "test_number": 2,
+      "timestamp": "2025-07-09T09:59:47.888235",
+      "duration": 18.711223,
+      "status": "success",
+      "empty_fields": [],
+      "correlation_id": "83ba3c62-a7e4-4211-92be-213a09c6e5da"
+    }
+  ],
+  "captured_logs": []
+}

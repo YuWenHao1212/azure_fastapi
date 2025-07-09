@@ -1,0 +1,197 @@
+{
+  "summary": {
+    "total_tests": 30,
+    "field_empty_counts": {
+      "core_strengths": 0,
+      "key_gaps": 0,
+      "quick_improvements": 0,
+      "overall_assessment": 0,
+      "skill_search_queries": 0
+    },
+    "tests_with_any_empty": 0,
+    "field_combinations": {},
+    "test_datetime": "2025-07-09T09:04:02.521188"
+  },
+  "results": [
+    {
+      "test_number": 1,
+      "timestamp": "2025-07-09T09:04:02.520947",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 2,
+      "timestamp": "2025-07-09T09:04:02.520950",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 3,
+      "timestamp": "2025-07-09T09:04:02.520953",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 4,
+      "timestamp": "2025-07-09T09:04:02.520955",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 5,
+      "timestamp": "2025-07-09T09:04:02.520957",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 6,
+      "timestamp": "2025-07-09T09:04:02.520960",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 7,
+      "timestamp": "2025-07-09T09:04:02.520963",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 8,
+      "timestamp": "2025-07-09T09:04:02.520975",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 9,
+      "timestamp": "2025-07-09T09:04:02.520978",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 10,
+      "timestamp": "2025-07-09T09:04:02.520980",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 11,
+      "timestamp": "2025-07-09T09:04:02.520982",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 12,
+      "timestamp": "2025-07-09T09:04:02.520984",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 13,
+      "timestamp": "2025-07-09T09:04:02.520986",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 14,
+      "timestamp": "2025-07-09T09:04:02.520988",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 15,
+      "timestamp": "2025-07-09T09:04:02.520991",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 16,
+      "timestamp": "2025-07-09T09:04:02.520992",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 17,
+      "timestamp": "2025-07-09T09:04:02.520994",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 18,
+      "timestamp": "2025-07-09T09:04:02.520997",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 19,
+      "timestamp": "2025-07-09T09:04:02.520999",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 20,
+      "timestamp": "2025-07-09T09:04:02.521007",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 21,
+      "timestamp": "2025-07-09T09:04:02.521016",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 22,
+      "timestamp": "2025-07-09T09:04:02.521020",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 23,
+      "timestamp": "2025-07-09T09:04:02.521022",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 24,
+      "timestamp": "2025-07-09T09:04:02.521024",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 25,
+      "timestamp": "2025-07-09T09:04:02.521026",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 26,
+      "timestamp": "2025-07-09T09:04:02.521035",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 27,
+      "timestamp": "2025-07-09T09:04:02.521037",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 28,
+      "timestamp": "2025-07-09T09:04:02.521039",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 29,
+      "timestamp": "2025-07-09T09:04:02.521041",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    },
+    {
+      "test_number": 30,
+      "timestamp": "2025-07-09T09:04:02.521043",
+      "error": "'GapAnalysisService' object has no attribute 'parse_gap_response'",
+      "empty_fields": null
+    }
+  ]
+}
