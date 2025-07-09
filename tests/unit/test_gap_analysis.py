@@ -189,7 +189,7 @@ class TestParseGapResponse:
         assert len(result["strengths"]) == 1
         assert len(result["gaps"]) == 1
         assert len(result["improvements"]) == 0
-        assert result["assessment"] == ""
+        assert result["assessment"] == "Overall assessment not available. Please refer to the detailed analysis above."
         assert len(result["skill_queries"]) == 0
     
     def test_parse_empty_response(self):
@@ -199,7 +199,7 @@ class TestParseGapResponse:
         assert result["strengths"] == []
         assert result["gaps"] == []
         assert result["improvements"] == []
-        assert result["assessment"] == ""
+        assert result["assessment"] == "Overall assessment not available. Please refer to the detailed analysis above."
         assert result["skill_queries"] == []
 
 
@@ -252,10 +252,10 @@ class TestFormatGapAnalysisHtml:
         
         result = format_gap_analysis_html(parsed_response)
         
-        assert result["CoreStrengths"] == "<ol></ol>"
-        assert result["KeyGaps"] == "<ol></ol>"
-        assert result["QuickImprovements"] == "<ol></ol>"
-        assert result["OverallAssessment"] == "<p></p>"
+        assert result["CoreStrengths"] == "<ol><li>Unable to analyze core strengths. Please try again.</li></ol>"
+        assert result["KeyGaps"] == "<ol><li>Unable to analyze key gaps. Please try again.</li></ol>"
+        assert result["QuickImprovements"] == "<ol><li>Unable to analyze quick improvements. Please try again.</li></ol>"
+        assert result["OverallAssessment"] == "<p>Unable to generate a comprehensive assessment. Please review the individual sections above for detailed analysis.</p>"
         assert result["SkillSearchQueries"] == []
 
 

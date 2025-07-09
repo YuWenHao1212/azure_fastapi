@@ -388,7 +388,7 @@ class GapAnalysisService(TokenTrackingMixin):
                 self.logger.error(f"[GAP_ANALYSIS_EMPTY_DEBUG] {repr(raw_response_before_clean)}")
                 
                 # Log to monitoring service
-                monitoring_service.track_custom_event(
+                monitoring_service.track_event(
                     "GapAnalysisEmptyFields",
                     {
                         "empty_fields": ",".join(empty_fields),
