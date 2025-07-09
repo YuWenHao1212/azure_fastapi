@@ -712,6 +712,280 @@ Claude Code 在編寫程式碼時必須遵循 ruff 的代碼風格規範，避�
   decisions/: 架構決策記錄
 ```
 
+### LLM 呼叫最佳實踐 (重要教訓 - 2025/07/09)
+
+#### 完整保護機制
+
+由於 LLM 的不確定性，所有 LLM 呼叫都必須實作以下保護機制：
+
+1. **空白內容檢測**
+   ```python
+   def check_for_empty_fields(response: dict) -> list[str]:
+       """檢查是否有空白或預設訊息的欄位"""
+       empty_fields = []
+       
+       # 定義每個欄位的預設/空白值
+       field_checks = {
+           "CoreStrengths": ["<ol></ol>", "<ol><li>Unable to...</li></ol>"],
+           "KeyGaps": ["<ol></ol>", "<ol><li>Unable to...</li></ol>"],
+           "OverallAssessment": ["<p></p>", "<p>Unable to generate...</p>"]
+       }
+       
+       for field, empty_values in field_checks.items():
+           if response.get(field) in empty_values:
+               empty_fields.append(field)
+       
+       return empty_fields
+   ```
+
+2. **重試機制 (Retry Mechanism)**
+   ```python
+   async def call_llm_with_retry(prompt: str, max_attempts: int = 3):
+       """帶有重試機制的 LLM 呼叫"""
+       retry_delays = [2.0, 4.0, 8.0]  # 指數退避
+       
+       for attempt in range(max_attempts):
+           try:
+               result = await llm_call(prompt)
+               
+               # 檢查是否有空白欄位
+               empty_fields = check_for_empty_fields(result)
+               if empty_fields and attempt < max_attempts - 1:
+                   logger.warning(f"Empty fields on attempt {attempt + 1}: {empty_fields}")
+                   await asyncio.sleep(retry_delays[attempt])
+                   continue
+                   
+               return result
+               
+           except Exception as e:
+               if attempt == max_attempts - 1:
+                   raise
+               await asyncio.sleep(retry_delays[attempt])
+   ```
+
+3. **預設訊息 (Fallback Messages)**
+   ```python
+   def format_with_fallback(items: list[str], field_name: str) -> str:
+       """格式化內容，空白時提供預設訊息"""
+       if items:
+           return '<ol>' + ''.join(f'<li>{item}</li>' for item in items) + '</ol>'
+       else:
+           return f'<ol><li>Unable to analyze {field_name}. Please try again.</li></ol>'
+   ```
+
+4. **完整日誌記錄**
+   ```python
+   # 記錄 LLM 原始回應
+   logger.info(f"[LLM_RESPONSE] Full raw response ({len(response)} chars): {repr(response)}")
+   
+   # 記錄空白欄位檢測
+   if empty_fields:
+       logger.error(f"[LLM_EMPTY] Empty fields detected: {empty_fields}")
+       monitoring_service.track_event("LLMEmptyFields", {
+           "empty_fields": ",".join(empty_fields),
+           "attempt": attempt + 1
+       })
+   ```
+
+5. **監控與追蹤**
+   ```python
+   # 追蹤 LLM 呼叫指標
+   monitoring_service.track_event("LLMCallCompleted", {
+       "duration_ms": duration * 1000,
+       "retry_count": attempt,
+       "had_empty_fields": len(empty_fields) > 0,
+       "success": not empty_fields
+   })
+   ```
+
+#### 實作範例 - Gap Analysis Service
+
+參考 `src/services/gap_analysis.py` 的完整實作：
+- 3 次重試機制
+- 指數退避 (2s, 4s, 8s)
+- 空白欄位檢測
+- 預設訊息回傳
+- 完整錯誤處理
+
+#### 測試驗證
+
+使用 `test_gap_analysis_with_detailed_logging.py` 進行驗證：
+- 76 次測試，100% 成功率
+- 0 個空白欄位
+- 平均回應時間 19.64 秒
+- 完整日誌記錄
+
+**標準測試程序**：
+```bash
+# 背景執行 100 次測試
+nohup python test_gap_analysis_with_detailed_logging.py 100 > test_100_output.log 2>&1 &
+
+# 監控進度
+tail -f gap_analysis_test_results_*/gap_analysis_test_*.log | grep -E "Test #|Summary"
+```
+
+詳細指南請參考：[TEST_LLM_VALIDATION_GUIDE_20250709.md](docs/published/TEST_LLM_VALIDATION_GUIDE_20250709.md)
+
+### API 測試最佳實踐 (重要教訓 - 2025/07/09)
+
+#### 基本原則
+**任何 API 測試都必須記錄完整的請求和回應內容**。這是 debug 的基本需求，沒有詳細日誌，失敗時完全無法分析。
+
+#### 測試腳本必須包含
+
+1. **完整請求記錄**
+   ```python
+   print(f"[{datetime.now()}] Test #{iteration}", flush=True)
+   print(f"Request URL: {url}", flush=True)
+   print(f"Request payload: {json.dumps(payload, indent=2)}", flush=True)
+   print(f"Request headers: {headers}", flush=True)
+   ```
+
+2. **完整回應記錄**
+   ```python
+   print(f"Response status: {response.status_code}", flush=True)
+   print(f"Response time: {duration:.2f}s", flush=True)
+   print(f"Response headers: {dict(response.headers)}", flush=True)
+   print(f"Response body: {json.dumps(response.json(), indent=2)}", flush=True)
+   ```
+
+3. **每個欄位的實際值**
+   ```python
+   # 不只記錄「空/非空」，要記錄實際內容和統計
+   core_strengths = gap.get('CoreStrengths', 'MISSING')
+   items_count = len(re.findall(r'<li>', core_strengths))
+   print(f"CoreStrengths: {items_count} items - {core_strengths[:100]}...")
+   ```
+
+4. **失敗時的詳細資訊**
+   ```python
+   except Exception as e:
+       print(f"ERROR Details:", flush=True)
+       print(f"  - Type: {type(e).__name__}", flush=True)
+       print(f"  - Message: {str(e)}", flush=True)
+       print(f"  - Traceback: {traceback.format_exc()}", flush=True)
+       print(f"  - Request data: {json.dumps(payload)}", flush=True)
+   ```
+
+5. **保存個別回應檔案**
+   ```python
+   # 每個測試保存獨立檔案，方便後續分析
+   with open(f"response_{test_id:03d}.json", "w") as f:
+       json.dump({
+           "request": payload,
+           "response": response_data,
+           "metadata": {
+               "timestamp": datetime.now().isoformat(),
+               "duration": duration,
+               "status": response.status_code
+           }
+       }, f, indent=2, ensure_ascii=False)
+   ```
+
+6. **使用無緩衝輸出**
+   ```bash
+   # Python 預設會緩衝輸出，測試時必須使用 -u 參數
+   python -u test_script.py > test_log.txt 2>&1 &
+   
+   # 或在程式中強制 flush
+   print("Important log", flush=True)
+   ```
+
+#### 錯誤思維避免
+- ❌ 只關注「統計」而非「內容」
+- ❌ 假設只要知道成功/失敗就夠了
+- ❌ 認為摘要資訊足以 debug
+- ❌ 忽略 Python 輸出緩衝問題
+- ✅ 記錄所有可能需要的資訊
+- ✅ 寧可資訊過多，不要資訊不足
+- ✅ 考慮未來 debug 的需求
+- ✅ 確保即時看到測試進度
+
+#### 完整測試腳本範例
+```python
+async def test_api_with_full_logging(url, payload, test_id):
+    """正確的 API 測試方式，包含完整日誌"""
+    print(f"\n{'='*60}", flush=True)
+    print(f"[{datetime.now()}] Starting Test #{test_id}", flush=True)
+    print(f"URL: {url}", flush=True)
+    print(f"Payload: {json.dumps(payload, indent=2)}", flush=True)
+    
+    start_time = time.time()
+    
+    try:
+        response = await client.post(url, json=payload, timeout=60)
+        duration = time.time() - start_time
+        
+        # 記錄完整回應
+        print(f"Status: {response.status_code} in {duration:.2f}s", flush=True)
+        response_data = response.json()
+        
+        # 分析並記錄關鍵欄位
+        if "data" in response_data:
+            for key, value in response_data["data"].items():
+                value_type = type(value).__name__
+                value_preview = str(value)[:200] if not isinstance(value, (dict, list)) else f"{len(value)} items"
+                print(f"  {key}: {value_type} = {value_preview}", flush=True)
+        
+        # 檢查特定欄位
+        if "gap_analysis" in response_data.get("data", {}):
+            gap = response_data["data"]["gap_analysis"]
+            for field in ["CoreStrengths", "KeyGaps", "QuickImprovements", "OverallAssessment"]:
+                content = gap.get(field, "MISSING")
+                if content in ["<ol></ol>", "<p></p>", ""]:
+                    print(f"  ⚠️  {field}: EMPTY!", flush=True)
+                else:
+                    text_len = len(re.sub(r'<[^>]+>', '', content))
+                    print(f"  ✅ {field}: {text_len} chars", flush=True)
+        
+        # 保存完整回應
+        filename = f"response_{test_id:03d}_{response.status_code}.json"
+        with open(filename, "w") as f:
+            json.dump({
+                "test_id": test_id,
+                "timestamp": datetime.now().isoformat(),
+                "duration_seconds": duration,
+                "request": {
+                    "url": url,
+                    "payload": payload
+                },
+                "response": {
+                    "status": response.status_code,
+                    "headers": dict(response.headers),
+                    "body": response_data
+                }
+            }, f, indent=2, ensure_ascii=False)
+        print(f"  💾 Saved to {filename}", flush=True)
+            
+    except Exception as e:
+        print(f"❌ ERROR in test #{test_id}:", flush=True)
+        print(f"  Type: {type(e).__name__}", flush=True)
+        print(f"  Message: {str(e)}", flush=True)
+        print(f"  Duration: {time.time() - start_time:.2f}s", flush=True)
+        
+        # 保存錯誤資訊
+        with open(f"error_{test_id:03d}.json", "w") as f:
+            json.dump({
+                "test_id": test_id,
+                "timestamp": datetime.now().isoformat(),
+                "error": {
+                    "type": type(e).__name__,
+                    "message": str(e),
+                    "traceback": traceback.format_exc()
+                },
+                "request": payload
+            }, f, indent=2)
+```
+
+#### 監控測試進度
+```python
+# 每 N 個測試顯示統計
+if test_id % 10 == 0:
+    success_rate = (success_count / test_id) * 100
+    avg_time = sum(durations[-10:]) / len(durations[-10:])
+    print(f"\n📊 Progress: {test_id}/100 ({success_rate:.1f}% success, avg {avg_time:.2f}s)", flush=True)
+```
+
 ---
 
 ## Azure Monitor Workbook 格式注意事項
@@ -758,8 +1032,8 @@ Claude Code 在編寫程式碼時必須遵循 ruff 的代碼風格規範，避�
 
 ---
 
-**文檔版本**: 2.3.0  
-**最後更新**: 2025-07-07  
+**文檔版本**: 2.4.0  
+**最後更新**: 2025-07-09  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
 
