@@ -2,7 +2,9 @@
 Gap analysis service for analyzing differences between resume and job requirements.
 Following FHS architecture principles.
 """
+import asyncio
 import logging
+import random
 import re
 import time
 from typing import Any
@@ -206,6 +208,58 @@ def format_gap_analysis_html(parsed_response: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def check_for_empty_fields(formatted_response: dict[str, Any]) -> list[str]:
+    """
+    Check if any gap analysis fields are empty or contain only default messages.
+    
+    Args:
+        formatted_response: The formatted gap analysis response
+        
+    Returns:
+        List of field names that are empty or contain default values
+    """
+    empty_fields = []
+    
+    # Define what constitutes "empty" for each field
+    field_checks = {
+        "CoreStrengths": (
+            formatted_response.get("CoreStrengths"),
+            ["<ol></ol>", "<ol><li>Unable to analyze core strengths. Please try again.</li></ol>"]
+        ),
+        "KeyGaps": (
+            formatted_response.get("KeyGaps"),
+            ["<ol></ol>", "<ol><li>Unable to analyze key gaps. Please try again.</li></ol>"]
+        ),
+        "QuickImprovements": (
+            formatted_response.get("QuickImprovements"),
+            ["<ol></ol>", "<ol><li>Unable to analyze quick improvements. Please try again.</li></ol>"]
+        ),
+        "OverallAssessment": (
+            formatted_response.get("OverallAssessment"),
+            ["<p></p>", "<p>Unable to generate a comprehensive assessment. Please review the individual sections above for detailed analysis.</p>",
+             "<p>Unable to generate overall assessment. Please review the strengths and gaps above.</p>",
+             "<p>Overall assessment not available. Please refer to the detailed analysis above.</p>"]
+        ),
+        "SkillSearchQueries": (
+            formatted_response.get("SkillSearchQueries"),
+            []
+        )
+    }
+    
+    # Check each field
+    for field_name, (value, empty_values) in field_checks.items():
+        if field_name == "SkillSearchQueries":
+            # For skill queries, check if it's an empty list
+            if not value or len(value) == 0:
+                empty_fields.append(field_name)
+        else:
+            # For other fields, check against known empty values
+            if not value or value in empty_values:
+                empty_fields.append(field_name)
+    
+    return empty_fields
+
+
 class GapAnalysisService(TokenTrackingMixin):
     """Service class for gap analysis operations."""
     
@@ -225,7 +279,7 @@ class GapAnalysisService(TokenTrackingMixin):
         language: str = "en"
     ) -> dict[str, Any]:
         """
-        Perform gap analysis between resume and job description.
+        Perform gap analysis between resume and job description with retry mechanism.
         
         Args:
             job_description: Job description text
@@ -243,6 +297,168 @@ class GapAnalysisService(TokenTrackingMixin):
             language = "zh-TW"
         elif language.lower() != "en":
             language = "en"
+        
+        # Retry configuration
+        max_attempts = 3
+        retry_delays = [2.0, 4.0, 8.0]  # Exponential backoff: 2s, 4s, 8s
+        
+        last_exception = None
+        last_response = None
+        
+        for attempt in range(max_attempts):
+            try:
+                # Log retry attempt
+                if attempt > 0:
+                    self.logger.info(f"[GAP_ANALYSIS_RETRY] Attempt {attempt + 1}/{max_attempts} for language: {language}")
+                    
+                    # Track retry in monitoring
+                    monitoring_service.track_event(
+                        "GapAnalysisRetryAttempt",
+                        {
+                            "attempt": attempt + 1,
+                            "max_attempts": max_attempts,
+                            "language": language,
+                            "reason": "empty_fields" if last_response else "error"
+                        }
+                    )
+                
+                # Call the core analysis logic
+                result = await self._analyze_gap_core(
+                    job_description=job_description,
+                    resume=resume,
+                    job_keywords=job_keywords,
+                    matched_keywords=matched_keywords,
+                    missing_keywords=missing_keywords,
+                    language=language
+                )
+                
+                # Check for empty fields
+                empty_fields = check_for_empty_fields(result)
+                
+                if empty_fields:
+                    self.logger.warning(
+                        f"[GAP_ANALYSIS_RETRY] Empty fields detected on attempt {attempt + 1}: "
+                        f"{', '.join(empty_fields)}"
+                    )
+                    
+                    # If this is not the last attempt, retry
+                    if attempt < max_attempts - 1:
+                        last_response = result
+                        
+                        # Add jitter to avoid thundering herd
+                        delay = retry_delays[attempt] * (0.5 + random.random())
+                        
+                        self.logger.info(f"[GAP_ANALYSIS_RETRY] Retrying in {delay:.1f}s due to empty fields: {', '.join(empty_fields)}")
+                        
+                        # Track empty fields retry event
+                        monitoring_service.track_event(
+                            "GapAnalysisEmptyFieldsRetry",
+                            {
+                                "attempt": attempt + 1,
+                                "empty_fields": ",".join(empty_fields),
+                                "language": language,
+                                "delay_seconds": round(delay, 1)
+                            }
+                        )
+                        
+                        await asyncio.sleep(delay)
+                        continue
+                    else:
+                        # Last attempt, log but return the result with fallbacks
+                        self.logger.error(
+                            f"[GAP_ANALYSIS_RETRY] Empty fields persist after {max_attempts} attempts: "
+                            f"{', '.join(empty_fields)}"
+                        )
+                        
+                        monitoring_service.track_event(
+                            "GapAnalysisRetryExhausted",
+                            {
+                                "attempts": max_attempts,
+                                "empty_fields": ",".join(empty_fields),
+                                "language": language
+                            }
+                        )
+                
+                # Success - either no empty fields or we've accepted the fallbacks
+                if attempt > 0:
+                    self.logger.info(f"[GAP_ANALYSIS_RETRY] Success on attempt {attempt + 1}")
+                    monitoring_service.track_event(
+                        "GapAnalysisRetrySuccess",
+                        {
+                            "attempts": attempt + 1,
+                            "language": language,
+                            "had_empty_fields": len(empty_fields) > 0
+                        }
+                    )
+                
+                return result
+                
+            except Exception as e:
+                last_exception = e
+                last_response = None
+                
+                # Log the error
+                self.logger.error(f"[GAP_ANALYSIS_RETRY] Error on attempt {attempt + 1}: {e}")
+                
+                # Check if this is a retryable error
+                error_msg = str(e).lower()
+                is_retryable = any(term in error_msg for term in [
+                    "timeout", "connection", "rate limit", "throttled",
+                    "503", "502", "504", "temporary", "network"
+                ])
+                
+                if not is_retryable or attempt == max_attempts - 1:
+                    self.logger.error(f"[GAP_ANALYSIS_RETRY] Non-retryable error or max attempts reached: {e}")
+                    monitoring_service.track_event(
+                        "GapAnalysisRetryFailure",
+                        {
+                            "attempts": attempt + 1,
+                            "error": str(e),
+                            "language": language,
+                            "retryable": is_retryable
+                        }
+                    )
+                    raise
+                
+                # Calculate retry delay
+                delay = retry_delays[attempt] * (0.5 + random.random())
+                
+                self.logger.warning(
+                    f"[GAP_ANALYSIS_RETRY] Retryable error on attempt {attempt + 1}: {e}. "
+                    f"Retrying in {delay:.1f}s..."
+                )
+                
+                await asyncio.sleep(delay)
+        
+        # Should not reach here
+        if last_exception:
+            raise last_exception
+        else:
+            return last_response
+    
+    async def _analyze_gap_core(
+        self,
+        job_description: str,
+        resume: str,
+        job_keywords: list[str],
+        matched_keywords: list[str],
+        missing_keywords: list[str],
+        language: str = "en"
+    ) -> dict[str, Any]:
+        """
+        Core gap analysis logic (original analyze_gap method).
+        
+        Args:
+            job_description: Job description text
+            resume: Resume text
+            job_keywords: All job keywords
+            matched_keywords: Keywords found in resume
+            missing_keywords: Keywords not found in resume
+            language: Output language (en or zh-TW)
+            
+        Returns:
+            Formatted gap analysis results
+        """
         
         # Prepare prompt data
         prompt_data = {
