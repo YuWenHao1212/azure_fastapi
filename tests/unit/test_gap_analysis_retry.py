@@ -3,7 +3,6 @@ Unit tests for gap analysis retry mechanism.
 Tests retry behavior when AI returns empty fields.
 """
 from unittest.mock import AsyncMock, Mock, patch
-import asyncio
 
 import pytest
 
