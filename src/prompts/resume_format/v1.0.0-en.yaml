@@ -97,6 +97,13 @@ prompts:
     - **Education**: Combine split degree information
     - **Skills**: Standardize and deduplicate (JavaScript = JS = Javascript)
     
+    ### 7. Summary Section Special Rules
+    When formatting the Summary section:
+    - If the original text contains bullet points or numbered lists, preserve them WITHIN a single <p> tag
+    - Use <br> tags to separate list items, keeping the numbering or bullet symbols
+    - Do NOT split into multiple paragraphs or use <ol>/<ul> tags for Summary section
+    - Example: <p>1. First point<br>2. Second point<br>3. Third point</p>
+    
     ## Output Format Requirements
     
     ### HTML Structure (Required Order):
@@ -132,7 +139,7 @@ prompts:
     ### Summary Section Template:
     ```html
     <h2>Summary</h2>
-    <p>[Professional summary describing experience, skills, and career objectives]</p>
+    <p>[Professional summary describing experience, skills, and career objectives. If original has numbered/bulleted items, preserve them with <br> tags like: 1. First point<br>2. Second point<br>3. Third point]</p>
     ```
     
     ### Skills Section Template:
@@ -220,5 +227,10 @@ prompts:
     OCR_TEXT: {ocr_text}
     
     SUPPLEMENT_INFO: {supplement_info}
+    
+    ## Important Reminders:
+    1. For Summary section: If the original text has numbered or bulleted items, keep them in a single <p> tag with <br> separators
+    2. Example: <p>1. First achievement<br>2. Second achievement<br>3. Third achievement</p>
+    3. Do NOT use <ol> or <ul> tags in the Summary section
     
     Please format this OCR output into a structured HTML resume, maintaining the original language.
