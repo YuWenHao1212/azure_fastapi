@@ -170,20 +170,42 @@ class HTMLProcessor:
         try:
             soup = BeautifulSoup(html, 'html.parser')
             
-            # Check if HTML is well-formed
-            if not soup.find():
-                return False, "Empty or invalid HTML"
-            
-            # Check for required elements (at least some text content)
+            # Check for text content
             text_content = soup.get_text(strip=True)
             if not text_content:
                 return False, "No text content found"
             
-            # Check for basic structure
-            if not soup.find(['h1', 'h2', 'h3', 'p', 'div']):
-                return False, "No structural elements found"
+            # Check if it's plain text (no HTML tags)
+            if not soup.find():
+                # It's plain text, which is valid
+                return True, None
             
+            # If it has HTML tags, just ensure it has content
+            # No need to require specific structural elements
             return True, None
             
         except Exception as e:
             return False, f"HTML parsing error: {str(e)}"
+    
+    def normalize_to_html(self, content: str) -> str:
+        """Convert plain text to basic HTML if needed"""
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Check if it's already HTML (has any tags)
+        if soup.find():
+            # Already HTML, return as is
+            return content
+        
+        # It's plain text, convert to basic HTML
+        # Split by double newlines for paragraphs
+        paragraphs = content.split('\n\n')
+        html_parts = []
+        
+        for para in paragraphs:
+            para = para.strip()
+            if para:
+                # Replace single newlines with <br> within paragraphs
+                para_html = para.replace('\n', '<br>')
+                html_parts.append(f'<p>{para_html}</p>')
+        
+        return '\n'.join(html_parts) if html_parts else f'<p>{content}</p>'

@@ -133,10 +133,14 @@ class ResumeTailoringService:
         if not self.language_handler.is_supported_language(language):
             raise ValueError(f"Unsupported language: {language}")
         
-        # Validate HTML structure
-        is_valid, error = self.html_processor.validate_html_structure(original_resume)
-        if not is_valid:
-            raise ValueError(f"Invalid resume HTML: {error}")
+        # Validate both inputs can be processed as HTML/text
+        is_valid_jd, error_jd = self.html_processor.validate_html_structure(job_description)
+        if not is_valid_jd:
+            raise ValueError(f"Invalid job description: {error_jd}")
+            
+        is_valid_resume, error_resume = self.html_processor.validate_html_structure(original_resume)
+        if not is_valid_resume:
+            raise ValueError(f"Invalid resume: {error_resume}")
     
     def _build_context(
         self,
@@ -147,6 +151,10 @@ class ResumeTailoringService:
         include_markers: bool
     ) -> TailoringContext:
         """Build context for tailoring"""
+        # Normalize inputs to HTML format
+        job_description_html = self.html_processor.normalize_to_html(job_description)
+        original_resume_html = self.html_processor.normalize_to_html(original_resume)
+        
         # Standardize keywords based on language
         standardizer = self.en_standardizer if language == "en" else self.zh_tw_standardizer
         
@@ -159,8 +167,8 @@ class ResumeTailoringService:
         missing_keywords = missing_result.standardized_keywords
         
         return TailoringContext(
-            job_description=job_description,
-            original_resume=original_resume,
+            job_description=job_description_html,
+            original_resume=original_resume_html,
             core_strengths=gap_analysis.core_strengths,
             quick_improvements=gap_analysis.quick_improvements,
             overall_assessment=gap_analysis.overall_assessment,

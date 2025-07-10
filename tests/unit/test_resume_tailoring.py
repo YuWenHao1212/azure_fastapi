@@ -398,3 +398,43 @@ class TestResumeTailoringService:
         assert "(R)" not in cleaned
         assert "situation" in cleaned
         assert "Result achieved" in cleaned
+    
+    @pytest.mark.asyncio
+    async def test_plain_text_support(self, mock_dependencies, sample_gap_analysis):
+        """Test that plain text inputs are supported"""
+        service = ResumeTailoringService()
+        
+        # Mock the LLM response
+        service.llm_client.chat_completion.return_value = {
+            'choices': [{
+                'message': {
+                    'content': json.dumps({
+                        "optimized_resume": "<h1>John Doe</h1><p>Senior Software Engineer</p>",
+                        "applied_improvements": ["Added senior positioning"]
+                    })
+                }
+            }],
+            'usage': {'prompt_tokens': 100, 'completion_tokens': 50, 'total_tokens': 150}
+        }
+        
+        plain_text_jd = "We are looking for a Senior Python Developer with 5+ years of experience in building scalable applications."
+        plain_text_resume = """John Doe
+Software Engineer
+
+Experience:
+- Developed Python applications
+- Built machine learning models
+- Led team of 3 developers
+
+Skills: Python, JavaScript, Machine Learning"""
+        
+        result = await service.tailor_resume(
+            job_description=plain_text_jd,
+            original_resume=plain_text_resume,
+            gap_analysis=sample_gap_analysis
+        )
+        
+        assert result is not None
+        assert result.optimized_resume is not None
+        # Should contain HTML tags after processing
+        assert '<h1>' in result.optimized_resume or '<p>' in result.optimized_resume
