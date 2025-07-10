@@ -11,8 +11,8 @@ from .index_calculation import router as index_calculation_router
 from .keyword_extraction import router as keyword_router
 from .prompts import router as prompts_router
 from .resume_format import router as format_router
+from .resume_tailoring import router as tailoring_router
 
-# from .resume_tailoring import router as tailoring_router
 # from .course_matching import router as course_router
 
 # Create main v1 router
@@ -32,7 +32,7 @@ router.include_router(index_gap_router, tags=["Gap Analysis"])
 
 # Include other routers as they are implemented
 router.include_router(format_router, tags=["Resume Format"])
-# router.include_router(tailoring_router, tags=["Resume Tailoring"])
+router.include_router(tailoring_router, tags=["Resume Tailoring"])
 # router.include_router(course_router, tags=["Course Matching"])
 
 # V1 API root endpoint
@@ -103,10 +103,27 @@ async def v1_root():
                     "method": "POST",
                     "description": "Format OCR text into structured HTML resume",
                     "status": "implemented"
+                },
+                "tailor_resume": {
+                    "path": "/api/v1/tailor-resume",
+                    "method": "POST",
+                    "description": "Optimize resume based on job description and gap analysis",
+                    "status": "implemented"
+                },
+                "tailor_resume_health": {
+                    "path": "/api/v1/tailor-resume/health",
+                    "method": "GET",
+                    "description": "Health check for resume tailoring service",
+                    "status": "implemented"
+                },
+                "tailor_resume_languages": {
+                    "path": "/api/v1/tailor-resume/supported-languages",
+                    "method": "GET",
+                    "description": "Get supported languages for resume tailoring",
+                    "status": "implemented"
                 }
             },
             "planned_endpoints": {
-                "resume_tailoring": "/api/v1/tailor-resume",
                 "course_matching": "/api/v1/match-courses"
             },
             "features": {
