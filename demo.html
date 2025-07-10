@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Optimizer - Visual Demo (模擬 TinyMCE 效果)</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        /* 模擬 TinyMCE 編輯器外觀 */
+        .editor-wrapper {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .editor-toolbar {
+            background: #f5f5f5;
+            border-bottom: 1px solid #ddd;
+            padding: 8px;
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .toolbar-button {
+            padding: 4px 8px;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 20px;
+            background: #ccc;
+            margin: 0 5px;
+        }
+
+        /* 模擬編輯區域 */
+        .editor-content {
+            padding: 20px;
+            min-height: 600px;
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        /* 履歷內容樣式 */
+        .editor-content h1 {
+            font-size: 28px;
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .editor-content h2 {
+            font-size: 20px;
+            margin: 20px 0 10px 0;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+
+        .editor-content h3 {
+            font-size: 18px;
+            margin: 15px 0 10px 0;
+            color: #333;
+        }
+
+        .editor-content h4 {
+            font-size: 16px;
+            margin: 10px 0 5px 0;
+            color: #666;
+        }
+
+        .editor-content ul {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+
+        .editor-content li {
+            margin: 5px 0;
+        }
+
+        /* 優化標記樣式 - 這些是用戶在編輯模式看到的效果 */
+        .opt-strength {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 2px 4px;
+            border-bottom: 2px solid #2e7d32;
+            transition: all 0.3s;
+        }
+
+        .opt-keyword {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 2px 4px;
+            border-bottom: 2px solid #1565c0;
+            transition: all 0.3s;
+        }
+
+        .opt-placeholder {
+            background-color: #fce4ec;
+            color: #c2185b;
+            padding: 2px 6px;
+            border: 2px dashed #c2185b;
+            font-weight: bold;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .opt-placeholder:hover {
+            background-color: #f8bbd0;
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(194, 24, 91, 0.3);
+        }
+
+        .opt-new {
+            background-color: #f3e5f5;
+            border-left: 4px solid #6a1b9a;
+            padding-left: 12px;
+            margin-left: -12px;
+        }
+
+        /* 懸停效果 */
+        .opt-strength:hover, .opt-keyword:hover {
+            opacity: 0.8;
+            cursor: help;
+        }
+
+        /* 側邊欄 */
+        .sidebar {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: fit-content;
+            position: sticky;
+            top: 20px;
+        }
+
+        .legend-item {
+            margin: 10px 0;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-sample {
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        .stats {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .placeholder-item {
+            background: #fce4ec;
+            padding: 8px 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            border-left: 3px solid #c2185b;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .placeholder-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .toolbar {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #1976d2;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #757575;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* 優化標記圖例樣式 */
+        .opt-strength-demo {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border-bottom: 2px solid #2e7d32;
+        }
+
+        .opt-keyword-demo {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            border-bottom: 2px solid #1565c0;
+        }
+
+        .opt-placeholder-demo {
+            background-color: #fce4ec;
+            color: #c2185b;
+            border: 2px dashed #c2185b;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+
+        .opt-new-demo {
+            background-color: #f3e5f5;
+            color: #6a1b9a;
+            border-left: 4px solid #6a1b9a;
+            padding-left: 8px;
+        }
+
+        /* 提示訊息 */
+        .tooltip {
+            position: fixed;
+            background: #333;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        /* 標記隱藏時的樣式 */
+        .hide-marks .opt-strength,
+        .hide-marks .opt-keyword,
+        .hide-marks .opt-placeholder,
+        .hide-marks .opt-new {
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Resume Optimizer - 視覺效果展示</h1>
+    <p style="color: #666; margin-bottom: 30px;">這是優化後履歷在 TinyMCE 編輯器中的顯示效果</p>
+
+    <div class="toolbar">
+        <button class="btn btn-primary" 
+onclick="alert('在實際應用中，這會顯示優化說明彈窗')">查看優化說明</button>
+        <button class="btn btn-secondary" onclick="toggleMarks()">切換標記顯示</button>
+        <button class="btn btn-secondary" onclick="simulateFill()">模擬填充占位符</button>
+        <button class="btn btn-primary" onclick="alert('在實際應用中，這會導出乾淨的履歷')">導出乾淨版本</button>
+    </div>
+
+    <div class="container">
+        <div class="editor-wrapper">
+            <!-- 模擬 TinyMCE 工具列 -->
+            <div class="editor-toolbar">
+                <button class="toolbar-button">✂️</button>
+                <button class="toolbar-button">📋</button>
+                <button class="toolbar-button">📋</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-button">↶</button>
+                <button class="toolbar-button">↷</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-button"><b>B</b></button>
+                <button class="toolbar-button"><i>I</i></button>
+                <button class="toolbar-button"><u>U</u></button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-button">•━</button>
+                <button class="toolbar-button">1━</button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-button">🔗</button>
+            </div>
+
+            <!-- 編輯區域 - 這是用戶看到的內容 -->
+            <div class="editor-content" id="editor-content">
+                <h1>張小明</h1>
+                <h2>資深軟體工程師</h2>
+
+                <p>
+                    地點：台北市<br>
+                    Email: <a href="mailto:xiaoming@example.com">xiaoming@example.com</a><br>
+                    LinkedIn: <a href="https://linkedin.com/in/xiaoming">linkedin.com/in/xiaoming</a>
+                </p>
+
+                <h2 class="opt-new">Summary</h2>
+                <p class="opt-new">
+                    資深軟體工程師，擁有 8 年以上 <span class="opt-keyword">雲端架構</span> 和 <span 
+class="opt-keyword">DevOps</span> 經驗。
+                    <span 
+class="opt-strength">曾帶領跨部門團隊成功交付多個企業級解決方案</span>，服務百萬級用戶。
+                    精通 AWS 和微服務架構，完全符合貴公司技術領導職位需求。
+                </p>
+
+                <h2>技能</h2>
+                <ul>
+                    <li><strong>雲端技術：</strong>AWS, <span class="opt-keyword">Kubernetes</span>, Docker,
+<span class="opt-keyword">Terraform</span></li>
+                    <li><strong>程式語言：</strong>Python, Java, Go, JavaScript</li>
+                    <li><strong>DevOps 工具：</strong>Jenkins, GitLab CI, Prometheus, Grafana</li>
+                </ul>
+
+                <h2>工作經驗</h2>
+
+                <h3><strong>技術主管</strong></h3>
+                <p><em>科技股份有限公司</em>•<em>台北</em>•<em>2020年1月 - 現在</em></p>
+                <ul>
+                    <li>
+                        <span class="opt-strength">領導 <span class="opt-placeholder">[團隊人數]</span>
+                人工程團隊進行關鍵產品遷移</span>，
+                        負責確保零停機時間。實施分階段部署策略和自動化測試，
+                        成功達成 99.9% 正常運行時間並減少 <span class="opt-placeholder">[百分比]</span> 部署時間
+                    </li>
+                    <li>
+                        發現部署流程效率低下導致 4 小時停機時間。
+                        <span class="opt-keyword">實施自動化 CI/CD 管道</span>與階段性發布，
+                        將部署時間縮短 75% 並達到 99.9% 正常運行時間
+                    </li>
+                    <li>
+                        <span class="opt-strength">主導微服務架構轉型</span>，
+                        影響 <span class="opt-placeholder">[部門數量]</span> 個部門，
+                        實施基於 <span class="opt-keyword">Kubernetes</span> 的基礎設施，
+                        實現 <span class="opt-placeholder">[百分比]</span> 的部署效率提升
+                    </li>
+                </ul>
+
+                <h3><strong>高級軟體工程師</strong></h3>
+                <p><em>新創科技</em>•<em>新竹</em>•<em>2017年6月 - 2019年12月</em></p>
+                <ul>
+                    <li>
+                        面對 Python 微服務架構的擴展性挑戰 (S)，
+                        <span class="opt-keyword">重新設計系統使用 Kubernetes 和 Docker</span> (A)，
+                        實現 3 倍吞吐量改善和 50% 成本降低 (R)
+                    </li>
+                    <li>
+                        <span class="opt-strength">開發機器學習推薦系統</span>，
+                        處理每日 <span class="opt-placeholder" onclick="fillPlaceholder(this)">[用戶數量]</span>
+活躍用戶 (P)，
+                        實施即時個人化演算法 (A)，
+                        提升用戶參與度 <span class="opt-placeholder" 
+onclick="fillPlaceholder(this)">[百分比]</span> (R)
+                    </li>
+                </ul>
+
+                <h2>教育背景</h2>
+                <h4>資訊工程碩士</h4>
+                <p><em>國立台灣大學</em>•<em>台北</em>•<em>2015年9月 - 2017年6月</em></p>
+
+                <h4>資訊工程學士</h4>
+                <p><em>國立交通大學</em>•<em>新竹</em>•<em>2011年9月 - 2015年6月</em></p>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <h3>優化標記說明</h3>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <span class="legend-sample opt-strength-demo">綠色背景</span>
+                    <span>= 強化的優勢</span>
+                </div>
+
+                <div class="legend-item">
+                    <span class="legend-sample opt-keyword-demo">藍色背景</span>
+                    <span>= 新增關鍵字</span>
+                </div>
+
+                <div class="legend-item">
+                    <span class="legend-sample opt-placeholder-demo">[紅框文字]</span>
+                    <span>= 待填數據</span>
+                </div>
+
+                <div class="legend-item">
+                    <span class="legend-sample opt-new-demo">紫色邊線</span>
+                    <span>= 新增章節</span>
+                </div>
+            </div>
+
+            <div class="stats">
+                <h4>待完成項目 (6)</h4>
+                <div id="placeholder-list">
+                    <div class="placeholder-item">團隊人數</div>
+                    <div class="placeholder-item">百分比</div>
+                    <div class="placeholder-item">部門數量</div>
+                    <div class="placeholder-item">百分比</div>
+                    <div class="placeholder-item">用戶數量</div>
+                    <div class="placeholder-item">百分比</div>
+                </div>
+
+                <h4 style="margin-top: 20px;">優化統計</h4>
+                <p>強化優勢：<strong>4</strong> 處</p>
+                <p>新增關鍵字：<strong>6</strong> 個</p>
+                <p>新增章節：<strong>1</strong> 個</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 提示訊息 -->
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // 模擬滑鼠懸停提示
+        document.addEventListener('mouseover', function(e) {
+            const target = e.target;
+            const tooltip = document.getElementById('tooltip');
+
+            const messages = {
+                'opt-strength': '✨ 這是AI強化的優勢描述',
+                'opt-keyword': '🔍 這是新增的關鍵字，匹配職位需求',
+                'opt-placeholder': '📝 點擊此處填入實際數據',
+                'opt-new': '✏️ 這是AI新增的內容章節'
+            };
+
+            let message = null;
+            for (const [className, msg] of Object.entries(messages)) {
+                if (target.classList.contains(className)) {
+                    message = msg;
+                    break;
+                }
+            }
+
+            if (message) {
+                tooltip.textContent = message;
+                tooltip.style.left = e.pageX + 10 + 'px';
+                tooltip.style.top = e.pageY + 10 + 'px';
+                tooltip.classList.add('show');
+            } else {
+                tooltip.classList.remove('show');
+            }
+        });
+
+        // 切換標記顯示
+        function toggleMarks() {
+            const content = document.getElementById('editor-content');
+            content.classList.toggle('hide-marks');
+
+            const btn = event.target;
+            btn.textContent = content.classList.contains('hide-marks') ? '顯示標記' : '切換標記顯示';
+        }
+
+        // 模擬填充占位符
+        function fillPlaceholder(element) {
+            const text = element.textContent;
+            const value = prompt(`請輸入${text.replace(/[\[\]]/g, '')}：`, '');
+
+            if (value) {
+                element.textContent = value;
+                element.classList.remove('opt-placeholder');
+                element.onclick = null;
+                alert(`已填入：${value}`);
+            }
+        }
+
+        // 模擬批量填充
+        function simulateFill() {
+            const placeholders = document.querySelectorAll('.opt-placeholder');
+            const values = {
+                '[團隊人數]': '12',
+                '[百分比]': '40%',
+                '[部門數量]': '5',
+                '[用戶數量]': '100萬'
+            };
+
+            placeholders.forEach(p => {
+                const text = p.textContent;
+                if (values[text]) {
+                    p.textContent = values[text];
+                    p.classList.remove('opt-placeholder');
+                    p.onclick = null;
+                }
+            });
+
+            alert('已自動填充所有占位符！');
+        }
+    </script>
+</body>
+</html>

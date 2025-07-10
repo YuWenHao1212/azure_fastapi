@@ -207,6 +207,9 @@ run_test_category "Gap Analysis Test" \
 run_test_category "Resume Format Test" \
     "pytest tests/unit/test_resume_format_models.py tests/unit/test_resume_format_services.py -v --tb=short"
 
+run_test_category "Resume Tailoring Test" \
+    "pytest tests/unit/test_resume_tailoring.py -v --tb=short"
+
 # 3. Run Integration Tests (partial)
 echo "═══════════════════════════════════════"
 echo "🔗 INTEGRATION TESTS"
@@ -220,6 +223,9 @@ run_test_category "Index Cal API Test" \
 
 run_test_category "Resume Format Integration Test" \
     "pytest tests/integration/test_resume_format_integration.py -v --tb=short"
+
+run_test_category "Resume Tailoring API Test" \
+    "pytest tests/integration/test_resume_tailoring_api.py -v --tb=short"
 
 # Run performance tests based on API availability
 if check_api_server; then
@@ -289,6 +295,28 @@ if [ $todo_count -gt 0 ]; then
     echo -e "${YELLOW}📝 Found $todo_count TODO/FIXME comments${NC}"
 else
     echo -e "${GREEN}✓ No TODO comments found${NC}"
+fi
+
+# Check for required prompt files
+echo -e "\n${YELLOW}Checking for required prompt files...${NC}"
+missing_prompts=0
+prompt_files=(
+    "src/prompts/resume_tailoring/v1.0.0.yaml"
+    "src/prompts/keyword_extraction/v1.4.0-en.yaml"
+    "src/prompts/keyword_extraction/v1.4.0-zh-TW.yaml"
+    "src/prompts/gap_analysis/v1.0.0.yaml"
+    "src/prompts/resume_format/v1.0.0.yaml"
+)
+for prompt_file in "${prompt_files[@]}"; do
+    if [ ! -f "$prompt_file" ]; then
+        echo -e "${RED}   ✗ Missing: $prompt_file${NC}"
+        missing_prompts=$((missing_prompts + 1))
+    fi
+done
+if [ $missing_prompts -eq 0 ]; then
+    echo -e "${GREEN}✓ All prompt files found${NC}"
+else
+    echo -e "${RED}⚠️  Missing $missing_prompts prompt files${NC}"
 fi
 
 # 6. Final Summary

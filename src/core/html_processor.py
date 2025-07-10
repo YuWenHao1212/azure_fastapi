@@ -1,0 +1,189 @@
+"""
+HTML processor for parsing and rebuilding resume HTML.
+"""
+
+
+from bs4 import BeautifulSoup, Tag
+
+from ..models.domain.tailoring import OptimizationType, ResumeSection, ResumeStructure
+
+
+class HTMLProcessor:
+    """Process HTML resumes for parsing and reconstruction"""
+    
+    # CSS classes for optimization markers
+    CSS_CLASSES = {
+        OptimizationType.STRENGTH: "opt-strength",
+        OptimizationType.KEYWORD: "opt-keyword",
+        OptimizationType.PLACEHOLDER: "opt-placeholder",
+        OptimizationType.NEW: "opt-new",
+        OptimizationType.IMPROVEMENT: "opt-improvement"
+    }
+    
+    # Common section headers to look for
+    SECTION_HEADERS = ["h2", "h3"]
+    
+    def parse_resume(self, html: str) -> ResumeStructure:
+        """Parse HTML resume into structured sections"""
+        soup = BeautifulSoup(html, 'html.parser')
+        sections = {}
+        has_summary = False
+        
+        # Find all section headers
+        headers = soup.find_all(self.SECTION_HEADERS)
+        
+        for section_order, header in enumerate(headers):
+            section_name = header.get_text(strip=True)
+            section_content = []
+            
+            # Collect content until next header
+            for sibling in header.find_next_siblings():
+                if sibling.name in self.SECTION_HEADERS:
+                    break
+                section_content.append(str(sibling))
+            
+            # Check if this is a summary section
+            if self._is_summary_section(section_name):
+                has_summary = True
+            
+            sections[section_name] = ResumeSection(
+                name=section_name,
+                content='\n'.join(section_content),
+                html_element=header.name,
+                order=section_order
+            )
+        
+        # Also capture content before first header (contact info, etc.)
+        first_header = headers[0] if headers else None
+        if first_header:
+            pre_header_content = []
+            for element in soup.children:
+                if element == first_header:
+                    break
+                if isinstance(element, Tag):
+                    pre_header_content.append(str(element))
+            
+            if pre_header_content:
+                sections["_header"] = ResumeSection(
+                    name="_header",
+                    content='\n'.join(pre_header_content),
+                    html_element="div",
+                    order=-1
+                )
+        
+        return ResumeStructure(
+            sections=sections,
+            has_summary=has_summary,
+            total_sections=len(sections)
+        )
+    
+    def rebuild_resume(self, structure: ResumeStructure) -> str:
+        """Rebuild resume HTML from structure"""
+        # Sort sections by order
+        sorted_sections = sorted(
+            structure.sections.items(),
+            key=lambda x: x[1].order
+        )
+        
+        html_parts = []
+        
+        for section_name, section in sorted_sections:
+            if section_name == "_header":
+                # Header content goes directly
+                html_parts.append(section.content)
+            else:
+                # Regular sections with headers
+                header_tag = section.html_element or "h2"
+                
+                # Apply opt-new class if this is a new section
+                if section.is_required and "opt-new" in section.content:
+                    html_parts.append(f'<{header_tag} class="opt-new">{section.name}</{header_tag}>')
+                else:
+                    html_parts.append(f'<{header_tag}>{section.name}</{header_tag}>')
+                
+                html_parts.append(section.content)
+        
+        return '\n'.join(html_parts)
+    
+    def apply_marker(self, content: str, marker_type: OptimizationType) -> str:
+        """Apply optimization marker to content"""
+        css_class = self.CSS_CLASSES.get(marker_type, "opt-generic")
+        return f'<span class="{css_class}">{content}</span>'
+    
+    def apply_markers_to_text(self, text: str, markers: list[tuple[str, OptimizationType]]) -> str:
+        """Apply multiple markers to text"""
+        # Sort markers by position (longest first to avoid conflicts)
+        sorted_markers = sorted(markers, key=lambda x: len(x[0]), reverse=True)
+        
+        for content, marker_type in sorted_markers:
+            marked_content = self.apply_marker(content, marker_type)
+            text = text.replace(content, marked_content)
+        
+        return text
+    
+    def count_markers(self, html: str) -> dict[str, int]:
+        """Count optimization markers in HTML"""
+        counts = {}
+        
+        for marker_type, css_class in self.CSS_CLASSES.items():
+            pattern = f'class="{css_class}"'
+            count = html.count(pattern)
+            counts[marker_type.value] = count
+        
+        return counts
+    
+    def remove_markers(self, html: str) -> str:
+        """Remove all optimization markers from HTML"""
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Find all spans with optimization classes
+        for css_class in self.CSS_CLASSES.values():
+            for span in soup.find_all('span', class_=css_class):
+                # Replace span with its contents
+                span.unwrap()
+        
+        # Also remove opt-new class from headers
+        for tag in soup.find_all(class_="opt-new"):
+            if tag.get('class'):
+                classes = tag['class']
+                if 'opt-new' in classes:
+                    classes.remove('opt-new')
+                    if classes:
+                        tag['class'] = classes
+                    else:
+                        del tag['class']
+        
+        return str(soup)
+    
+    def _is_summary_section(self, section_name: str) -> bool:
+        """Check if section name indicates a summary section"""
+        summary_keywords = [
+            'summary', 'objective', 'profile', 'about',
+            '摘要', '簡介', '個人簡介', '自我介紹'
+        ]
+        
+        section_lower = section_name.lower()
+        return any(keyword in section_lower for keyword in summary_keywords)
+    
+    def validate_html_structure(self, html: str) -> tuple[bool, str | None]:
+        """Validate HTML structure"""
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            
+            # Check if HTML is well-formed
+            if not soup.find():
+                return False, "Empty or invalid HTML"
+            
+            # Check for required elements (at least some text content)
+            text_content = soup.get_text(strip=True)
+            if not text_content:
+                return False, "No text content found"
+            
+            # Check for basic structure
+            if not soup.find(['h1', 'h2', 'h3', 'p', 'div']):
+                return False, "No structural elements found"
+            
+            return True, None
+            
+        except Exception as e:
+            return False, f"HTML parsing error: {str(e)}"

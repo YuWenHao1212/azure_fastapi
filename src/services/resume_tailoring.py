@@ -1,0 +1,365 @@
+"""
+Resume Tailoring Service for optimizing resumes based on gap analysis.
+"""
+
+import asyncio
+import json
+import logging
+import re
+import time
+
+from ..core.config import get_settings
+from ..core.html_processor import HTMLProcessor
+from ..core.language_handler import LanguageHandler
+from ..core.monitoring_service import monitoring_service
+from ..core.star_formatter import STARFormatter
+from ..models.api.resume_tailoring import (
+    GapAnalysisInput,
+    OptimizationStats,
+    TailoringResult,
+    VisualMarkerStats,
+)
+from ..models.domain.tailoring import (
+    TailoringContext,
+)
+from ..services.openai_client import get_azure_openai_client
+from ..services.resume_sections import SectionProcessor
+from ..services.standardization import (
+    EnglishStandardizer,
+    TraditionalChineseStandardizer,
+)
+from ..services.unified_prompt_service import UnifiedPromptService
+
+logger = logging.getLogger(__name__)
+
+
+class ResumeTailoringService:
+    """Service for tailoring resumes based on gap analysis results"""
+    
+    def __init__(self):
+        self.settings = get_settings()
+        self.llm_client = get_azure_openai_client()
+        self.monitoring = monitoring_service
+        self.prompt_service = UnifiedPromptService(task_path="resume_tailoring")
+        
+        # Initialize components
+        self.html_processor = HTMLProcessor()
+        self.language_handler = LanguageHandler()
+        self.star_formatter = STARFormatter()
+        self.section_processor = SectionProcessor()
+        
+        # Initialize standardizers
+        self.en_standardizer = EnglishStandardizer()
+        self.zh_tw_standardizer = TraditionalChineseStandardizer()
+        
+        logger.info("ResumeTailoringService initialized")
+    
+    async def tailor_resume(
+        self,
+        job_description: str,
+        original_resume: str,
+        gap_analysis: GapAnalysisInput,
+        language: str = "en",
+        include_markers: bool = True
+    ) -> TailoringResult:
+        """
+        Main method to tailor a resume based on gap analysis results.
+        
+        Args:
+            job_description: Target job description
+            original_resume: Original resume in HTML format
+            gap_analysis: Gap analysis results
+            language: Output language (en or zh-TW)
+            include_markers: Whether to include visual markers
+            
+        Returns:
+            TailoringResult with optimized resume and statistics
+        """
+        start_time = time.time()
+        
+        # Track start
+        self.monitoring.track_event("ResumeTailoringStarted", {
+            "language": language,
+            "resume_length": len(original_resume),
+            "strengths_count": len(gap_analysis.core_strengths),
+            "improvements_count": len(gap_analysis.quick_improvements)
+        })
+        
+        try:
+            # Validate inputs
+            self._validate_inputs(job_description, original_resume, language)
+            
+            # Build tailoring context
+            context = self._build_context(
+                job_description,
+                original_resume,
+                gap_analysis,
+                language,
+                include_markers
+            )
+            
+            # Call LLM to optimize resume
+            optimized_data = await self._optimize_with_llm(context)
+            
+            # Process the result
+            result = self._process_optimization_result(
+                optimized_data,
+                original_resume,
+                include_markers
+            )
+            
+            # Track metrics
+            duration = time.time() - start_time
+            self._track_metrics(result, duration, language)
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Resume tailoring failed: {str(e)}")
+            self.monitoring.track_event("ResumeTailoringFailed", {
+                "language": language,
+                "error": str(e)
+            })
+            raise
+    
+    def _validate_inputs(self, job_description: str, original_resume: str, language: str):
+        """Validate input parameters"""
+        if not job_description or len(job_description) < 50:
+            raise ValueError("Job description too short")
+        
+        if not original_resume or len(original_resume) < 100:
+            raise ValueError("Resume too short")
+        
+        if not self.language_handler.is_supported_language(language):
+            raise ValueError(f"Unsupported language: {language}")
+        
+        # Validate HTML structure
+        is_valid, error = self.html_processor.validate_html_structure(original_resume)
+        if not is_valid:
+            raise ValueError(f"Invalid resume HTML: {error}")
+    
+    def _build_context(
+        self,
+        job_description: str,
+        original_resume: str,
+        gap_analysis: GapAnalysisInput,
+        language: str,
+        include_markers: bool
+    ) -> TailoringContext:
+        """Build context for tailoring"""
+        # Standardize keywords based on language
+        standardizer = self.en_standardizer if language == "en" else self.zh_tw_standardizer
+        
+        # Standardize covered keywords
+        covered_result = standardizer.standardize_keywords(gap_analysis.covered_keywords)
+        covered_keywords = covered_result.standardized_keywords
+        
+        # Standardize missing keywords
+        missing_result = standardizer.standardize_keywords(gap_analysis.missing_keywords)
+        missing_keywords = missing_result.standardized_keywords
+        
+        return TailoringContext(
+            job_description=job_description,
+            original_resume=original_resume,
+            core_strengths=gap_analysis.core_strengths,
+            quick_improvements=gap_analysis.quick_improvements,
+            overall_assessment=gap_analysis.overall_assessment,
+            covered_keywords=covered_keywords,
+            missing_keywords=missing_keywords,
+            language=language,
+            include_markers=include_markers
+        )
+    
+    async def _optimize_with_llm(self, context: TailoringContext) -> dict:
+        """Call LLM to optimize resume"""
+        # Get prompt template - we use the same prompt for all languages
+        # The prompt itself contains language output instructions
+        try:
+            # First try to load language-specific prompt
+            prompt_config = self.prompt_service.get_prompt_config(context.language, "1.0.0")
+        except FileNotFoundError:
+            # Fall back to language-agnostic prompt
+            # Load the v1.0.0.yaml file directly
+            prompt_config = self.prompt_service.simple_prompt_manager.load_prompt_config_by_filename(
+                "resume_tailoring", "v1.0.0.yaml"
+            )
+        
+        # Build prompt with context
+        system_prompt = prompt_config.get_system_prompt()
+        
+        # Prepare prompt variables
+        output_language = self.language_handler.get_output_language(context.language)
+        
+        prompt_vars = {
+            "output_language": output_language,
+            "job_description": context.job_description,
+            "original_resume": context.original_resume,
+            "core_strengths": "\n".join(f"- {s}" for s in context.core_strengths),
+            "quick_improvements": "\n".join(f"- {i}" for i in context.quick_improvements),
+            "overall_assessment": context.overall_assessment,
+            "covered_keywords": ", ".join(context.covered_keywords),
+            "missing_keywords": ", ".join(context.missing_keywords)
+        }
+        
+        # Format prompts
+        user_prompt = prompt_config.format_user_prompt(**prompt_vars)
+        
+        # Call LLM with retry
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Calling LLM for resume optimization (attempt {attempt + 1})")
+                
+                response = await self.llm_client.chat_completion(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=prompt_config.llm_config.temperature,
+                    max_tokens=prompt_config.llm_config.max_tokens,
+                    top_p=prompt_config.llm_config.top_p
+                )
+                
+                # Track token usage
+                if 'usage' in response:
+                    usage = response['usage']
+                    self.monitoring.track_event("LLMTokenUsage", {
+                        "service": "resume_tailoring",
+                        "input_tokens": usage.get('prompt_tokens', 0),
+                        "output_tokens": usage.get('completion_tokens', 0),
+                        "total_tokens": usage.get('total_tokens', 0),
+                        "model": "gpt-4o-2"
+                    })
+                
+                # Parse response
+                choices = response.get('choices', [])
+                if choices:
+                    content = choices[0].get('message', {}).get('content', '')
+                    return self._parse_llm_response(content)
+                else:
+                    raise ValueError("No response content from LLM")
+                
+            except Exception as e:
+                logger.warning(f"LLM call attempt {attempt + 1} failed: {str(e)}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                else:
+                    raise
+    
+    def _parse_llm_response(self, content: str) -> dict:
+        """Parse LLM response to extract optimized resume and improvements"""
+        try:
+            # Try to parse as JSON
+            return json.loads(content)
+        except json.JSONDecodeError:
+            # If not valid JSON, try to extract from text
+            logger.warning("LLM response is not valid JSON, attempting text extraction")
+            
+            # Extract optimized resume
+            resume_match = re.search(
+                r'"optimized_resume":\s*"([^"]+)"',
+                content,
+                re.DOTALL
+            )
+            
+            # Extract improvements
+            improvements_match = re.search(
+                r'"applied_improvements":\s*\[(.*?)\]',
+                content,
+                re.DOTALL
+            )
+            
+            if resume_match:
+                optimized_resume = resume_match.group(1)
+                improvements = []
+                
+                if improvements_match:
+                    improvements_text = improvements_match.group(1)
+                    # Extract individual improvements
+                    improvements = re.findall(r'"([^"]+)"', improvements_text)
+                
+                return {
+                    "optimized_resume": optimized_resume,
+                    "applied_improvements": improvements
+                }
+            
+            raise ValueError("Could not parse LLM response")
+    
+    def _process_optimization_result(
+        self,
+        optimized_data: dict,
+        original_resume: str,
+        include_markers: bool
+    ) -> TailoringResult:
+        """Process optimization result from LLM"""
+        optimized_resume = optimized_data.get("optimized_resume", "")
+        applied_improvements = optimized_data.get("applied_improvements", [])
+        
+        # Remove format markers
+        optimized_resume = self.star_formatter.remove_format_markers(optimized_resume)
+        
+        # Count markers if included
+        marker_counts = self.html_processor.count_markers(optimized_resume)
+        
+        # Calculate statistics
+        optimization_stats = self._calculate_optimization_stats(
+            original_resume,
+            optimized_resume,
+            applied_improvements
+        )
+        
+        visual_markers = VisualMarkerStats(
+            strength_count=marker_counts.get("strength", 0),
+            keyword_count=marker_counts.get("keyword", 0),
+            placeholder_count=marker_counts.get("placeholder", 0),
+            new_content_count=marker_counts.get("new", 0),
+            improvement_count=marker_counts.get("improvement", 0)
+        )
+        
+        # Remove markers if not requested
+        if not include_markers:
+            optimized_resume = self.html_processor.remove_markers(optimized_resume)
+        
+        return TailoringResult(
+            optimized_resume=optimized_resume,
+            applied_improvements=applied_improvements,
+            optimization_stats=optimization_stats,
+            visual_markers=visual_markers
+        )
+    
+    def _calculate_optimization_stats(
+        self,
+        original_resume: str,
+        optimized_resume: str,
+        applied_improvements: list[str]
+    ) -> OptimizationStats:
+        """Calculate optimization statistics"""
+        # Count sections modified
+        sections_modified = 0
+        for improvement in applied_improvements:
+            if improvement.startswith("[Section:"):
+                sections_modified += 1
+        
+        # Estimate other statistics from improvements
+        keywords_added = sum(1 for imp in applied_improvements if "keyword" in imp.lower())
+        strengths_highlighted = sum(1 for imp in applied_improvements if "strength" in imp.lower())
+        placeholders_added = optimized_resume.count("[") // 2  # Rough estimate
+        
+        return OptimizationStats(
+            sections_modified=sections_modified,
+            keywords_added=keywords_added,
+            strengths_highlighted=strengths_highlighted,
+            placeholders_added=placeholders_added
+        )
+    
+    def _track_metrics(self, result: TailoringResult, duration: float, language: str):
+        """Track optimization metrics"""
+        self.monitoring.track_event("ResumeTailoringCompleted", {
+            "duration_ms": duration * 1000,
+            "language": language,
+            "sections_modified": result.optimization_stats.sections_modified,
+            "keywords_added": result.optimization_stats.keywords_added,
+            "strengths_highlighted": result.optimization_stats.strengths_highlighted,
+            "placeholders_added": result.optimization_stats.placeholders_added,
+            "improvements_applied": len(result.applied_improvements)
+        })
