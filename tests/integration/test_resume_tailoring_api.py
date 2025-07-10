@@ -3,19 +3,16 @@ Integration tests for Resume Tailoring API endpoints.
 Tests the full API flow including request/response handling.
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, Mock, AsyncMock
-import json
 
 from src.main import app
 from src.models.api.resume_tailoring import (
-    TailorResumeRequest,
-    GapAnalysisInput,
-    TailoringOptions,
-    TailoringResult,
     OptimizationStats,
-    VisualMarkerStats
+    TailoringResult,
+    VisualMarkerStats,
 )
 
 

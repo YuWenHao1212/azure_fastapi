@@ -4,7 +4,9 @@ Simple test to verify resume tailoring endpoint is working.
 
 import asyncio
 import json
+
 from httpx import AsyncClient
+
 
 async def test_resume_tailoring():
     """Test the resume tailoring endpoint with a simple request"""

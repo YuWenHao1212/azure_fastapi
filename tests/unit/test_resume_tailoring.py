@@ -3,23 +3,16 @@ Unit tests for Resume Tailoring Service.
 Tests the core functionality without external dependencies.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
 import json
+from unittest.mock import AsyncMock, Mock, patch
 
-from src.services.resume_tailoring import ResumeTailoringService
+import pytest
+
 from src.models.api.resume_tailoring import (
     GapAnalysisInput,
-    TailoringOptions,
-    TailorResumeRequest,
     TailoringResult,
-    OptimizationStats,
-    VisualMarkerStats
 )
-from src.models.domain.tailoring import (
-    OptimizationType,
-    TailoringContext
-)
+from src.services.resume_tailoring import ResumeTailoringService
 
 
 @pytest.fixture
