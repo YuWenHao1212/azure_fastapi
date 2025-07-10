@@ -43,8 +43,8 @@ class TailoringContext:
     job_description: str
     original_resume: str
     core_strengths: list[str]
+    key_gaps: list[str]
     quick_improvements: list[str]
-    overall_assessment: str
     covered_keywords: list[str]
     missing_keywords: list[str]
     language: str

@@ -63,7 +63,11 @@ def sample_request_data():
                 "Highlight leadership or mentoring experiences",
                 "Add containerization skills (Docker/Kubernetes)"
             ],
-            "overall_assessment": "Strong technical foundation with Python and ML. To better match the senior role, emphasize leadership experiences and add cloud/DevOps skills.",
+            "key_gaps": [
+                "Limited cloud platform experience (AWS/Azure/GCP)",
+                "No formal leadership or mentoring roles mentioned",
+                "Missing containerization experience (Docker/Kubernetes)"
+            ],
             "covered_keywords": ["Python", "Machine Learning", "Software Engineer", "TensorFlow"],
             "missing_keywords": ["AWS", "Docker", "Kubernetes", "scalable", "pipelines", "Senior"]
         },
@@ -117,7 +121,11 @@ def sample_chinese_request_data():
                 "增加雲端平台經驗說明",
                 "突顯領導或指導經驗"
             ],
-            "overall_assessment": "技術基礎扎實，建議強調領導經驗並補充雲端技能。",
+            "key_gaps": [
+                "缺乏雲端平台經驗",
+                "未提及正式的領導或指導角色",
+                "缺少容器化技術經驗"
+            ],
             "covered_keywords": ["Python", "機器學習", "軟體工程師"],
             "missing_keywords": ["AWS", "Docker", "Kubernetes", "資深"]
         },

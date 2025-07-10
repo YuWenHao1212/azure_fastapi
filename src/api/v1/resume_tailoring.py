@@ -60,7 +60,7 @@ async def tailor_resume(
     try:
         logger.info(f"Resume tailoring request received for language: {request.options.language}")
         
-        # Call service
+        # Call service (validation already handled by Pydantic field_validators)
         result = await tailoring_service.tailor_resume(
             job_description=request.job_description,
             original_resume=request.original_resume,

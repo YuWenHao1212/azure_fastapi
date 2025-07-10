@@ -169,9 +169,9 @@ class ResumeTailoringService:
         return TailoringContext(
             job_description=job_description_html,
             original_resume=original_resume_html,
-            core_strengths=gap_analysis.core_strengths,
-            quick_improvements=gap_analysis.quick_improvements,
-            overall_assessment=gap_analysis.overall_assessment,
+            core_strengths=gap_analysis.core_strengths if isinstance(gap_analysis.core_strengths, list) else [],
+            key_gaps=gap_analysis.key_gaps if isinstance(gap_analysis.key_gaps, list) else [],
+            quick_improvements=gap_analysis.quick_improvements if isinstance(gap_analysis.quick_improvements, list) else [],
             covered_keywords=covered_keywords,
             missing_keywords=missing_keywords,
             language=language,
@@ -203,8 +203,8 @@ class ResumeTailoringService:
             "job_description": context.job_description,
             "original_resume": context.original_resume,
             "core_strengths": "\n".join(f"- {s}" for s in context.core_strengths),
+            "key_gaps": "\n".join(f"- {g}" for g in context.key_gaps),
             "quick_improvements": "\n".join(f"- {i}" for i in context.quick_improvements),
-            "overall_assessment": context.overall_assessment,
             "covered_keywords": ", ".join(context.covered_keywords),
             "missing_keywords": ", ".join(context.missing_keywords)
         }

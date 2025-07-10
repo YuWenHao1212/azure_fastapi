@@ -5,7 +5,7 @@ Provides request/response models for resume optimization.
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class TailoringOptions(BaseModel):
@@ -23,22 +23,46 @@ class TailoringOptions(BaseModel):
 class GapAnalysisInput(BaseModel):
     """Gap analysis results to be used for tailoring"""
     core_strengths: list[str] = Field(
-        description="3-5 identified strengths from gap analysis"
+        description="3-5 identified strengths from gap analysis (supports multiple formats)"
+    )
+    key_gaps: list[str] = Field(
+        description="3-5 identified gaps from gap analysis (supports multiple formats)"
     )
     quick_improvements: list[str] = Field(
-        description="3-5 actionable improvements from gap analysis"
-    )
-    overall_assessment: str = Field(
-        description="Strategic guidance from gap analysis"
+        description="3-5 actionable improvements from gap analysis (supports multiple formats)"
     )
     covered_keywords: list[str] = Field(
         default_factory=list,
-        description="Keywords already present in resume"
+        description="Keywords already present in resume (comma-separated or list)"
     )
     missing_keywords: list[str] = Field(
         default_factory=list,
-        description="Keywords that need to be added"
+        description="Keywords that need to be added (comma-separated or list)"
     )
+    
+    @model_validator(mode='before')
+    @classmethod
+    def parse_flexible_inputs(cls, data):
+        """Parse various input formats before validation"""
+        if not isinstance(data, dict):
+            return data
+            
+        from ...utils.input_parsers import (
+            parse_flexible_keywords,
+            parse_multiline_items,
+        )
+        
+        # Parse multi-line fields
+        for field in ['core_strengths', 'key_gaps', 'quick_improvements']:
+            if field in data and isinstance(data[field], str):
+                data[field] = parse_multiline_items(data[field])
+        
+        # Parse keyword fields
+        for field in ['covered_keywords', 'missing_keywords']:
+            if field in data and isinstance(data[field], str):
+                data[field] = parse_flexible_keywords(data[field])
+                
+        return data
 
 
 class TailorResumeRequest(BaseModel):

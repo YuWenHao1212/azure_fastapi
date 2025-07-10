@@ -99,8 +99,8 @@ def sample_gap_analysis():
     """Sample gap analysis input"""
     return GapAnalysisInput(
         core_strengths=["Strong Python skills", "Experience with ML frameworks"],
+        key_gaps=["Limited cloud experience", "No formal leadership role"],
         quick_improvements=["Add cloud platform experience", "Include more metrics"],
-        overall_assessment="Good technical background, needs more leadership examples",
         covered_keywords=["Python", "Machine Learning", "TensorFlow"],
         missing_keywords=["AWS", "Docker", "Kubernetes"]
     )

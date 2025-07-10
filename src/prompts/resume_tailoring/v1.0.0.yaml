@@ -270,11 +270,11 @@ prompts:
     Core Strengths:
     {core_strengths}
 
+    Key Gaps:
+    {key_gaps}
+
     Quick Improvements:
     {quick_improvements}
-
-    Overall Assessment:
-    {overall_assessment}
 
     ## Keywords
     Already Covered: {covered_keywords}
