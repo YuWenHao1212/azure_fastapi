@@ -243,6 +243,8 @@ class ResumeTailoringService:
                 choices = response.get('choices', [])
                 if choices:
                     content = choices[0].get('message', {}).get('content', '')
+                    logger.info(f"LLM raw response length: {len(content)} chars")
+                    logger.info(f"LLM raw response preview: {content[:200]}...")
                     return self._parse_llm_response(content)
                 else:
                     raise ValueError("No response content from LLM")
@@ -256,42 +258,77 @@ class ResumeTailoringService:
     
     def _parse_llm_response(self, content: str) -> dict:
         """Parse LLM response to extract optimized resume and improvements"""
-        try:
-            # Try to parse as JSON
-            return json.loads(content)
-        except json.JSONDecodeError:
-            # If not valid JSON, try to extract from text
-            logger.warning("LLM response is not valid JSON, attempting text extraction")
-            
-            # Extract optimized resume
-            resume_match = re.search(
-                r'"optimized_resume":\s*"([^"]+)"',
-                content,
-                re.DOTALL
-            )
-            
-            # Extract improvements
-            improvements_match = re.search(
-                r'"applied_improvements":\s*\[(.*?)\]',
-                content,
-                re.DOTALL
-            )
-            
-            if resume_match:
-                optimized_resume = resume_match.group(1)
-                improvements = []
+        result = None
+        
+        # First check if the content is wrapped in markdown code blocks
+        if content.strip().startswith('```json') and content.strip().endswith('```'):
+            # Extract JSON from markdown code block
+            json_str = content.strip()[7:-3].strip()  # Remove ```json and ```
+            try:
+                result = json.loads(json_str)
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse JSON from markdown block")
+        
+        if not result:
+            try:
+                # Try to parse as JSON directly
+                result = json.loads(content)
+            except json.JSONDecodeError:
+                # If not valid JSON, try to extract from text
+                logger.warning("LLM response is not valid JSON, attempting text extraction")
                 
-                if improvements_match:
-                    improvements_text = improvements_match.group(1)
-                    # Extract individual improvements
-                    improvements = re.findall(r'"([^"]+)"', improvements_text)
+                # Extract optimized resume
+                resume_match = re.search(
+                    r'"optimized_resume":\s*"([^"]+)"',
+                    content,
+                    re.DOTALL
+                )
                 
-                return {
-                    "optimized_resume": optimized_resume,
-                    "applied_improvements": improvements
-                }
-            
+                # Extract improvements
+                improvements_match = re.search(
+                    r'"applied_improvements":\s*\[(.*?)\]',
+                    content,
+                    re.DOTALL
+                )
+                
+                if resume_match:
+                    optimized_resume = resume_match.group(1)
+                    improvements = []
+                    
+                    if improvements_match:
+                        improvements_text = improvements_match.group(1)
+                        # Extract individual improvements
+                        improvements = re.findall(r'"([^"]+)"', improvements_text)
+                    
+                    result = {
+                        "optimized_resume": optimized_resume,
+                        "applied_improvements": improvements
+                    }
+        
+        # Validate extraction result
+        if not result:
+            logger.error(f"Failed to extract any data from LLM response: {content[:500]}...")
+            self.monitoring.track_event("ResumeTailoringExtractionFailed", {
+                "response_preview": content[:500],
+                "response_length": len(content)
+            })
             raise ValueError("Could not parse LLM response")
+        
+        if not result.get("optimized_resume"):
+            logger.error(f"Failed to extract optimized_resume from LLM response: {content[:500]}...")
+            self.monitoring.track_event("ResumeTailoringMissingField", {
+                "missing_field": "optimized_resume",
+                "response_preview": content[:500],
+                "extracted_fields": list(result.keys())
+            })
+            raise ValueError("Extracted data missing optimized_resume field")
+        
+        # Log successful extraction
+        if not result.get("applied_improvements"):
+            logger.warning("No applied_improvements found in LLM response, using empty list")
+            result["applied_improvements"] = []
+        
+        return result
     
     def _process_optimization_result(
         self,

@@ -212,7 +212,13 @@ prompts:
     - [USER COUNT] for scale metrics
 
     ## Output Requirements
-    ```json
+    
+    **CRITICAL**: Return ONLY valid JSON without any markdown formatting or code blocks.
+    - Do NOT wrap the response in ```json``` blocks
+    - Do NOT include any text before or after the JSON
+    - The response must be parseable as JSON directly
+    
+    Required JSON structure:
     {
       "optimized_resume": "[Complete HTML resume with optimization markers]",
       "applied_improvements": [
@@ -223,7 +229,6 @@ prompts:
         "[Section: Projects] Enhanced ML project description to demonstrate data analysis strength, added specific technologies and [PERCENTAGE] improvement placeholder"
       ]
     }
-    ```
 
     ## Applied Improvements Format
     Each improvement must follow: "[Section: Name] Description of what was done"
@@ -285,6 +290,7 @@ prompts:
     7. Report improvements by section using format: "[Section: Name] Description"
     8. Ensure every strength is highlighted and every improvement attempted
     9. Output natural, professional language without STAR/PAR markers
+    10. **IMPORTANT**: Return ONLY valid JSON. Do NOT wrap in markdown code blocks (```json```)
 
 validation:
   required_sections:
