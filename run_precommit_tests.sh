@@ -204,6 +204,9 @@ run_test_category "Index Calculation Test" \
 run_test_category "Gap Analysis Test" \
     "pytest tests/unit/test_gap_analysis.py tests/unit/test_gap_analysis_retry.py -v --tb=short"
 
+run_test_category "Resume Format Test" \
+    "pytest tests/unit/test_resume_format_models.py tests/unit/test_resume_format_services.py -v --tb=short"
+
 # 3. Run Integration Tests (partial)
 echo "═══════════════════════════════════════"
 echo "🔗 INTEGRATION TESTS"
@@ -214,6 +217,9 @@ run_test_category "Azure Deployment Test" \
 
 run_test_category "Index Cal API Test" \
     "pytest tests/integration/test_index_cal_api.py -v --tb=short"
+
+run_test_category "Resume Format Integration Test" \
+    "pytest tests/integration/test_resume_format_integration.py -v --tb=short"
 
 # Run performance tests based on API availability
 if check_api_server; then

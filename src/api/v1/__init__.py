@@ -10,8 +10,8 @@ from .index_calculation import router as index_calculation_router
 # Import endpoint routers
 from .keyword_extraction import router as keyword_router
 from .prompts import router as prompts_router
+from .resume_format import router as format_router
 
-# from .resume_format import router as format_router
 # from .resume_tailoring import router as tailoring_router
 # from .course_matching import router as course_router
 
@@ -31,7 +31,7 @@ router.include_router(index_calculation_router, tags=["Index Calculation"])
 router.include_router(index_gap_router, tags=["Gap Analysis"])
 
 # Include other routers as they are implemented
-# router.include_router(format_router, tags=["Resume Format"])
+router.include_router(format_router, tags=["Resume Format"])
 # router.include_router(tailoring_router, tags=["Resume Tailoring"])
 # router.include_router(course_router, tags=["Course Matching"])
 
@@ -97,10 +97,15 @@ async def v1_root():
                     "method": "POST",
                     "description": "Calculate index and perform gap analysis",
                     "status": "implemented"
+                },
+                "format_resume": {
+                    "path": "/api/v1/format-resume",
+                    "method": "POST",
+                    "description": "Format OCR text into structured HTML resume",
+                    "status": "implemented"
                 }
             },
             "planned_endpoints": {
-                "resume_format": "/api/v1/format-resume",
                 "resume_tailoring": "/api/v1/tailor-resume",
                 "course_matching": "/api/v1/match-courses"
             },

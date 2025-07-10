@@ -362,6 +362,21 @@ def create_unsupported_language_response(error: UnsupportedLanguageError) -> dic
     }
 
 
+class LLMServiceError(ServiceError):
+    """Exception raised when LLM service fails."""
+    pass
+
+
+class ValidationError(ServiceError):
+    """Exception raised when input validation fails."""
+    pass
+
+
+class ProcessingError(ServiceError):
+    """Exception raised when processing fails."""
+    pass
+
+
 def create_language_detection_error_response(error: LanguageDetectionError) -> dict[str, Any]:
     """
     Create a standardized API response for language detection errors.

@@ -15,6 +15,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from src.core.config import Settings
+from src.main import create_app
 from src.models.keyword_extraction import (
     KeywordExtractionData,
     KeywordExtractionRequest,
@@ -29,6 +30,12 @@ def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def app():
+    """Create FastAPI application for testing."""
+    return create_app()
 
 
 @pytest.fixture
