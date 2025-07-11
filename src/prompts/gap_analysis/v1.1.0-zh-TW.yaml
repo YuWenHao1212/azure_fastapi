@@ -96,13 +96,12 @@ prompts:
     [Each skill on a separate line]
     [Format per line: SKILL_N::SkillName::CATEGORY::DetailedDescription]
     [Use double colon :: to separate the 4 fields within each skill]
-    [CATEGORY: Use 技術類 for TECHNICAL or 非技術類 for NON_TECHNICAL]
-    [技術類: Software, tools, programming, platforms, data analysis, technical methodologies]
-    [非技術類: Business strategy, communication, leadership, industry knowledge, soft skills]
-    [SkillName: MUST BE IN ENGLISH (e.g., Python, Docker, Project Management)]
-    [Description: 10-20 words explaining specific job application context - MUST BE IN ENGLISH]
+    [CATEGORY: Use TECHNICAL or NON_TECHNICAL]
+    [TECHNICAL: Software, tools, programming, platforms, data analysis, technical methodologies]
+    [NON_TECHNICAL: Business strategy, communication, leadership, industry knowledge, soft skills]
+    [Description: 10-20 words explaining specific job application context - IN TRADITIONAL CHINESE]
     [Order by learning priority (most important skill first)]
-    [Example format only: SKILL_1::Python Advanced Programming::技術類::Master advanced Python features for scalable backend development]
+    [Example format only: SKILL_1::Excel::TECHNICAL::Advanced pivot table creation for financial data analysis and reporting]
     </skill_development_priorities>
     </gap_analysis>
 
@@ -120,10 +119,7 @@ prompts:
     
     IMPORTANT: You MUST include ALL sections with their XML tags, especially <overall_assessment> and <quick_improvements>. Do not skip any section. If you cannot provide content for a section, explain why in Traditional Chinese within the appropriate tags.
     
-    FINAL REMINDER: Your entire response must be in Traditional Chinese (繁體中文), EXCEPT for the following:
-    - Skill names in skill_development_priorities should be in ENGLISH
-    - Skill descriptions in skill_development_priorities should be in ENGLISH
-    This is critical for the user experience and system integration.
+    FINAL REMINDER: Your entire response must be in Traditional Chinese (繁體中文). This is critical for the user experience.
 
   user: |
     <job_description>
