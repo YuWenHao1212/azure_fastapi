@@ -12,6 +12,12 @@
 - ✅ **智能語言檢測** - 自動識別文本語言
 - ✅ **混合語言處理** - 支援中英混合內容
 
+### 📝 **履歷優化功能** (New!)
+- ✅ **AI 履歷優化** - 基於職缺描述自動優化履歷內容
+- ✅ **彈性輸入格式** - 支援多種文字格式（Bubble.io 相容）
+- ✅ **視覺化標記** - 清楚標示優化內容
+- ✅ **STAR/PAR 格式** - 自動轉換經歷描述為專業格式
+
 ### 🛠️ **技術架構**
 - **框架**: FastAPI + Azure Functions
 - **架構**: FHS (Functional Hierarchy Structure)
@@ -274,6 +280,7 @@ curl https://$FUNCTION_APP.azurewebsites.net/api/health
 
 ### 📤 **API 測試**
 
+#### 關鍵字提取 API
 ```bash
 # 測試關鍵字提取 API
 curl -X POST "https://$FUNCTION_APP.azurewebsites.net/api/v1/keyword-extraction" \
@@ -291,6 +298,37 @@ curl -X POST "https://$FUNCTION_APP.azurewebsites.net/api/v1/keyword-extraction"
     "keywords": ["Python", "FastAPI", "Developer", "Skilled", ...],
     "language_detected": "en",
     "prompt_version_used": "v1.3.0"
+  }
+}
+```
+
+#### 履歷優化 API (New!)
+```bash
+# 測試履歷優化 API
+curl -X POST "https://$FUNCTION_APP.azurewebsites.net/api/v1/tailor-resume" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "job_description": "Looking for a Senior Python Developer with cloud experience",
+    "original_resume": "<h1>John Doe</h1><p>Python Developer with 4 years experience</p>",
+    "gap_analysis": {
+      "core_strengths": "Strong Python skills\nAPI development experience",
+      "key_gaps": "Limited cloud experience\nNo senior role mentioned",
+      "quick_improvements": "Add cloud projects\nHighlight leadership",
+      "covered_keywords": "Python, Developer, API",
+      "missing_keywords": "Senior, Cloud, AWS, Leadership"
+    }
+  }'
+
+# 預期回應
+{
+  "success": true,
+  "data": {
+    "optimized_resume": "<h1>John Doe</h1><p class=\"opt-new\">Senior Python Developer...</p>",
+    "applied_improvements": ["Added senior positioning", "Integrated cloud keywords"],
+    "optimization_stats": {
+      "sections_modified": 2,
+      "keywords_added": 4
+    }
   }
 }
 ```
@@ -378,8 +416,13 @@ az functionapp restart --name $FUNCTION_APP --resource-group $RESOURCE_GROUP
 
 ## 📚 **相關文檔**
 
-- **開發協作**: 參考 `CLAUDE.md`
-- **協作記錄**: 參考 `COLLABORATION_LOG.md`
+### 內部文檔
+- **開發協作指南**: [`CLAUDE.md`](./CLAUDE.md)
+- **協作記錄**: [`COLLABORATION_LOG.md`](./COLLABORATION_LOG.md)
+- **履歷優化 API 文檔**: [`docs/API_RESUME_TAILORING_V1.md`](./docs/API_RESUME_TAILORING_V1.md)
+- **Bubble.io 整合指南**: [`docs/BUBBLE_IO_INTEGRATION_GUIDE.md`](./docs/BUBBLE_IO_INTEGRATION_GUIDE.md)
+
+### 外部資源
 - [Azure Functions Python 開發者指南](https://docs.microsoft.com/en-us/azure/azure-functions/functions-reference-python)
 - [FastAPI 官方文檔](https://fastapi.tiangolo.com/)
 - [Azure OpenAI 服務文檔](https://docs.microsoft.com/en-us/azure/cognitive-services/openai/)
