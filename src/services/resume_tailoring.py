@@ -11,6 +11,7 @@ import time
 from ..core.config import get_settings
 from ..core.html_processor import HTMLProcessor
 from ..core.language_handler import LanguageHandler
+from ..core.marker_fixer import MarkerFixer
 from ..core.monitoring_service import monitoring_service
 from ..core.star_formatter import STARFormatter
 from ..models.api.resume_tailoring import (
@@ -46,6 +47,7 @@ class ResumeTailoringService:
         self.html_processor = HTMLProcessor()
         self.language_handler = LanguageHandler()
         self.star_formatter = STARFormatter()
+        self.marker_fixer = MarkerFixer()
         self.section_processor = SectionProcessor()
         
         # Initialize standardizers
@@ -105,7 +107,8 @@ class ResumeTailoringService:
             result = self._process_optimization_result(
                 optimized_data,
                 original_resume,
-                include_markers
+                include_markers,
+                gap_analysis
             )
             
             # Track metrics
@@ -334,7 +337,8 @@ class ResumeTailoringService:
         self,
         optimized_data: dict,
         original_resume: str,
-        include_markers: bool
+        include_markers: bool,
+        gap_analysis: GapAnalysisInput
     ) -> TailoringResult:
         """Process optimization result from LLM"""
         optimized_resume = optimized_data.get("optimized_resume", "")
@@ -342,6 +346,17 @@ class ResumeTailoringService:
         
         # Remove format markers
         optimized_resume = self.star_formatter.remove_format_markers(optimized_resume)
+        
+        # Fix incorrectly placed markers and apply keyword markers properly
+        if include_markers:
+            # Extract all keywords that should be marked
+            keywords_to_mark = gap_analysis.missing_keywords
+            
+            # Fix markers (remove from wrong elements, apply to specific keywords)
+            optimized_resume = self.marker_fixer.fix_and_enhance_markers(
+                optimized_resume,
+                keywords=keywords_to_mark
+            )
         
         # Count markers if included
         marker_counts = self.html_processor.count_markers(optimized_resume)

@@ -1,0 +1,899 @@
+<script>
+/**
+ * TinyMCE Placeholder Handler for Bubble.io - Final Version
+ * 功能：點擊 placeholder 進行編輯，自動添加單位
+ * 
+ * 版本：1.0.0
+ * 日期：2025-01-11
+ */
+
+// 全局變數
+let activeInput = null;
+let placeholderData = null;
+let originalMode = 'readonly';
+let hasClickedBefore = false; // 追蹤是否已經點擊過
+
+// 調試
+function debugLog(message, data) {
+    console.log(`[Placeholder-Handler] ${message}`, data || '');
+}
+
+// 初始化
+function initBubblePlaceholderHandler() {
+    debugLog('開始初始化...');
+    
+    if (typeof tinymce === 'undefined') {
+        setTimeout(initBubblePlaceholderHandler, 100);
+        return;
+    }
+    
+    // 處理編輯器
+    tinymce.on('AddEditor', function(e) {
+        e.editor.on('init', function() {
+            setupPlaceholderHandler(e.editor);
+        });
+    });
+    
+    tinymce.get().forEach(editor => {
+        if (editor.initialized) {
+            setupPlaceholderHandler(editor);
+        }
+    });
+}
+
+// 設置處理器
+function setupPlaceholderHandler(editor) {
+    if (editor.placeholderHandlerSetup) return;
+    editor.placeholderHandlerSetup = true;
+    
+    debugLog('設置編輯器:', editor.id);
+    
+    // 添加樣式（內聯樣式移到外部 CSS）
+    editor.dom.addStyle(`
+        .opt-placeholder { 
+            background-color: #fee2e2 !important;
+            color: #991b1b !important;
+            border: 1px dashed #f87171 !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            font-style: italic !important;
+            font-weight: 500 !important;
+            display: inline-block !important;
+            cursor: pointer !important;
+            position: relative !important;
+        }
+        .opt-placeholder:hover {
+            background-color: #fecaca !important;
+            border-color: #ef4444 !important;
+        }
+        .editing-placeholder {
+            background-color: #fff !important;
+            border: 2px solid #721c24 !important;
+            padding: 6px 10px !important;
+            border-radius: 3px !important;
+            color: #721c24 !important;
+            font-style: normal !important;
+            font-size: inherit !important;
+            min-width: 80px !important;
+            min-height: 32px !important;
+            line-height: 1.5 !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            outline: none !important;
+        }
+    `);
+    
+    // 設置點擊處理
+    const editorBody = editor.getBody();
+    if (editorBody) {
+        // 使用 capture phase 捕獲點擊
+        editorBody.addEventListener('mousedown', function(e) {
+            handlePlaceholderClick(e, editor);
+        }, true);
+        
+        debugLog('點擊處理器已設置');
+    }
+    
+    // 監聽鍵盤
+    editor.on('keydown', function(e) {
+        if (activeInput && editor.mode.get() === 'design') {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishEditingAndSwitch(editor);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelEditingAndSwitch(editor);
+            }
+        }
+    });
+    
+    // 記錄初始模式
+    setTimeout(() => {
+        originalMode = editor.mode.get();
+        debugLog('初始模式:', originalMode);
+    }, 500);
+}
+
+// 處理點擊
+function handlePlaceholderClick(e, editor) {
+    const target = e.target;
+    
+    if (target && target.classList && target.classList.contains('opt-placeholder')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        debugLog('點擊 placeholder:', target.innerText);
+        
+        // 如果在唯讀模式
+        if (editor.mode.get() === 'readonly') {
+            debugLog('在唯讀模式，需要切換');
+            originalMode = 'readonly';
+            
+            // 切換到編輯模式
+            editor.mode.set('design');
+            
+            // 等待模式切換完成
+            waitForModeChange(editor, 'design', () => {
+                debugLog('模式切換完成');
+                
+                // 第一次點擊需要特殊處理
+                if (!hasClickedBefore) {
+                    debugLog('第一次點擊，使用特殊聚焦策略');
+                    hasClickedBefore = true;
+                    
+                    // 延遲較長時間確保 DOM 完全就緒
+                    setTimeout(() => {
+                        startEditingWithFocus(target, editor, true);
+                    }, 300);
+                } else {
+                    startEditingWithFocus(target, editor, false);
+                }
+            });
+        } else if (!activeInput) {
+            startEditingWithFocus(target, editor, false);
+        }
+    }
+    // 點擊其他地方
+    else if (activeInput && !target.classList.contains('editing-placeholder')) {
+        finishEditingAndSwitch(editor);
+    }
+}
+
+// 等待模式切換
+function waitForModeChange(editor, targetMode, callback) {
+    let attempts = 0;
+    const maxAttempts = 20;
+    
+    const checkMode = () => {
+        attempts++;
+        if (editor.mode.get() === targetMode) {
+            callback();
+        } else if (attempts < maxAttempts) {
+            setTimeout(checkMode, 50);
+        } else {
+            debugLog('模式切換超時');
+        }
+    };
+    
+    setTimeout(checkMode, 50);
+}
+
+// 開始編輯並確保聚焦
+function startEditingWithFocus(placeholder, editor, isFirstTime) {
+    // 保存資料
+    placeholderData = {
+        text: placeholder.innerText,
+        type: placeholder.innerText.replace(/[\[\]]/g, '')
+    };
+    
+    debugLog('開始編輯:', placeholderData.type);
+    
+    // 轉換樣式
+    placeholder.classList.remove('opt-placeholder');
+    placeholder.classList.add('editing-placeholder');
+    placeholder.contentEditable = 'true';
+    
+    // 設置初始值（不包含單位，因為完成時會自動添加）
+    const hints = {
+        'PERCENTAGE': '25',
+        'TEAM SIZE': '5-10',
+        'AMOUNT': '1',
+        'NUMBER': '100',
+        'TIME PERIOD': '3',
+        'USER COUNT': '10000',
+        '35M units': '35',
+        '70%': '70'
+    };
+    
+    let initialValue = hints[placeholderData.type] || '';
+    if (placeholderData.text.match(/\[.+\]/) && !hints[placeholderData.type]) {
+        initialValue = placeholderData.text.replace(/[\[\]]/g, '');
+    }
+    
+    placeholder.innerText = initialValue;
+    activeInput = placeholder;
+    
+    // 聚焦策略
+    if (isFirstTime) {
+        debugLog('使用第一次點擊聚焦策略');
+        
+        // 策略1: 立即嘗試聚焦
+        setTimeout(() => {
+            placeholder.focus();
+            selectAllContent(placeholder, editor);
+            debugLog('第一次聚焦嘗試完成');
+        }, 100);
+        
+        // 策略2: 延遲後再次聚焦
+        setTimeout(() => {
+            // 檢查是否仍需要聚焦
+            const doc = editor.getDoc();
+            if (doc.activeElement !== placeholder) {
+                debugLog('需要第二次聚焦');
+                placeholder.focus();
+                selectAllContent(placeholder, editor);
+            }
+        }, 500);
+        
+        // 策略3: 使用 execCommand 來確保可編輯
+        setTimeout(() => {
+            editor.focus();
+            placeholder.focus();
+            
+            // 嘗試使用 execCommand 使元素可編輯
+            try {
+                editor.getDoc().execCommand('enableObjectResizing', false, false);
+                editor.getDoc().execCommand('enableInlineTableEditing', false, false);
+                selectAllContent(placeholder, editor);
+                debugLog('最終聚焦嘗試完成');
+            } catch (e) {
+                debugLog('execCommand 錯誤:', e);
+            }
+        }, 800);
+        
+    } else {
+        // 非第一次，正常聚焦
+        setTimeout(() => {
+            placeholder.focus();
+            selectAllContent(placeholder, editor);
+        }, 100);
+    }
+}
+
+// 選中全部內容
+function selectAllContent(element, editor) {
+    try {
+        const range = editor.getDoc().createRange();
+        range.selectNodeContents(element);
+        const sel = editor.getWin().getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } catch (e) {
+        debugLog('選中內容錯誤:', e);
+    }
+}
+
+// 完成編輯
+function finishEditingAndSwitch(editor) {
+    if (!activeInput || !placeholderData) return;
+    
+    const value = activeInput.innerText.trim();
+    debugLog('完成編輯:', value);
+    
+    if (value) {
+        // 增強的格式化邏輯
+        let formatted = value;
+        
+        // 根據 placeholder 類型格式化
+        switch(placeholderData.type) {
+            case 'PERCENTAGE':
+            case '70%':
+                // 移除現有的 % 符號，然後添加
+                formatted = value.replace(/%/g, '').trim();
+                if (formatted && !isNaN(formatted)) {
+                    formatted = formatted + '%';
+                }
+                break;
+                
+            case 'AMOUNT':
+                // 檢查是否已有貨幣符號
+                if (!value.match(/[$¥€£]/)) {
+                    // 如果是純數字，添加 $
+                    const numValue = value.replace(/[^0-9.KMB]/gi, '');
+                    if (numValue) {
+                        formatted = '$' + value;
+                    }
+                }
+                break;
+                
+            case 'TEAM SIZE':
+                // 如果輸入的是純數字，可以加上 "人" 或保持原樣
+                if (value.match(/^\d+$/)) {
+                    formatted = value + ' people';
+                } else if (value.match(/^\d+-\d+$/)) {
+                    formatted = value + ' people';
+                }
+                break;
+                
+            case 'TIME PERIOD':
+                // 檢查是否需要添加時間單位
+                if (value.match(/^\d+$/)) {
+                    formatted = value + ' months';
+                }
+                break;
+                
+            case 'USER COUNT':
+                // 處理用戶數量，例如 10K, 1M 等
+                if (value.match(/^\d+$/)) {
+                    const num = parseInt(value);
+                    if (num >= 1000000) {
+                        formatted = (num / 1000000).toFixed(1) + 'M';
+                    } else if (num >= 1000) {
+                        formatted = (num / 1000).toFixed(1) + 'K';
+                    }
+                }
+                break;
+                
+            case '35M units':
+                // 處理單位數量
+                if (value.match(/^\d+$/)) {
+                    formatted = value + 'M units';
+                }
+                break;
+        }
+        
+        debugLog('格式化結果:', formatted);
+        
+        activeInput.classList.remove('editing-placeholder');
+        activeInput.classList.add('opt-improvement');
+        activeInput.contentEditable = 'false';
+        activeInput.innerText = formatted;
+    } else {
+        // 恢復 placeholder
+        activeInput.classList.remove('editing-placeholder');
+        activeInput.classList.add('opt-placeholder');
+        activeInput.contentEditable = 'false';
+        activeInput.innerText = placeholderData.text;
+    }
+    
+    activeInput = null;
+    placeholderData = null;
+    
+    editor.fire('change');
+    
+    // 切回唯讀
+    if (originalMode === 'readonly') {
+        setTimeout(() => {
+            debugLog('切回唯讀模式');
+            editor.mode.set('readonly');
+        }, 200);
+    }
+}
+
+// 取消編輯
+function cancelEditingAndSwitch(editor) {
+    if (!activeInput || !placeholderData) return;
+    
+    activeInput.classList.remove('editing-placeholder');
+    activeInput.classList.add('opt-placeholder');
+    activeInput.contentEditable = 'false';
+    activeInput.innerText = placeholderData.text;
+    
+    activeInput = null;
+    placeholderData = null;
+    
+    if (originalMode === 'readonly') {
+        setTimeout(() => {
+            editor.mode.set('readonly');
+        }, 200);
+    }
+}
+
+// API 函數
+window.getPlaceholderStatus = function() {
+    const editor = tinymce.activeEditor;
+    if (!editor) return null;
+    
+    const placeholders = editor.dom.select('.opt-placeholder');
+    const improvements = editor.dom.select('.opt-improvement');
+    
+    return {
+        mode: editor.mode.get(),
+        placeholders: placeholders.length,
+        completed: improvements.length,
+        hasClickedBefore: hasClickedBefore
+    };
+};
+
+// 測試函數
+window.testPlaceholderClick = function() {
+    const editor = tinymce.activeEditor;
+    if (!editor) return;
+    
+    const placeholder = editor.dom.select('.opt-placeholder')[0];
+    if (placeholder) {
+        debugLog('模擬點擊 placeholder');
+        const event = new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        });
+        placeholder.dispatchEvent(event);
+    }
+};
+
+// 重置第一次點擊標記
+window.resetFirstClick = function() {
+    hasClickedBefore = false;
+    debugLog('已重置第一次點擊標記');
+};
+
+// 手動激活當前編輯的 placeholder
+window.activateCurrentPlaceholder = function() {
+    const editor = tinymce.activeEditor;
+    if (!editor || !activeInput) {
+        debugLog('沒有正在編輯的 placeholder');
+        return;
+    }
+    
+    debugLog('手動激活 placeholder');
+    
+    // 簡單的聚焦方法
+    editor.focus();
+    activeInput.focus();
+    
+    // 選中全部文字
+    selectAllContent(activeInput, editor);
+    
+    debugLog('手動激活完成');
+};
+
+// 初始化
+debugLog('腳本載入完成');
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initBubblePlaceholderHandler);
+} else {
+    setTimeout(initBubblePlaceholderHandler, 500);
+}
+</script>
+
+<style>
+/* ------------------------------------
+   0. 保留原本的 Bubble 設定 (若有需要)
+------------------------------------- */
+.bubble-element.Group.baTaUaOaH {
+    align-self: center !important;
+}
+
+.bubble-element .Text {
+    white-space: inherit !important;
+}
+
+.bubble-element.Text.baTaUaf0 div,
+.bubble-element.Text.baTaUal0 div,
+.bubble-element.Text.baTaUas0 div {
+    text-indent: -0.8em;
+    padding-left: 1em;
+}
+
+@media print {
+    .bubble-element .Text {
+        white-space: inherit !important;
+    }
+
+    .bubble-element.Text.baTaUaOaN,
+    .bubble-element.Text .baTaUaOn {
+        line-height: 1.5 !important;
+    }
+
+    .bubble-element.Text.baTaUaf0 div,
+    .bubble-element.Text.baTaUal0 div,
+    .bubble-element.Text.baTaUas0 div {
+        text-indent: -1em;
+        padding-left: 1em;
+    }
+}
+
+/* ------------------------------------
+   1. H1 樣式 
+   - Font: Noto Sans TC, 45px, 700, #101828
+   - Line spacing: 1.1
+   - margin: 0.5em (可依需求調整)
+------------------------------------- */
+#Tailored_Resume h1,
+#Tailor_Report h1 {
+  font-family: 'Noto Sans TC', sans-serif !important;
+  font-size: 45px !important;
+  font-weight: 700 !important;
+  color: #101828 !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* ------------------------------------
+   2. H2 樣式
+   - Font: Lato, 34px, 800, #101828
+   - Line spacing: 1.0
+------------------------------------- */
+#Tailored_Resume h2,
+#Tailor_Report h2 {
+  font-family: 'Lato', sans-serif !important;
+  font-size: 34px !important;
+  font-weight: 800 !important;
+  color: #101828 !important;
+  line-height: 1.0 !important;
+  letter-spacing: 0 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* ------------------------------------
+   3. H3 樣式
+   - Font: Lato, 22px, 600, #101828
+   - Line spacing: 1.0
+------------------------------------- */
+#Tailored_Resume h3,
+#Tailor_Report h3 {
+  font-family: 'Lato', sans-serif !important;
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  color: #101828 !important;
+  line-height: 1.0 !important;
+  letter-spacing: 0 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* ------------------------------------
+   4. H4 樣式
+   - Font: Lato, 20px, 600, #101828
+   - Line spacing: 1.4
+------------------------------------- */
+#Tailored_Resume h4,
+#Tailor_Report h4 {
+  font-family: 'Lato', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #101828 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* ------------------------------------
+   5. H5 樣式
+   - Font: Inter, 20px, 600, #101828
+   - Line spacing: 1.4
+------------------------------------- */
+#Tailored_Resume h5,
+#Tailor_Report h5 {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #101828 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* ------------------------------------
+   6. Normal (段落) 
+   - Font: Merriweather, 16px, 400, #475467
+   - Line spacing: 1.4
+   - white-space: normal  <-- 關鍵：不保留多餘空白
+------------------------------------- */
+#Tailored_Resume,
+#Tailor_Report {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  white-space: normal !important;     /* 由 pre-wrap 改為 normal */
+  overflow-wrap: break-word !important;
+}
+
+/* p, li, span 等標籤同樣維持 line-height: 1.4 */
+#Tailored_Resume p, #Tailor_Report p,
+#Tailored_Resume li, #Tailor_Report li,
+#Tailored_Resume span, #Tailor_Report span {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  margin: 0.5em 0 !important; /* 段落與清單項的上下空白 */
+}
+
+/* ------------------------------------
+   7. Bold, Italic, List
+------------------------------------- */
+#Tailored_Resume b, #Tailored_Resume strong,
+#Tailor_Report b,   #Tailor_Report strong {
+  font-weight: 700 !important;
+}
+
+#Tailored_Resume i, #Tailored_Resume em,
+#Tailor_Report i,   #Tailor_Report em {
+  font-style: italic !important;
+}
+
+/* 若清單間距仍過大，可再縮小 margin */
+#Tailored_Resume ul, #Tailor_Report ul {
+  list-style-type: disc !important;
+  margin: 0.5em 0 0.5em 1.5em !important; 
+  padding-left: 0 !important;
+}
+
+#Tailored_Resume li, #Tailor_Report li {
+  margin-bottom: 0.8em !important;
+}
+
+/* ------------------------------------
+   HTML 元件專用樣式 (添加到你現有的 CSS 中)
+------------------------------------- */
+
+/* HTML 元件的基本選擇器 */
+.bubble-element.HTML {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0 !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+/* HTML 元件內的段落 */
+.bubble-element.HTML p {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* HTML 元件內的有序列表 */
+.bubble-element.HTML ol {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  margin: 0.5em 0 0.5em 1.5em !important;
+  padding-left: 0 !important;
+  list-style-type: decimal !important;
+}
+
+/* HTML 元件內的無序列表 */
+.bubble-element.HTML ul {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  margin: 0.5em 0 0.5em 1.5em !important;
+  padding-left: 0 !important;
+  list-style-type: disc !important;
+}
+
+/* HTML 元件內的列表項目 */
+.bubble-element.HTML li {
+  font-family: 'Merriweather', serif !important;
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: #475467 !important;
+  line-height: 1.4 !important;
+  margin-bottom: 0.8em !important;
+}
+
+/* HTML 元件內的粗體文字 */
+.bubble-element.HTML strong,
+.bubble-element.HTML b {
+  font-weight: 700 !important;
+  color: #101828 !important; /* 稍深一點的顏色讓粗體更明顯 */
+}
+
+/* HTML 元件內的斜體 */
+.bubble-element.HTML em,
+.bubble-element.HTML i {
+  font-style: italic !important;
+}
+
+/* HTML 元件內的標題樣式 */
+.bubble-element.HTML h1 {
+  font-family: 'Noto Sans TC', sans-serif !important;
+  font-size: 45px !important;
+  font-weight: 700 !important;
+  color: #101828 !important;
+  line-height: 1.1 !important;
+  margin: 0.5em 0 !important;
+}
+
+.bubble-element.HTML h2 {
+  font-family: 'Lato', sans-serif !important;
+  font-size: 34px !important;
+  font-weight: 800 !important;
+  color: #101828 !important;
+  line-height: 1.0 !important;
+  margin: 0.5em 0 !important;
+}
+
+.bubble-element.HTML h3 {
+  font-family: 'Lato', sans-serif !important;
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  color: #101828 !important;
+  line-height: 1.0 !important;
+  margin: 0.5em 0 !important;
+}
+
+.bubble-element.HTML h4 {
+  font-family: 'Lato', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #101828 !important;
+  line-height: 1.4 !important;
+  margin: 0.5em 0 !important;
+}
+
+.bubble-element.HTML h5 {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  color: #101828 !important;
+  line-height: 1.4 !important;
+  margin: 0.5em 0 !important;
+}
+
+/* ------------------------------------
+   優化標記樣式
+------------------------------------- */
+
+/* 修復：避免整個列表項或段落被標記 */
+li.opt-keyword,
+p.opt-keyword,
+h1.opt-keyword,
+h2.opt-keyword,
+h3.opt-keyword,
+h4.opt-keyword,
+h5.opt-keyword {
+    background-color: transparent !important;
+    color: inherit !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* 關鍵字標記 - 藍色（像 dashboard 一樣） */
+span.opt-keyword {
+    background-color: #DBEAFE !important;  /* 淺藍色背景 */
+    color: #1E40AF !important;             /* 深藍色文字 */
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    margin: 0 2px !important;
+    font-weight: 500 !important;
+    display: inline !important;
+    line-height: inherit !important;
+}
+
+/* 優勢標記 - 綠色 */
+span.opt-strength {
+    background-color: #D1FAE5 !important;  /* 淺綠色背景 */
+    color: #065F46 !important;             /* 深綠色文字 */
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    margin: 0 2px !important;
+    font-weight: 500 !important;
+    display: inline !important;
+    line-height: inherit !important;
+}
+
+/* 佔位符標記 - 紅色（可點擊編輯） */
+span.opt-placeholder {
+    background-color: #FEE2E2 !important;  /* 淺紅色背景 */
+    color: #991B1B !important;             /* 深紅色文字 */
+    border: 1px dashed #F87171 !important; /* 虛線邊框 */
+    padding: 2px 8px !important;
+    border-radius: 4px !important;
+    margin: 0 2px !important;
+    font-style: italic !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    display: inline-block !important;
+    line-height: inherit !important;
+}
+
+/* 新內容標記 - 左邊框綠色 */
+.opt-new,
+p.opt-new,
+div.opt-new,
+h1.opt-new,
+h2.opt-new,
+h3.opt-new,
+h4.opt-new,
+h5.opt-new {
+    border-left: 4px solid #10B981 !important;  /* 綠色左邊框 */
+    padding-left: 16px !important;
+    background-color: rgba(209, 250, 229, 0.1) !important; /* 很淺的綠色背景 */
+    margin-left: -16px !important;  /* 補償 padding */
+    display: block !important;
+}
+
+/* 改善內容標記 - 綠色底線 */
+span.opt-improvement {
+    border-bottom: 2px solid #10B981 !important;  /* 綠色底線 */
+    color: #065F46 !important;                    /* 深綠色文字 */
+    padding-bottom: 1px !important;
+    font-weight: 500 !important;
+    display: inline !important;
+    line-height: inherit !important;
+}
+
+/* 當 opt-improvement 用在列表項時，只標記文字 */
+li.opt-improvement {
+    background-color: transparent !important;
+    border-left: none !important;
+}
+
+/* 懸停效果 */
+span.opt-keyword:hover {
+    background-color: #BFDBFE !important;  /* 較深的藍色 */
+}
+
+span.opt-strength:hover {
+    background-color: #A7F3D0 !important;  /* 較深的綠色 */
+}
+
+span.opt-placeholder:hover {
+    background-color: #FECACA !important;  /* 較深的紅色 */
+    border-color: #EF4444 !important;
+}
+
+/* 確保標記不影響行高 */
+span.opt-keyword,
+span.opt-strength,
+span.opt-placeholder,
+span.opt-improvement {
+    vertical-align: baseline !important;
+    position: relative !important;
+    top: 0 !important;
+}
+
+/* 列印樣式 */
+@media print {
+    span.opt-keyword,
+    span.opt-strength {
+        background-color: transparent !important;
+        font-weight: 600 !important;
+        text-decoration: underline !important;
+        padding: 0 !important;
+    }
+    
+    span.opt-placeholder {
+        border: 1px solid #000 !important;
+        background-color: transparent !important;
+    }
+    
+    .opt-new {
+        border-left-color: #000 !important;
+        background-color: transparent !important;
+    }
+    
+    span.opt-improvement {
+        border-bottom-color: #000 !important;
+    }
+}
+
+/* 確保 TinyMCE 編輯器內也套用相同樣式 */
+.mce-content-body span.opt-keyword,
+.mce-content-body span.opt-strength,
+.mce-content-body span.opt-placeholder,
+.mce-content-body span.opt-improvement {
+    font-family: inherit !important;
+    font-size: inherit !important;
+}
+</style>

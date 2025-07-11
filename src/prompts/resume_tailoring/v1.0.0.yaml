@@ -187,19 +187,40 @@ prompts:
 
     ## HTML Optimization Markers
 
+    **CRITICAL RULES**:
+    1. ONLY use `<span>` tags for: opt-keyword, opt-strength, opt-placeholder, opt-improvement
+    2. NEVER apply these classes to `<li>`, `<p>`, or other block elements
+    3. Mark ONLY the specific keyword/phrase, not the entire sentence or paragraph
+    
     Use these CSS classes to mark optimizations:
-    - `opt-strength`: Highlighted core strengths
-    - `opt-keyword`: Integrated missing keywords
-    - `opt-placeholder`: Metrics needing user input
-    - `opt-new`: Newly created content (e.g., Summary section)
-    - `opt-improvement`: Applied quick improvements
+    - `opt-strength`: Highlighted core strengths (ONLY on specific phrases in `<span>`)
+    - `opt-keyword`: Integrated missing keywords (ONLY on the keyword itself in `<span>`)
+    - `opt-placeholder`: Metrics needing user input (ONLY in `<span>`)
+    - `opt-new`: Newly created content (can be on block elements like `<p>` or `<h2>`)
+    - `opt-improvement`: Applied quick improvements (ONLY on specific phrases in `<span>`)
 
-    **Marker Application Examples**:
+    **CORRECT Marker Application**:
     ```html
-    <span class="opt-strength">Led cross-functional teams to deliver enterprise solutions</span>
-    <span class="opt-keyword">Kubernetes</span>
-    <span class="opt-placeholder">[TEAM SIZE]</span>
+    <!-- CORRECT: Only mark the specific keyword -->
+    <li>Proficient in <span class="opt-keyword">Kubernetes</span> and container orchestration</li>
+    
+    <!-- CORRECT: Only mark the strength phrase -->
+    <li><span class="opt-strength">Led cross-functional teams</span> to deliver enterprise solutions</li>
+    
+    <!-- CORRECT: Placeholder in span -->
+    <li>Managed team of <span class="opt-placeholder">[TEAM SIZE]</span> engineers</li>
+    
+    <!-- CORRECT: New content can use block element -->
     <p class="opt-new">New summary paragraph content</p>
+    ```
+    
+    **INCORRECT Examples (DO NOT DO THIS)**:
+    ```html
+    <!-- WRONG: Never apply opt-keyword to entire li -->
+    <li class="opt-keyword">Proficient in Kubernetes and container orchestration</li>
+    
+    <!-- WRONG: Never apply opt-strength to entire paragraph -->
+    <p class="opt-strength">Led cross-functional teams to deliver enterprise solutions</p>
     ```
 
     ## Placeholder Strategy
