@@ -361,6 +361,9 @@ class ResumeTailoringService:
             improvement_count=marker_counts.get("improvement", 0)
         )
         
+        # Generate HTML formatted improvements list
+        applied_improvements_html = self._format_improvements_as_html(applied_improvements)
+        
         # Remove markers if not requested
         if not include_markers:
             optimized_resume = self.html_processor.remove_markers(optimized_resume)
@@ -368,9 +371,25 @@ class ResumeTailoringService:
         return TailoringResult(
             optimized_resume=optimized_resume,
             applied_improvements=applied_improvements,
+            applied_improvements_html=applied_improvements_html,
             optimization_stats=optimization_stats,
             visual_markers=visual_markers
         )
+    
+    def _format_improvements_as_html(self, improvements: list[str]) -> str:
+        """Format improvements list as HTML for direct display"""
+        if not improvements:
+            return "<p>No improvements applied.</p>"
+        
+        # Create HTML list
+        html_parts = ["<ul>"]
+        for improvement in improvements:
+            # Escape any HTML in the improvement text
+            escaped_improvement = improvement.replace("<", "&lt;").replace(">", "&gt;")
+            html_parts.append(f"  <li>{escaped_improvement}</li>")
+        html_parts.append("</ul>")
+        
+        return "\n".join(html_parts)
     
     def _calculate_optimization_stats(
         self,

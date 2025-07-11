@@ -134,6 +134,10 @@ class TailoringResult(BaseModel):
     applied_improvements: list[str] = Field(
         description="List of improvements applied by section"
     )
+    applied_improvements_html: str = Field(
+        default="",
+        description="HTML formatted list of improvements for direct display"
+    )
     optimization_stats: OptimizationStats = Field(
         description="Statistics about the optimization"
     )

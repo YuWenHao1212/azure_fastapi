@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- `applied_improvements_html` field in Resume Tailoring API response for direct HTML display in Bubble.io
+- HTML formatted improvements list using `<ul>` structure to avoid comma-separated display issues
+
+### Changed
+- Updated Resume Tailoring API documentation to include new HTML field
+
 ## [1.6.0] - 2025-07-11
 
 ### Added
