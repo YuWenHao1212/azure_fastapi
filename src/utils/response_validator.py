@@ -66,6 +66,7 @@ def validate_bubble_compatibility(response_body: Any) -> dict[str, Any]:
             # For failed responses, data should be empty dict
             if response_body["data"] != {}:
                 issues.append("Failed responses should have empty data: {}")
+                is_valid = False
     
     # Validate error field
     if "error" in response_body:
@@ -88,8 +89,10 @@ def validate_bubble_compatibility(response_body: Any) -> dict[str, Any]:
             if response_body.get("success") is True:
                 if error_obj.get("code") != "":
                     issues.append("Successful responses should have empty error code")
+                    is_valid = False
                 if error_obj.get("message") != "":
                     issues.append("Successful responses should have empty error message")
+                    is_valid = False
     
     # Check specific endpoint data structures
     if "data" in response_body and isinstance(response_body["data"], dict):

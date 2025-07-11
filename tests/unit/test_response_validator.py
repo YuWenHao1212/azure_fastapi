@@ -152,14 +152,20 @@ class TestResponseValidator:
         
         # Test null values
         data = {
-            "jd_keywords": None,  # Should be empty list
-            "matched_keywords": None,  # Should be empty list
-            "similarity_score": 0.85,
-            "match_percentage": 85.0,
-            "processing_time": 1.2,
+            "keywords": None,  # Should be empty list, not null
+            "keyword_count": 0,
+            "confidence_score": 0.85,
+            "extraction_method": "llm",
+            "intersection_stats": None,  # This might also need to be checked
+            "warning": None,
+            "prompt_version": "1.0",
+            "llm_config_used": None,
+            "processing_time_ms": 1200,
+            "detected_language": "en",
+            "input_language": "en",
             "cache_hit": True,
-            "model_used": "gpt-4",
-            "prompt_version": "1.0"
+            "total_processing_time_ms": 1200,
+            "timing_breakdown": None
         }
         
         issues = []

@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2025-07-11
+
+### Added
+- Resume Tailoring API (`/api/v1/resume-tailoring`) - New endpoint for optimizing resumes based on job requirements
+- Integration with Gap Analysis for intelligent content adjustments
+- Support for plain text input format (Bubble.io compatibility)
+- Flexible input parsing for various resume formats
+- Comprehensive API documentation for Resume Tailoring endpoint
+
+### Fixed
+- Unit test compatibility issues with language normalization
+- Response validator to properly flag invalid Bubble.io responses
+- Monitoring middleware test to include client_type parameter
+
+### Changed
+- Gap Analysis now uses v1.2.0 prompts for zh-TW language for improved stability
+- Improved LLM response parsing for better error handling
+- Enhanced API documentation structure
+
 ## [1.5.0] - 2025-01-06
 
 ### Added

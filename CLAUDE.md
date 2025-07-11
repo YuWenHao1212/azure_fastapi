@@ -500,6 +500,11 @@ class DataModel(BaseModel):
    - 詳細說明要提交的內容
    - 獲得用戶明確同意後才能執行
    - 提交訊息需包含清晰的變更說明
+8. **時間處理規則**：任何需要使用日期或時間的場合（如文檔命名、日誌記錄、時間戳等），必須：
+   - 先使用 Bash 工具執行 `TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S %Z'` 獲取準確的台灣時間
+   - 文檔命名使用格式：`[TYPE]_[MODULE]_YYYYMMDD.md`（例：`TEST_GAP_ANALYSIS_20250711.md`）
+   - 日誌記錄使用格式：`YYYY-MM-DD HH:MM:SS CST`
+   - 絕不使用 <env> 中的日期或憑空推測日期
 
 ### 環境變數問題解決方案
 

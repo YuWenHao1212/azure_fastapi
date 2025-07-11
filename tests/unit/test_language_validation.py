@@ -118,8 +118,9 @@ class TestLanguageValidation:
                     language=lang
                 )
                 
-                # Verify the normalized language was used
+                # Verify the normalized language was used with correct version
+                # For zh-TW, the service uses version 1.2.0
                 mock_prompt_config.assert_called_with(
                     language="zh-TW",
-                    version="1.0.0"
+                    version="1.2.0"
                 )

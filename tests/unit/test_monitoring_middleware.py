@@ -378,7 +378,8 @@ class TestMonitoringMiddleware:
             {
                 "status_code": 200,
                 "duration_ms": pytest.approx(0, abs=1000),  # Any reasonable duration
-                "endpoint": "POST /api/v1/extract-jd-keywords"
+                "endpoint": "POST /api/v1/extract-jd-keywords",
+                "client_type": "unknown"
             }
         )
 
