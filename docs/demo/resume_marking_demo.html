@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履歷標記功能展示 - Resume Marking Demo</title>
+    
+    <!-- 引入字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Lato:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 基礎樣式 */
+        body {
+            font-family: 'Merriweather', serif;
+            line-height: 1.6;
+            color: #475467;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9fafb;
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .resume-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            font-family: 'Lato', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #101828;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        
+        /* 履歷內容樣式 */
+        h1 {
+            font-family: 'Noto Sans TC', sans-serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #101828;
+            margin: 0 0 10px 0;
+        }
+        
+        h2 {
+            font-family: 'Lato', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            color: #101828;
+            margin: 20px 0 10px 0;
+        }
+        
+        h3 {
+            font-family: 'Lato', sans-serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: #101828;
+            margin: 15px 0 10px 0;
+        }
+        
+        p, li {
+            font-size: 16px;
+            color: #475467;
+            margin: 10px 0;
+        }
+        
+        ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        /* 標記樣式 */
+        
+        /* 1. 新增內容 - 綠色左邊框 */
+        .opt-new {
+            border-left: 4px solid #10B981 !important;
+            padding-left: 16px !important;
+            background-color: rgba(209, 250, 229, 0.1) !important;
+            margin-left: -20px !important;
+            padding-right: 16px !important;
+        }
+        
+        h2.opt-new, h3.opt-new {
+            background-color: transparent !important;
+        }
+        
+        /* 2. 修改內容 - 淡黃色背景 */
+        .opt-modified {
+            background-color: rgba(251, 191, 36, 0.08) !important;
+            padding: 2px 0 !important;
+            position: relative;
+        }
+        
+        /* 滑鼠懸停顯示提示 */
+        .opt-modified:hover::before {
+            content: "已優化";
+            position: absolute;
+            top: -25px;
+            left: 0;
+            font-size: 12px;
+            color: #92400e;
+            background: #fef3c7;
+            padding: 2px 8px;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        
+        /* 3. 關鍵字 - 藍色背景（新增） */
+        span.opt-keyword {
+            background-color: #2563EB !important;  /* 更深的藍色背景 */
+            color: #FFFFFF !important;              /* 白色文字 */
+            padding: 3px 8px !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            margin: 0 2px !important;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3) !important;
+        }
+        
+        /* 4. 已存在關鍵字 - 淡藍色背景 */
+        span.opt-keyword-existing {
+            background-color: transparent !important;      /* 透明背景 */
+            color: #6366F1 !important;                    /* 紫藍色文字 */
+            border: 1px solid #C7D2FE !important;         /* 淡紫色邊框 */
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            font-weight: 500 !important;
+            margin: 0 2px !important;
+        }
+        
+        /* 5. 佔位符 - 紅色虛線框 */
+        span.opt-placeholder {
+            background-color: #FEE2E2 !important;
+            color: #991B1B !important;
+            border: 1px dashed #F87171 !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            font-style: italic !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            margin: 0 2px !important;
+        }
+        
+        span.opt-placeholder:hover {
+            background-color: #FECACA !important;
+            border-color: #EF4444 !important;
+        }
+        
+        /* 6. 優勢標記 - 綠色背景 */
+        span.opt-strength {
+            background-color: #D1FAE5 !important;
+            color: #065F46 !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            margin: 0 2px !important;
+        }
+        
+        /* 7. 已編輯內容 - 綠色底線 */
+        span.opt-improvement {
+            border-bottom: 2px solid #10B981 !important;
+            color: #065F46 !important;
+            padding-bottom: 1px !important;
+            font-weight: 500 !important;
+        }
+        
+        /* 圖例樣式 */
+        .legend {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .legend h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-sample {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        
+        /* 標題區域 */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 18px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>履歷標記功能展示</h1>
+        <p>展示所有標記類型及其實際效果</p>
+    </div>
+    
+    <!-- 圖例 -->
+    <div class="legend">
+        <h2>標記類型說明</h2>
+        <div class="legend-grid">
+            <div class="legend-item">
+                <span class="legend-sample opt-new">新增內容</span>
+                <span>LLM 新增的段落（綠色左邊框）</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-sample opt-modified">修改內容</span>
+                <span>LLM 改寫的內容（淡黃背景）</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-sample opt-keyword">新關鍵字</span>
+                <span>LLM 新增的關鍵字（深藍色背景）</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-sample opt-keyword-existing">原有關鍵字</span>
+                <span>原本就有的關鍵字（紫色邊框）</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-sample opt-placeholder">[佔位符]</span>
+                <span>需用戶填寫（紅色虛線）</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-sample opt-strength">優勢強調</span>
+                <span>核心優勢（綠色）</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-sample opt-improvement">已編輯</span>
+                <span>用戶已填寫（綠色底線）</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- 原始履歷 -->
+        <div class="resume-section">
+            <div class="section-title">原始履歷</div>
+            
+            <h1>張小明</h1>
+            <p>Email: xiaoming@example.com | Phone: 0912-345-678</p>
+            
+            <h3>Work Experience</h3>
+            <h4>Data Analyst - ABC Company (2020-2023)</h4>
+            <ul>
+                <li>Responsible for data analysis</li>
+                <li>Created reports using Excel</li>
+                <li>Worked with team on projects</li>
+                <li>Used SQL for database queries</li>
+            </ul>
+            
+            <h3>Skills</h3>
+            <ul>
+                <li>Programming Languages: Python, SQL</li>
+                <li>Tools: Excel, PowerPoint</li>
+                <li>Languages: Chinese, English</li>
+            </ul>
+            
+            <h3>Education</h3>
+            <p>Bachelor of Computer Science - XYZ University (2016-2020)</p>
+        </div>
+        
+        <!-- 優化後履歷 -->
+        <div class="resume-section">
+            <div class="section-title">優化後履歷（含所有標記）</div>
+            
+            <h1>張小明</h1>
+            <p>Email: xiaoming@example.com | Phone: 0912-345-678</p>
+            
+            <!-- 新增的 Summary -->
+            <h2 class="opt-new">Professional Summary</h2>
+            <p class="opt-new">
+                Data Analyst with <span class="opt-placeholder">[YEARS]</span> years of experience in 
+                <span class="opt-strength">transforming complex data into actionable business insights</span>. 
+                Proven expertise in <span class="opt-keyword">Python</span>, <span class="opt-keyword-existing">SQL</span>, 
+                and <span class="opt-keyword">Tableau</span>, with a track record of delivering data-driven solutions 
+                that increased operational efficiency by <span class="opt-placeholder">[PERCENTAGE]</span>.
+            </p>
+            
+            <h3>Work Experience</h3>
+            <h4>Data Analyst - ABC Company (2020-2023)</h4>
+            <ul>
+                <!-- 改寫的內容包含佔位符 -->
+                <li class="opt-modified">
+                    <span class="opt-strength">Spearheaded comprehensive data analysis initiatives</span> using 
+                    <span class="opt-keyword-existing">Python</span> and <span class="opt-keyword">Pandas</span>, 
+                    processing <span class="opt-placeholder">[NUMBER]</span>+ GB of data daily and 
+                    reducing analysis time by <span class="opt-placeholder">[PERCENTAGE]</span>
+                </li>
+                
+                <!-- 改寫的內容，包含新關鍵字 -->
+                <li class="opt-modified">
+                    Designed and implemented automated reporting dashboards using <span class="opt-keyword">Tableau</span> 
+                    and <span class="opt-keyword">Power BI</span>, replacing manual Excel processes and 
+                    enabling real-time business intelligence for <span class="opt-placeholder">[NUMBER]</span> stakeholders
+                </li>
+                
+                <!-- 改寫的內容，展示團隊合作 -->
+                <li class="opt-modified">
+                    Led cross-functional collaboration with <span class="opt-placeholder">[TEAM SIZE]</span> team members 
+                    across engineering, product, and business teams to deliver <span class="opt-placeholder">[NUMBER]</span> 
+                    data-driven projects on time and <span class="opt-improvement">15%</span> under budget
+                </li>
+                
+                <!-- 技術內容改寫 -->
+                <li class="opt-modified">
+                    Optimized <span class="opt-keyword-existing">SQL</span> queries and implemented 
+                    <span class="opt-keyword">database indexing strategies</span>, resulting in 
+                    <span class="opt-placeholder">[PERCENTAGE]</span> improvement in query performance 
+                    and <span class="opt-improvement">$50K</span> annual cost savings
+                </li>
+            </ul>
+            
+            <h3>Skills</h3>
+            <ul>
+                <!-- 技能區域的處理 -->
+                <li class="opt-modified">
+                    Programming Languages: <span class="opt-keyword-existing">Python</span>, 
+                    <span class="opt-keyword-existing">SQL</span>, 
+                    <span class="opt-keyword">R</span>, 
+                    <span class="opt-keyword">JavaScript</span>
+                </li>
+                <li class="opt-modified">
+                    Data Visualization: <span class="opt-keyword">Tableau</span>, 
+                    <span class="opt-keyword">Power BI</span>, 
+                    <span class="opt-keyword-existing">Excel</span>, 
+                    <span class="opt-keyword">Matplotlib</span>
+                </li>
+                <li class="opt-modified">
+                    Big Data Tools: <span class="opt-keyword">Apache Spark</span>, 
+                    <span class="opt-keyword">Hadoop</span>, 
+                    <span class="opt-keyword">Airflow</span>
+                </li>
+                <li>Languages: Chinese (Native), English (Fluent)</li>
+            </ul>
+            
+            <h3>Education</h3>
+            <p>Bachelor of Computer Science - XYZ University (2016-2020)</p>
+            <p class="opt-new">
+                Relevant Coursework: <span class="opt-keyword">Machine Learning</span>, 
+                <span class="opt-keyword">Statistical Analysis</span>, 
+                <span class="opt-keyword">Database Management</span>
+            </p>
+        </div>
+    </div>
+    
+    <!-- JavaScript 模擬 placeholder 編輯 -->
+    <script>
+        // 模擬 placeholder 點擊編輯功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const placeholders = document.querySelectorAll('.opt-placeholder');
+            
+            placeholders.forEach(placeholder => {
+                placeholder.addEventListener('click', function() {
+                    if (this.classList.contains('opt-placeholder')) {
+                        // 模擬用戶輸入
+                        const value = prompt('請輸入數值：', '');
+                        if (value) {
+                            this.classList.remove('opt-placeholder');
+                            this.classList.add('opt-improvement');
+                            this.textContent = value;
+                        }
+                    }
+                });
+            });
+            
+            // 顯示提示
+            console.log('點擊紅色佔位符可以模擬編輯功能');
+        });
+    </script>
+</body>
+</html>
