@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE Rich Editor Debug Tool for Bubble.io</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .header p {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+        
+        .section h3 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+        
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #38a169;
+        }
+        
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: #3182ce;
+        }
+        
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #dd6b20;
+        }
+        
+        .output-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .status.found {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status.not-found {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .info-box {
+            background: #e6fffa;
+            border-left: 4px solid #38b2ac;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .info-box h4 {
+            margin-top: 0;
+            color: #234e52;
+        }
+        
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .highlight {
+            background: #ffd700;
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <div class="header">
+            <h1>🔍 TinyMCE Debug Tool</h1>
+            <p>專為 Bubble.io Rich Text Editor 設計的除錯工具</p>
+        </div>
+        
+        <div class="content">
+            <!-- 基本檢測 -->
+            <div class="section">
+                <h3>🔎 基本檢測</h3>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="detectTinyMCE()">檢測 TinyMCE</button>
+                    <button class="btn btn-info" onclick="listAllEditors()">列出所有編輯器</button>
+                    <button class="btn btn-success" onclick="getEditorContent()">獲取編輯器內容</button>
+                    <button class="btn btn-warning" onclick="getEditorHTML()">獲取 HTML 原始碼</button>
+                    <button class="btn btn-info" onclick="forceInitEditor()">強制初始化</button>
+                    <button class="btn btn-warning" onclick="getIframeContent()">檢查 iframe 內容</button>
+                </div>
+                <div id="basicDetection" class="output-box"></div>
+            </div>
+            
+            <!-- 內容分析 -->
+            <div class="section">
+                <h3>📝 內容分析</h3>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="analyzeContent()">分析內容結構</button>
+                    <button class="btn btn-info" onclick="findMarkers()">查找視覺標記</button>
+                    <button class="btn btn-success" onclick="countElements()">統計元素</button>
+                    <button class="btn btn-warning" onclick="validateHTML()">驗證 HTML</button>
+                </div>
+                <div id="contentAnalysis" class="output-box"></div>
+            </div>
+            
+            <div class="grid">
+                <!-- 即時監控 -->
+                <div class="section">
+                    <h3>📊 即時監控</h3>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="startMonitoring()">開始監控</button>
+                        <button class="btn btn-warning" onclick="stopMonitoring()">停止監控</button>
+                    </div>
+                    <div id="monitoring" class="output-box"></div>
+                </div>
+                
+                <!-- 測試工具 -->
+                <div class="section">
+                    <h3>🧪 測試工具</h3>
+                    <div class="button-group">
+                        <button class="btn btn-success" onclick="insertTestContent()">插入測試內容</button>
+                        <button class="btn btn-info" onclick="clearEditor()">清空編輯器</button>
+                    </div>
+                    <div id="testTools" class="output-box"></div>
+                </div>
+            </div>
+            
+            <!-- 使用說明 -->
+            <div class="info-box">
+                <h4>📋 使用說明</h4>
+                <p><strong>如何在 Bubble.io 中使用：</strong></p>
+                <ol>
+                    <li>將此 HTML 代碼放入 Bubble.io 的 <code>HTML Element</code> 中</li>
+                    <li>確保您的頁面包含 TinyMCE Rich Text Editor</li>
+                    <li>點擊各種按鈕來檢測和分析編輯器狀態</li>
+                    <li>查看輸出結果來除錯問題</li>
+                </ol>
+            </div>
+            
+            <!-- JavaScript 代碼 -->
+            <div class="section">
+                <h3>⚙️ 如何整合到 Bubble.io</h3>
+                <div class="code-block">
+&lt;!-- 步驟 1: 在 Bubble Editor 中添加 HTML Element --&gt;
+&lt;!-- 步驟 2: 將此整個 HTML 代碼貼入 HTML Element --&gt;
+&lt;!-- 步驟 3: 確保頁面包含 TinyMCE Rich Text Editor --&gt;
+&lt;!-- 步驟 4: 預覽頁面並使用除錯工具 --&gt;
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全域變數
+        let monitoringInterval = null;
+        let currentEditor = null;
+        
+        // 日誌函數
+        function log(message, elementId = 'basicDetection') {
+            const element = document.getElementById(elementId);
+            if (element) {
+                const timestamp = new Date().toLocaleTimeString();
+                element.textContent += `[${timestamp}] ${message}\n`;
+                element.scrollTop = element.scrollHeight;
+            }
+            console.log(`[TinyMCE Debug] ${message}`);
+        }
+        
+        // 清除日誌
+        function clearLog(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = '';
+            }
+        }
+        
+        // 基本檢測函數
+        function detectTinyMCE() {
+            clearLog('basicDetection');
+            
+            log('🔍 開始檢測 TinyMCE...', 'basicDetection');
+            
+            // 檢查 TinyMCE 是否載入
+            if (typeof tinymce !== 'undefined') {
+                log('✅ TinyMCE 已載入', 'basicDetection');
+                log(`📦 TinyMCE 版本: ${tinymce.majorVersion}.${tinymce.minorVersion}`, 'basicDetection');
+                log(`🔧 編輯器數量: ${tinymce.editors.length}`, 'basicDetection');
+                
+                if (tinymce.editors.length > 0) {
+                    currentEditor = tinymce.editors[0];
+                    log(`🎯 當前編輯器 ID: ${currentEditor.id}`, 'basicDetection');
+                    log(`📝 編輯器模式: ${currentEditor.mode.get()}`, 'basicDetection');
+                } else {
+                    log('⚠️ 沒有找到活動的編輯器', 'basicDetection');
+                    log('🔍 正在搜尋未初始化的編輯器...', 'basicDetection');
+                    
+                    // 尋找 Bubble.io 特有的編輯器元素
+                    searchForBubbleEditors();
+                }
+            } else {
+                log('❌ TinyMCE 未載入', 'basicDetection');
+                searchForBubbleEditors();
+            }
+        }
+        
+        // 搜尋 Bubble.io 編輯器
+        function searchForBubbleEditors() {
+            // 檢查 Bubble.io Rich Text Editor 的各種可能選擇器
+            const selectors = [
+                '[data-bubble-rich-text]',
+                '.bubble-element.RichTextEditor',
+                '.bubble-element[data-type="RichTextEditor"]',
+                'textarea[data-type="rich"]',
+                '.rich-text-editor',
+                'div[contenteditable="true"]',
+                'iframe[title*="Rich Text Area"]',
+                'iframe[title*="rich text"]',
+                '.mce-content-body',
+                '#tinymce'
+            ];
+            
+            let foundElements = [];
+            
+            selectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                if (elements.length > 0) {
+                    log(`🔍 找到 ${elements.length} 個元素: ${selector}`, 'basicDetection');
+                    elements.forEach((el, index) => {
+                        const info = {
+                            element: el,
+                            selector: selector,
+                            id: el.id || 'no ID',
+                            className: el.className || 'no class',
+                            tagName: el.tagName,
+                            contentEditable: el.contentEditable,
+                            hasContent: el.innerHTML ? el.innerHTML.length > 0 : false
+                        };
+                        
+                        foundElements.push(info);
+                        log(`   - 元件 ${index + 1}: ${info.tagName} (ID: ${info.id}, Class: ${info.className.slice(0, 50)})`, 'basicDetection');
+                        
+                        if (info.contentEditable === 'true') {
+                            log(`     ✅ 可編輯元素，內容長度: ${el.innerHTML.length}`, 'basicDetection');
+                        }
+                    });
+                }
+            });
+            
+            // 檢查 iframe 內的內容
+            const iframes = document.querySelectorAll('iframe');
+            if (iframes.length > 0) {
+                log(`🔍 找到 ${iframes.length} 個 iframe，檢查內容...`, 'basicDetection');
+                iframes.forEach((iframe, index) => {
+                    try {
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        if (iframeDoc) {
+                            const editableContent = iframeDoc.querySelector('[contenteditable="true"], .mce-content-body');
+                            if (editableContent) {
+                                log(`   ✅ iframe ${index + 1} 包含可編輯內容`, 'basicDetection');
+                                log(`     - 內容長度: ${editableContent.innerHTML.length}`, 'basicDetection');
+                                
+                                // 嘗試設置為當前編輯器
+                                window.currentIframeEditor = {
+                                    iframe: iframe,
+                                    document: iframeDoc,
+                                    content: editableContent
+                                };
+                            }
+                        }
+                    } catch (e) {
+                        log(`   ⚠️ iframe ${index + 1} 無法訪問 (跨域限制)`, 'basicDetection');
+                    }
+                });
+            }
+            
+            // 嘗試強制初始化 TinyMCE
+            if (typeof tinymce !== 'undefined' && foundElements.length > 0) {
+                log('🔧 嘗試手動初始化編輯器...', 'basicDetection');
+                setTimeout(() => {
+                    checkForNewEditors();
+                }, 2000);
+            }
+            
+            return foundElements;
+        }
+        
+        // 檢查新編輯器
+        function checkForNewEditors() {
+            if (typeof tinymce !== 'undefined') {
+                log(`🔄 重新檢查，現在有 ${tinymce.editors.length} 個編輯器`, 'basicDetection');
+                if (tinymce.editors.length > 0 && !currentEditor) {
+                    currentEditor = tinymce.editors[0];
+                    log(`🎯 找到新編輯器: ${currentEditor.id}`, 'basicDetection');
+                }
+            }
+        }
+        
+        // 列出所有編輯器
+        function listAllEditors() {
+            clearLog('basicDetection');
+            
+            if (typeof tinymce !== 'undefined' && tinymce.editors.length > 0) {
+                log('📋 所有 TinyMCE 編輯器:', 'basicDetection');
+                
+                tinymce.editors.forEach((editor, index) => {
+                    log(`\n編輯器 ${index + 1}:`, 'basicDetection');
+                    log(`  ID: ${editor.id}`, 'basicDetection');
+                    log(`  容器: ${editor.getContainer().id}`, 'basicDetection');
+                    log(`  模式: ${editor.mode.get()}`, 'basicDetection');
+                    log(`  是否初始化: ${editor.initialized}`, 'basicDetection');
+                    log(`  內容長度: ${editor.getContent().length} 字元`, 'basicDetection');
+                });
+            } else {
+                log('❌ 沒有找到 TinyMCE 編輯器', 'basicDetection');
+                
+                // 嘗試查找其他可能的編輯器
+                const editableElements = document.querySelectorAll('[contenteditable="true"]');
+                if (editableElements.length > 0) {
+                    log(`🔍 找到 ${editableElements.length} 個可編輯元素:`, 'basicDetection');
+                    editableElements.forEach((el, index) => {
+                        log(`  元素 ${index + 1}: ${el.tagName} (ID: ${el.id || 'no ID'})`, 'basicDetection');
+                        log(`    內容長度: ${el.textContent.length} 字元`, 'basicDetection');
+                    });
+                }
+            }
+        }
+        
+        // 獲取編輯器內容
+        function getEditorContent() {
+            clearLog('basicDetection');
+            
+            if (currentEditor) {
+                const content = currentEditor.getContent();
+                const textContent = currentEditor.getContent({format: 'text'});
+                
+                log('📝 TinyMCE 編輯器內容 (HTML):', 'basicDetection');
+                log(content, 'basicDetection');
+                log('\n📝 編輯器內容 (純文字):', 'basicDetection');
+                log(textContent, 'basicDetection');
+                log(`\n📊 統計: HTML ${content.length} 字元, 純文字 ${textContent.length} 字元`, 'basicDetection');
+                
+            } else if (window.currentIframeEditor) {
+                log('📝 從 iframe 編輯器獲取內容:', 'basicDetection');
+                const content = window.currentIframeEditor.content.innerHTML;
+                const textContent = window.currentIframeEditor.content.textContent;
+                
+                log('HTML 內容:', 'basicDetection');
+                log(content, 'basicDetection');
+                log('\n純文字內容:', 'basicDetection');
+                log(textContent, 'basicDetection');
+                log(`\n📊 統計: HTML ${content.length} 字元, 純文字 ${textContent.length} 字元`, 'basicDetection');
+                
+            } else {
+                log('❌ 沒有活動的編輯器', 'basicDetection');
+                
+                // 嘗試從其他元素獲取內容
+                const editableElements = document.querySelectorAll('[contenteditable="true"]');
+                if (editableElements.length > 0) {
+                    log('🔍 從可編輯元素獲取內容:', 'basicDetection');
+                    editableElements.forEach((el, index) => {
+                        log(`\n元素 ${index + 1} (${el.tagName})內容:`, 'basicDetection');
+                        log(`HTML 長度: ${el.innerHTML.length}`, 'basicDetection');
+                        log(`文字長度: ${el.textContent.length}`, 'basicDetection');
+                        if (el.innerHTML.length < 1000) {
+                            log('HTML 內容:', 'basicDetection');
+                            log(el.innerHTML, 'basicDetection');
+                        } else {
+                            log('HTML 內容 (前 500 字元):', 'basicDetection');
+                            log(el.innerHTML.substring(0, 500) + '...', 'basicDetection');
+                        }
+                    });
+                } else {
+                    log('🔍 嘗試搜尋其他可能的內容區域...', 'basicDetection');
+                    
+                    // 檢查 textarea
+                    const textareas = document.querySelectorAll('textarea');
+                    if (textareas.length > 0) {
+                        log(`找到 ${textareas.length} 個 textarea:`, 'basicDetection');
+                        textareas.forEach((textarea, index) => {
+                            log(`textarea ${index + 1}: ${textarea.value.length} 字元`, 'basicDetection');
+                            if (textarea.value.length < 500) {
+                                log(textarea.value, 'basicDetection');
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        
+        // 獲取 HTML 原始碼
+        function getEditorHTML() {
+            clearLog('basicDetection');
+            
+            if (currentEditor) {
+                const html = currentEditor.getContent();
+                log('🔍 HTML 原始碼分析:', 'basicDetection');
+                log(html, 'basicDetection');
+                
+                // 分析 HTML 結構
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                log('\n🏷️ HTML 標籤統計:', 'basicDetection');
+                const tags = {};
+                tempDiv.querySelectorAll('*').forEach(el => {
+                    const tagName = el.tagName.toLowerCase();
+                    tags[tagName] = (tags[tagName] || 0) + 1;
+                });
+                
+                Object.entries(tags).forEach(([tag, count]) => {
+                    log(`  ${tag}: ${count}`, 'basicDetection');
+                });
+                
+            } else {
+                log('❌ 沒有活動的編輯器', 'basicDetection');
+                
+                // 嘗試從 iframe 獲取內容
+                if (window.currentIframeEditor) {
+                    log('🔍 嘗試從 iframe 編輯器獲取內容...', 'basicDetection');
+                    const content = window.currentIframeEditor.content.innerHTML;
+                    log('iframe 內容:', 'basicDetection');
+                    log(content, 'basicDetection');
+                }
+            }
+        }
+        
+        // 強制初始化編輯器
+        function forceInitEditor() {
+            clearLog('basicDetection');
+            log('🔧 嘗試強制初始化 TinyMCE 編輯器...', 'basicDetection');
+            
+            if (typeof tinymce !== 'undefined') {
+                // 查找可能的編輯器目標
+                const targets = document.querySelectorAll('textarea, [contenteditable="true"]');
+                log(`🔍 找到 ${targets.length} 個可能的目標元素`, 'basicDetection');
+                
+                targets.forEach((target, index) => {
+                    if (!target.id) {
+                        target.id = `tinymce-target-${index}`;
+                        log(`設置 ID: ${target.id}`, 'basicDetection');
+                    }
+                    
+                    // 嘗試初始化
+                    try {
+                        tinymce.init({
+                            target: target,
+                            plugins: 'advlist autolink lists link image charmap print preview anchor searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount',
+                            toolbar: 'undo redo | formatselect | bold italic backcolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+                            setup: function(editor) {
+                                editor.on('init', function() {
+                                    log(`✅ 編輯器初始化成功: ${editor.id}`, 'basicDetection');
+                                    currentEditor = editor;
+                                });
+                            }
+                        });
+                    } catch (error) {
+                        log(`❌ 初始化失敗: ${error.message}`, 'basicDetection');
+                    }
+                });
+                
+                // 等待初始化完成
+                setTimeout(() => {
+                    log(`🔄 初始化後編輯器數量: ${tinymce.editors.length}`, 'basicDetection');
+                }, 3000);
+                
+            } else {
+                log('❌ TinyMCE 未載入，無法初始化', 'basicDetection');
+            }
+        }
+        
+        // 檢查 iframe 內容
+        function getIframeContent() {
+            clearLog('basicDetection');
+            log('🔍 檢查所有 iframe 內容...', 'basicDetection');
+            
+            const iframes = document.querySelectorAll('iframe');
+            log(`找到 ${iframes.length} 個 iframe`, 'basicDetection');
+            
+            iframes.forEach((iframe, index) => {
+                log(`\n--- iframe ${index + 1} ---`, 'basicDetection');
+                log(`ID: ${iframe.id || 'no ID'}`, 'basicDetection');
+                log(`Title: ${iframe.title || 'no title'}`, 'basicDetection');
+                log(`Src: ${iframe.src || 'no src'}`, 'basicDetection');
+                log(`ClassName: ${iframe.className || 'no class'}`, 'basicDetection');
+                
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        const body = iframeDoc.body;
+                        if (body) {
+                            log(`Body HTML 長度: ${body.innerHTML.length}`, 'basicDetection');
+                            log(`Body 文字長度: ${body.textContent.length}`, 'basicDetection');
+                            
+                            // 查找可編輯內容
+                            const editableElements = iframeDoc.querySelectorAll('[contenteditable="true"], .mce-content-body');
+                            if (editableElements.length > 0) {
+                                log(`✅ 找到 ${editableElements.length} 個可編輯元素`, 'basicDetection');
+                                editableElements.forEach((el, i) => {
+                                    log(`  元素 ${i + 1}: ${el.tagName}, 內容長度: ${el.innerHTML.length}`, 'basicDetection');
+                                    
+                                    // 如果內容很短，直接顯示
+                                    if (el.innerHTML.length < 500) {
+                                        log(`  內容: ${el.innerHTML}`, 'basicDetection');
+                                    }
+                                });
+                                
+                                // 設置為當前 iframe 編輯器
+                                window.currentIframeEditor = {
+                                    iframe: iframe,
+                                    document: iframeDoc,
+                                    content: editableElements[0]
+                                };
+                                log(`✅ 已設置為當前 iframe 編輯器`, 'basicDetection');
+                            }
+                            
+                            // 檢查是否有 TinyMCE 相關元素
+                            const tinyElements = iframeDoc.querySelectorAll('[id*="mce"], [class*="mce"], [id*="tinymce"]');
+                            if (tinyElements.length > 0) {
+                                log(`🔍 找到 ${tinyElements.length} 個 TinyMCE 相關元素`, 'basicDetection');
+                            }
+                        }
+                    } else {
+                        log('❌ 無法訪問 iframe document', 'basicDetection');
+                    }
+                } catch (error) {
+                    log(`❌ 訪問 iframe 時出錯: ${error.message}`, 'basicDetection');
+                }
+            });
+            
+            if (iframes.length === 0) {
+                log('ℹ️ 沒有找到 iframe 元素', 'basicDetection');
+            }
+        }
+        
+        // 分析內容結構
+        function analyzeContent() {
+            clearLog('contentAnalysis');
+            
+            let content = '';
+            if (currentEditor) {
+                content = currentEditor.getContent();
+            } else {
+                const editableEl = document.querySelector('[contenteditable="true"]');
+                if (editableEl) {
+                    content = editableEl.innerHTML;
+                } else {
+                    log('❌ 沒有找到內容', 'contentAnalysis');
+                    return;
+                }
+            }
+            
+            log('📊 內容結構分析:', 'contentAnalysis');
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // 基本統計
+            log(`總字元數: ${content.length}`, 'contentAnalysis');
+            log(`純文字字元數: ${tempDiv.textContent.length}`, 'contentAnalysis');
+            log(`HTML 元素數: ${tempDiv.querySelectorAll('*').length}`, 'contentAnalysis');
+            
+            // 段落和標題分析
+            const headings = tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            const paragraphs = tempDiv.querySelectorAll('p');
+            const lists = tempDiv.querySelectorAll('ul, ol');
+            const listItems = tempDiv.querySelectorAll('li');
+            
+            log(`\n📋 結構元素:`, 'contentAnalysis');
+            log(`  標題 (h1-h6): ${headings.length}`, 'contentAnalysis');
+            log(`  段落 (p): ${paragraphs.length}`, 'contentAnalysis');
+            log(`  列表 (ul/ol): ${lists.length}`, 'contentAnalysis');
+            log(`  列表項目 (li): ${listItems.length}`, 'contentAnalysis');
+            
+            // 樣式分析
+            const styledElements = tempDiv.querySelectorAll('[class], [style]');
+            log(`\n🎨 樣式元素: ${styledElements.length}`, 'contentAnalysis');
+            
+            // 連結和圖片
+            const links = tempDiv.querySelectorAll('a');
+            const images = tempDiv.querySelectorAll('img');
+            log(`\n🔗 媒體元素:`, 'contentAnalysis');
+            log(`  連結 (a): ${links.length}`, 'contentAnalysis');
+            log(`  圖片 (img): ${images.length}`, 'contentAnalysis');
+        }
+        
+        // 查找視覺標記
+        function findMarkers() {
+            clearLog('contentAnalysis');
+            
+            let content = '';
+            if (currentEditor) {
+                content = currentEditor.getContent();
+            } else {
+                const editableEl = document.querySelector('[contenteditable="true"]');
+                if (editableEl) {
+                    content = editableEl.innerHTML;
+                } else {
+                    log('❌ 沒有找到內容', 'contentAnalysis');
+                    return;
+                }
+            }
+            
+            log('🏷️ 搜尋視覺標記:', 'contentAnalysis');
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // 查找各種標記
+            const markers = {
+                'opt-new': tempDiv.querySelectorAll('.opt-new'),
+                'opt-modified': tempDiv.querySelectorAll('.opt-modified'),
+                'opt-placeholder': tempDiv.querySelectorAll('.opt-placeholder'),
+                'opt-keyword': tempDiv.querySelectorAll('.opt-keyword'),
+                'opt-keyword-existing': tempDiv.querySelectorAll('.opt-keyword-existing'),
+                'opt-strength': tempDiv.querySelectorAll('.opt-strength')
+            };
+            
+            let totalMarkers = 0;
+            Object.entries(markers).forEach(([className, elements]) => {
+                log(`  ${className}: ${elements.length}`, 'contentAnalysis');
+                totalMarkers += elements.length;
+                
+                if (elements.length > 0) {
+                    elements.forEach((el, index) => {
+                        log(`    ${index + 1}. "${el.textContent.slice(0, 50)}..."`, 'contentAnalysis');
+                    });
+                }
+            });
+            
+            log(`\n📊 總標記數: ${totalMarkers}`, 'contentAnalysis');
+            
+            // 檢查佔位符
+            const placeholderPattern = /\[([A-Z_\s]+)\]/g;
+            const placeholders = content.match(placeholderPattern) || [];
+            log(`🔍 佔位符: ${placeholders.length}`, 'contentAnalysis');
+            placeholders.forEach(placeholder => {
+                log(`  - ${placeholder}`, 'contentAnalysis');
+            });
+        }
+        
+        // 統計元素
+        function countElements() {
+            clearLog('contentAnalysis');
+            
+            let content = '';
+            if (currentEditor) {
+                content = currentEditor.getContent();
+            } else {
+                const editableEl = document.querySelector('[contenteditable="true"]');
+                if (editableEl) {
+                    content = editableEl.innerHTML;
+                } else {
+                    log('❌ 沒有找到內容', 'contentAnalysis');
+                    return;
+                }
+            }
+            
+            log('🔢 元素統計:', 'contentAnalysis');
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // 統計所有標籤
+            const tagCounts = {};
+            tempDiv.querySelectorAll('*').forEach(el => {
+                const tagName = el.tagName.toLowerCase();
+                tagCounts[tagName] = (tagCounts[tagName] || 0) + 1;
+            });
+            
+            log('📋 HTML 標籤統計:', 'contentAnalysis');
+            Object.entries(tagCounts)
+                .sort(([,a], [,b]) => b - a)
+                .forEach(([tag, count]) => {
+                    log(`  ${tag}: ${count}`, 'contentAnalysis');
+                });
+            
+            // 統計 class 屬性
+            const classCounts = {};
+            tempDiv.querySelectorAll('[class]').forEach(el => {
+                el.classList.forEach(className => {
+                    classCounts[className] = (classCounts[className] || 0) + 1;
+                });
+            });
+            
+            if (Object.keys(classCounts).length > 0) {
+                log('\n🎨 CSS Class 統計:', 'contentAnalysis');
+                Object.entries(classCounts)
+                    .sort(([,a], [,b]) => b - a)
+                    .forEach(([className, count]) => {
+                        log(`  ${className}: ${count}`, 'contentAnalysis');
+                    });
+            }
+        }
+        
+        // 驗證 HTML
+        function validateHTML() {
+            clearLog('contentAnalysis');
+            
+            let content = '';
+            if (currentEditor) {
+                content = currentEditor.getContent();
+            } else {
+                const editableEl = document.querySelector('[contenteditable="true"]');
+                if (editableEl) {
+                    content = editableEl.innerHTML;
+                } else {
+                    log('❌ 沒有找到內容', 'contentAnalysis');
+                    return;
+                }
+            }
+            
+            log('✅ HTML 驗證:', 'contentAnalysis');
+            
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = content;
+                
+                // 檢查是否有解析錯誤
+                if (tempDiv.innerHTML === content) {
+                    log('✅ HTML 格式正確', 'contentAnalysis');
+                } else {
+                    log('⚠️ HTML 可能有格式問題', 'contentAnalysis');
+                }
+                
+                // 檢查常見問題
+                const issues = [];
+                
+                // 檢查未關閉的標籤
+                const openTags = content.match(/<[^/>][^>]*>/g) || [];
+                const closeTags = content.match(/<\/[^>]*>/g) || [];
+                if (openTags.length !== closeTags.length) {
+                    issues.push(`標籤不匹配: ${openTags.length} 個開啟標籤, ${closeTags.length} 個關閉標籤`);
+                }
+                
+                // 檢查空的 class 屬性
+                if (content.includes('class=""')) {
+                    issues.push('發現空的 class 屬性');
+                }
+                
+                // 檢查無效字元
+                if (content.includes('&nbsp;&nbsp;&nbsp;')) {
+                    issues.push('發現多個連續的 &nbsp;');
+                }
+                
+                if (issues.length > 0) {
+                    log('\n⚠️ 發現的問題:', 'contentAnalysis');
+                    issues.forEach(issue => {
+                        log(`  - ${issue}`, 'contentAnalysis');
+                    });
+                } else {
+                    log('✅ 沒有發現明顯問題', 'contentAnalysis');
+                }
+                
+            } catch (error) {
+                log(`❌ HTML 驗證錯誤: ${error.message}`, 'contentAnalysis');
+            }
+        }
+        
+        // 開始監控
+        function startMonitoring() {
+            clearLog('monitoring');
+            log('🔄 開始即時監控...', 'monitoring');
+            
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+            }
+            
+            monitoringInterval = setInterval(() => {
+                const timestamp = new Date().toLocaleTimeString();
+                
+                if (currentEditor) {
+                    const content = currentEditor.getContent();
+                    const textLength = currentEditor.getContent({format: 'text'}).length;
+                    log(`[${timestamp}] 內容長度: ${content.length} HTML, ${textLength} 文字`, 'monitoring');
+                } else {
+                    // 檢查是否有新的編輯器
+                    if (typeof tinymce !== 'undefined' && tinymce.editors.length > 0) {
+                        currentEditor = tinymce.editors[0];
+                        log(`[${timestamp}] 發現新編輯器: ${currentEditor.id}`, 'monitoring');
+                    } else {
+                        log(`[${timestamp}] 沒有活動編輯器`, 'monitoring');
+                    }
+                }
+            }, 2000);
+        }
+        
+        // 停止監控
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                log('⏹️ 監控已停止', 'monitoring');
+            }
+        }
+        
+        // 插入測試內容
+        function insertTestContent() {
+            clearLog('testTools');
+            
+            const testHTML = `
+                <h1>測試履歷</h1>
+                <p class="opt-new">這是一個 <span class="opt-keyword">新增的段落</span>，包含 <span class="opt-placeholder">[PERCENTAGE]</span> 佔位符。</p>
+                <ul>
+                    <li class="opt-modified">修改過的 <span class="opt-keyword-existing">項目</span></li>
+                    <li>普通項目with <span class="opt-strength">強調內容</span></li>
+                </ul>
+            `;
+            
+            if (currentEditor) {
+                currentEditor.setContent(testHTML);
+                log('✅ 測試內容已插入到 TinyMCE 編輯器', 'testTools');
+            } else {
+                const editableEl = document.querySelector('[contenteditable="true"]');
+                if (editableEl) {
+                    editableEl.innerHTML = testHTML;
+                    log('✅ 測試內容已插入到可編輯元素', 'testTools');
+                } else {
+                    log('❌ 沒有找到可編輯的元素', 'testTools');
+                }
+            }
+        }
+        
+        // 清空編輯器
+        function clearEditor() {
+            clearLog('testTools');
+            
+            if (currentEditor) {
+                currentEditor.setContent('');
+                log('🧹 TinyMCE 編輯器已清空', 'testTools');
+            } else {
+                const editableEl = document.querySelector('[contenteditable="true"]');
+                if (editableEl) {
+                    editableEl.innerHTML = '';
+                    log('🧹 可編輯元素已清空', 'testTools');
+                } else {
+                    log('❌ 沒有找到可編輯的元素', 'testTools');
+                }
+            }
+        }
+        
+        // 頁面載入時自動檢測
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                detectTinyMCE();
+            }, 1000);
+        });
+        
+        // 定期檢查 TinyMCE 是否載入
+        const checkInterval = setInterval(() => {
+            if (typeof tinymce !== 'undefined' && tinymce.editors.length > 0 && !currentEditor) {
+                currentEditor = tinymce.editors[0];
+                clearInterval(checkInterval);
+                log('🎯 自動偵測到 TinyMCE 編輯器', 'basicDetection');
+            }
+        }, 1000);
+        
+        // 清除檢查間隔（10秒後停止）
+        setTimeout(() => {
+            clearInterval(checkInterval);
+        }, 10000);
+    </script>
+</body>
+</html>

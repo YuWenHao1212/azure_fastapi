@@ -10,73 +10,54 @@ from httpx import AsyncClient
 
 from src.main import app
 from src.models.api.resume_tailoring import (
-    IndexCalculationResult,
-    KeywordsAnalysis,
-    OptimizationStats,
+    CoverageDetails,
+    CoverageStats,
+    SimilarityStats,
     TailoringResult,
     VisualMarkerStats,
 )
 
 
 def create_mock_tailoring_result(
-    optimized_resume: str = '<h1>Optimized Resume</h1>',
-    applied_improvements: list[str] = None,
-    sections_modified: int = 2,
-    keywords_added: int = 3
+    resume: str = '<h1>Optimized Resume</h1>',
+    improvements_html: str = None,
+    new_keywords: int = 3
 ) -> TailoringResult:
     """Helper to create valid TailoringResult with all required fields."""
-    if applied_improvements is None:
-        applied_improvements = [
-            "[Section: Summary] Added senior-level positioning",
-            "[Section: Skills] Added AWS, Docker, Kubernetes"
-        ]
+    if improvements_html is None:
+        improvements_html = '''<ul>
+            <li>[Section: Summary] Added senior-level positioning</li>
+            <li>[Section: Skills] Added AWS, Docker, Kubernetes</li>
+        </ul>'''
     
     return TailoringResult(
-        optimized_resume=optimized_resume,
-        applied_improvements=applied_improvements,
-        applied_improvements_html='<ul><li>' + '</li><li>'.join(applied_improvements) + '</li></ul>',
-        optimization_stats=OptimizationStats(
-            sections_modified=sections_modified,
-            keywords_added=keywords_added,
-            strengths_highlighted=2,
-            placeholders_added=1
+        resume=resume,
+        improvements=improvements_html,
+        markers=VisualMarkerStats(
+            keyword_new=3,
+            keyword_existing=2,
+            placeholder=1,
+            new_section=2,
+            modified=3
         ),
-        visual_markers=VisualMarkerStats(
-            keyword_count=3,
-            keyword_existing_count=2,
-            placeholder_count=1,
-            new_content_count=2,
-            modified_content_count=3
+        similarity=SimilarityStats(
+            before=75,
+            after=85,
+            improvement=10
         ),
-        index_calculation=IndexCalculationResult(
-            original_similarity=75,
-            optimized_similarity=85,
-            similarity_improvement=10,
-            original_keyword_coverage=60,
-            optimized_keyword_coverage=80,
-            keyword_coverage_improvement=20,
-            new_keywords_added=["AWS", "Docker", "Kubernetes"]
-        ),
-        keywords_analysis=KeywordsAnalysis(
-            original_keywords=["Python", "Software Engineer"],
-            new_keywords=["AWS", "Docker", "Kubernetes"],
-            total_keywords=5,
-            coverage_details={
-                "original": {
-                    "total_keywords": 5,
-                    "covered_count": 2,
-                    "coverage_percentage": 40,
-                    "covered_keywords": ["Python", "Software Engineer"],
-                    "missed_keywords": ["AWS", "Docker", "Kubernetes"]
-                },
-                "optimized": {
-                    "total_keywords": 5,
-                    "covered_count": 5,
-                    "coverage_percentage": 100,
-                    "covered_keywords": ["Python", "Software Engineer", "AWS", "Docker", "Kubernetes"],
-                    "missed_keywords": []
-                }
-            }
+        coverage=CoverageStats(
+            before=CoverageDetails(
+                percentage=40,
+                covered=["Python", "Software Engineer"],
+                missed=["AWS", "Docker", "Kubernetes"]
+            ),
+            after=CoverageDetails(
+                percentage=100,
+                covered=["Python", "Software Engineer", "AWS", "Docker", "Kubernetes"],
+                missed=[]
+            ),
+            improvement=60,
+            newly_added=["AWS", "Docker", "Kubernetes"]
         )
     )
 
@@ -213,7 +194,7 @@ class TestResumeTailoringAPI:
                 # Mock successful response
                 mock_service.tailor_resume = AsyncMock(
                     return_value=create_mock_tailoring_result(
-                        optimized_resume='<h1>Optimized Resume</h1><p class="opt-keyword">Python</p>'
+                        resume='<h1>Optimized Resume</h1><p class="opt-keyword">Python</p>'
                     )
                 )
                 
@@ -228,11 +209,11 @@ class TestResumeTailoringAPI:
                 data = response.json()
                 assert data["success"] is True
                 assert data["data"] is not None
-                assert "optimized_resume" in data["data"]
-                assert "applied_improvements" in data["data"]
-                assert len(data["data"]["applied_improvements"]) == 2
-                assert data["data"]["optimization_stats"]["sections_modified"] == 2
-                assert data["data"]["visual_markers"]["keyword_count"] == 3
+                assert "resume" in data["data"]
+                assert "improvements" in data["data"]
+                assert "<ul>" in data["data"]["improvements"]
+                assert data["data"]["markers"]["new_section"] == 2
+                assert data["data"]["markers"]["keyword_new"] == 3
     
     @pytest.mark.asyncio
     async def test_tailor_resume_chinese_language(self, sample_chinese_request_data):
@@ -242,11 +223,8 @@ class TestResumeTailoringAPI:
                 # Mock Chinese response
                 mock_service.tailor_resume = AsyncMock(
                     return_value=create_mock_tailoring_result(
-                        optimized_resume='<h1>優化後的履歷</h1><p class="opt-keyword">Python</p>',
-                        applied_improvements=[
-                            "[章節: 摘要] 加入資深工程師定位",
-                            "[章節: 技能] 新增AWS、Docker、Kubernetes"
-                        ]
+                        resume='<h1>優化後的履歷</h1><p class="opt-keyword">Python</p>',
+                        improvements_html='<ul><li>[章節: 摘要] 加入資深工程師定位</li><li>[章節: 技能] 新增AWS、Docker、Kubernetes</li></ul>'
                     )
                 )
                 
@@ -260,7 +238,7 @@ class TestResumeTailoringAPI:
                 assert response.status_code == 200
                 data = response.json()
                 assert data["success"] is True
-                assert "優化後的履歷" in data["data"]["optimized_resume"]
+                assert "優化後的履歷" in data["data"]["resume"]
     
     @pytest.mark.asyncio
     async def test_tailor_resume_without_markers(self, sample_request_data):
@@ -270,10 +248,9 @@ class TestResumeTailoringAPI:
                 # Mock response without markers
                 mock_service.tailor_resume = AsyncMock(
                     return_value=create_mock_tailoring_result(
-                        optimized_resume='<h1>Optimized Resume</h1><p>Clean text without markers</p>',
-                        applied_improvements=["Improvements applied"],
-                        sections_modified=1,
-                        keywords_added=0
+                        resume='<h1>Optimized Resume</h1><p>Clean text without markers</p>',
+                        improvements_html='<ul><li>Improvements applied</li></ul>',
+                        new_keywords=0
                     )
                 )
                 
@@ -288,7 +265,7 @@ class TestResumeTailoringAPI:
                 
                 assert response.status_code == 200
                 data = response.json()
-                assert "opt-" not in data["data"]["optimized_resume"]
+                assert "opt-" not in data["data"]["resume"]
     
     @pytest.mark.asyncio
     async def test_tailor_resume_validation_error(self, sample_request_data):
@@ -364,10 +341,9 @@ class TestResumeTailoringAPI:
                 # Test success case
                 mock_service.tailor_resume = AsyncMock(
                     return_value=create_mock_tailoring_result(
-                        optimized_resume='<h1>Resume</h1>',
-                        applied_improvements=[],
-                        sections_modified=0,
-                        keywords_added=0
+                        resume='<h1>Resume</h1>',
+                        improvements_html='<ul></ul>',
+                        new_keywords=0
                     )
                 )
                 

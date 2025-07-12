@@ -127,34 +127,33 @@ class TestResumeTailoringWithIndex:
                 )
         
         # Verify result structure
-        assert result.optimized_resume
-        assert result.applied_improvements
-        assert len(result.applied_improvements) == 4
-        assert result.optimization_stats.sections_modified > 0
+        assert result.resume
+        assert result.improvements
+        assert '<ul>' in result.improvements or '<ol>' in result.improvements
+        assert result.markers.new_section > 0 or result.markers.modified > 0
         
-        # Verify index calculation
-        assert hasattr(result, 'index_calculation')
-        assert result.index_calculation.original_similarity >= 0
-        assert result.index_calculation.optimized_similarity >= 0
-        assert result.index_calculation.similarity_improvement >= 0
-        assert result.index_calculation.original_keyword_coverage >= 0
-        assert result.index_calculation.optimized_keyword_coverage >= result.index_calculation.original_keyword_coverage
-        assert len(result.index_calculation.new_keywords_added) > 0
+        # Verify similarity and coverage
+        assert hasattr(result, 'similarity')
+        assert result.similarity.before >= 0
+        assert result.similarity.after >= 0
+        assert result.similarity.improvement >= 0
+        assert hasattr(result, 'coverage')
+        assert result.coverage.before.percentage >= 0
+        assert result.coverage.after.percentage >= result.coverage.before.percentage
+        assert len(result.coverage.newly_added) > 0
         
-        # Verify keywords analysis
-        assert hasattr(result, 'keywords_analysis')
-        assert result.keywords_analysis.original_keywords == ["Python", "MySQL"]
-        assert len(result.keywords_analysis.new_keywords) > 0
-        assert result.keywords_analysis.total_keywords == 7  # 2 original + 5 missing
+        # Verify coverage details
+        assert result.coverage.before.covered == ["Python", "MySQL"]
+        assert len(result.coverage.newly_added) > 0
         
         # Verify visual markers
-        assert result.visual_markers.new_content_count > 0
-        assert result.visual_markers.modified_content_count > 0
-        assert result.visual_markers.placeholder_count > 0
+        assert result.markers.new_section > 0
+        assert result.markers.modified > 0
+        assert result.markers.placeholder > 0
         
         # Verify keyword marking in output
-        assert '<span class="opt-keyword">' in result.optimized_resume or \
-               '<span class="opt-keyword-existing">' in result.optimized_resume
+        assert '<span class="opt-keyword">' in result.resume or \
+               '<span class="opt-keyword-existing">' in result.resume
     
     @pytest.mark.asyncio
     async def test_tailoring_without_markers(self, service, sample_request):
@@ -194,11 +193,11 @@ class TestResumeTailoringWithIndex:
                 )
         
         # Verify no markers in output
-        assert 'class="opt-' not in result.optimized_resume
+        assert 'class="opt-' not in result.resume
         
-        # Verify index calculation still works
-        assert result.index_calculation.original_keyword_coverage >= 0
-        assert result.index_calculation.optimized_keyword_coverage >= 0
+        # Verify coverage calculation still works
+        assert result.coverage.before.percentage >= 0
+        assert result.coverage.after.percentage >= 0
     
     @pytest.mark.asyncio
     async def test_keyword_marking_accuracy(self, service):

@@ -40,7 +40,7 @@ class LanguageHandler:
     def get_prompt_version(cls, language: str) -> str:
         """Get prompt version for the language"""
         # Using single YAML file with language parameter
-        return "v1.0.0"
+        return "v1.1.0"
     
     @classmethod
     def get_output_language(cls, language_code: str) -> str:

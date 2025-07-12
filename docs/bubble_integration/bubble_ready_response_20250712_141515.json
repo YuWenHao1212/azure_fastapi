@@ -1,0 +1,143 @@
+{
+  "success": true,
+  "data": {
+    "optimized_resume": "<h1>Alex Chen</h1> <p>Email: alex.chen@email.com | Phone: (555) 123-4567</p> <p class=\"opt-new\">Senior Software Engineer with 4+ years of experience in software development and data analysis. Proven expertise in <span class=\"opt-keyword-existing\">Python</span> programming and API development, with a strong foundation in full-stack development. Skilled in collaborating with cross-functional teams to deliver scalable solutions. Eager to leverage technical problem-solving abilities and expand expertise in <span class=\"opt-keyword\">machine learning</span> and cloud platforms to drive impactful results.</p> <h3>Work Experience</h3> <h4>Software Developer - TechCorp Inc. (2020-2024)</h4> <ul> <li>Designed and developed web applications using <span class=\"opt-keyword\">Python</span> and <span class=\"opt-keyword-existing\">JavaScript</span> frameworks, improving user engagement by <span class=\"opt-placeholder\">[PERCENTAGE]</span>.</li> <li>Conducted data analysis on user behavior, identifying key trends that enhanced application performance and reduced load times by <span class=\"opt-placeholder\">[PERCENTAGE]</span>.</li> <li><span class=\"opt-strength\">Collaborated with cross-functional teams</span> to deliver new features, ensuring timely delivery and alignment with business goals.</li> <li>Optimized and refactored existing codebase, achieving a <span class=\"opt-placeholder\">[PERCENTAGE]</span> improvement in system efficiency.</li> </ul> <h4>Junior Developer - StartupXYZ (2019-2020)</h4> <ul> <li>Developed and deployed REST APIs using <span class=\"opt-keyword\">Flask</span>, enabling seamless integration with client applications.</li> <li>Created data collection and processing scripts, streamlining workflows and reducing manual effort by <span class=\"opt-placeholder\">[PERCENTAGE]</span>.</li> <li>Participated in code reviews and <span class=\"opt-keyword\">agile development</span> processes, contributing to improved code quality and team productivity.</li> </ul> <h3>Skills</h3> <ul> <li><strong>Programming Languages:</strong> <span class=\"opt-keyword\">Python</span>, <span class=\"opt-keyword-existing\">JavaScript</span>, HTML, CSS</li> <li><strong>Frameworks:</strong> <span class=\"opt-keyword\">Flask</span>, React, Node.js</li> <li><strong><span class=\"opt-keyword\">Machine Learning</span>:</strong> <span class=\"opt-keyword\">Scikit-learn</span>, <span class=\"opt-keyword\">TensorFlow</span>, <span class=\"opt-keyword\">PyTorch</span></li> <li><strong>Cloud Platforms:</strong> <span class=\"opt-keyword\">AWS</span>, <span class=\"opt-keyword\">Azure</span>, <span class=\"opt-keyword\">GCP</span></li> <li><strong>Containerization:</strong> <span class=\"opt-keyword\">Docker</span>, <span class=\"opt-keyword\">Kubernetes</span></li> <li><strong>Databases:</strong> <span class=\"opt-keyword-existing\">MySQL</span>, <span class=\"opt-keyword-existing\">PostgreSQL</span>, <span class=\"opt-keyword\">SQL</span></li> <li><strong>Big Data:</strong> <span class=\"opt-keyword\">Spark</span></li> <li><strong>Tools:</strong> <span class=\"opt-keyword-existing\">Git</span>, Jenkins, Linux, <span class=\"opt-keyword\">Tableau</span>, <span class=\"opt-keyword\">Power BI</span></li> </ul> <h3>Education</h3> <p>Bachelor of Science in Computer Science<br/> State University (2015-2019)</p> <p>Relevant Coursework: <span class=\"opt-keyword\">Machine Learning</span>, Cloud Computing, Data Visualization</p> <h3>Projects</h3> <h4>Personal Project: Data Pipeline Optimization</h4> <ul> <li>Designed and implemented a scalable data pipeline using <span class=\"opt-keyword\">AWS</span> and <span class=\"opt-keyword\">Spark</span>, reducing data processing time by <span class=\"opt-placeholder\">[PERCENTAGE]</span>.</li> <li>Integrated <span class=\"opt-keyword\">machine learning</span> models with the pipeline to generate actionable insights, improving decision-making efficiency.</li> </ul> <h4>Personal Project: Interactive Data Dashboard</h4> <ul> <li>Developed an interactive dashboard using <span class=\"opt-keyword\">Tableau</span> and <span class=\"opt-keyword\">Power BI</span>, enabling real-time data visualization for business stakeholders.</li> <li>Utilized <span class=\"opt-keyword\">SQL</span> to optimize database queries, improving dashboard performance by <span class=\"opt-placeholder\">[PERCENTAGE]</span>.</li> </ul>",
+    "applied_improvements": [
+      "[Section: Summary] Created new professional summary emphasizing Python expertise, collaboration skills, and readiness to expand into machine learning and cloud platforms, incorporating 'machine learning' and 'cloud platforms' keywords.",
+      "[Section: Work Experience - TechCorp Inc.] Converted all bullets to STAR format, quantified achievements with placeholders, and highlighted strengths in collaboration and Python development.",
+      "[Section: Work Experience - StartupXYZ] Rewrote bullets in STAR format, emphasizing API development and agile processes, and integrated 'Flask' and 'agile development' keywords.",
+      "[Section: Skills] Reorganized skills into relevant categories, added missing keywords such as 'Scikit-learn', 'TensorFlow', 'AWS', and 'Docker', and prioritized job-relevant technologies.",
+      "[Section: Projects] Added two personal projects to demonstrate machine learning and data visualization skills, incorporating keywords like 'Spark', 'Tableau', and 'Power BI'."
+    ],
+    "applied_improvements_html": "<ul>\n  <li>[Section: Summary] Created new professional summary emphasizing Python expertise, collaboration skills, and readiness to expand into machine learning and cloud platforms, incorporating 'machine learning' and 'cloud platforms' keywords.</li>\n  <li>[Section: Work Experience - TechCorp Inc.] Converted all bullets to STAR format, quantified achievements with placeholders, and highlighted strengths in collaboration and Python development.</li>\n  <li>[Section: Work Experience - StartupXYZ] Rewrote bullets in STAR format, emphasizing API development and agile processes, and integrated 'Flask' and 'agile development' keywords.</li>\n  <li>[Section: Skills] Reorganized skills into relevant categories, added missing keywords such as 'Scikit-learn', 'TensorFlow', 'AWS', and 'Docker', and prioritized job-relevant technologies.</li>\n  <li>[Section: Projects] Added two personal projects to demonstrate machine learning and data visualization skills, incorporating keywords like 'Spark', 'Tableau', and 'Power BI'.</li>\n</ul>",
+    "optimization_stats": {
+      "sections_modified": 5,
+      "keywords_added": 4,
+      "strengths_highlighted": 1,
+      "placeholders_added": 3
+    },
+    "visual_markers": {
+      "keyword_count": 26,
+      "keyword_existing_count": 6,
+      "placeholder_count": 6,
+      "new_content_count": 1,
+      "modified_content_count": 0
+    },
+    "index_calculation": {
+      "original_similarity": 64,
+      "optimized_similarity": 88,
+      "similarity_improvement": 24,
+      "original_keyword_coverage": 29,
+      "optimized_keyword_coverage": 90,
+      "keyword_coverage_improvement": 61,
+      "new_keywords_added": [
+        "GCP",
+        "TensorFlow",
+        "AWS",
+        "scikit-learn",
+        "SQL",
+        "Spark",
+        "PyTorch",
+        "Azure",
+        "Kubernetes",
+        "Power BI",
+        "Tableau",
+        "Docker",
+        "Machine Learning"
+      ]
+    },
+    "keywords_analysis": {
+      "original_keywords": [
+        "Python",
+        "JavaScript",
+        "MySQL",
+        "PostgreSQL",
+        "Flask",
+        "Git"
+      ],
+      "new_keywords": [
+        "GCP",
+        "TensorFlow",
+        "AWS",
+        "scikit-learn",
+        "SQL",
+        "Spark",
+        "PyTorch",
+        "Azure",
+        "Kubernetes",
+        "Power BI",
+        "Tableau",
+        "Docker",
+        "Machine Learning"
+      ],
+      "total_keywords": 21,
+      "coverage_details": {
+        "original": {
+          "total_keywords": 21,
+          "covered_count": 6,
+          "coverage_percentage": 29,
+          "covered_keywords": [
+            "Python",
+            "JavaScript",
+            "MySQL",
+            "PostgreSQL",
+            "Flask",
+            "Git"
+          ],
+          "missed_keywords": [
+            "Machine Learning",
+            "scikit-learn",
+            "TensorFlow",
+            "PyTorch",
+            "AWS",
+            "Azure",
+            "GCP",
+            "Docker",
+            "Kubernetes",
+            "Tableau",
+            "Power BI",
+            "SQL",
+            "Spark",
+            "MLOps",
+            "FastAPI"
+          ]
+        },
+        "optimized": {
+          "total_keywords": 21,
+          "covered_count": 19,
+          "coverage_percentage": 90,
+          "covered_keywords": [
+            "Python",
+            "JavaScript",
+            "MySQL",
+            "PostgreSQL",
+            "Flask",
+            "Git",
+            "Machine Learning",
+            "scikit-learn",
+            "TensorFlow",
+            "PyTorch",
+            "AWS",
+            "Azure",
+            "GCP",
+            "Docker",
+            "Kubernetes",
+            "Tableau",
+            "Power BI",
+            "SQL",
+            "Spark"
+          ],
+          "missed_keywords": [
+            "MLOps",
+            "FastAPI"
+          ]
+        }
+      }
+    }
+  },
+  "error": {
+    "code": "",
+    "message": "",
+    "details": ""
+  }
+}

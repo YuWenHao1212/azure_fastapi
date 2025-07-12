@@ -15,10 +15,10 @@ from ..core.marker_fixer import MarkerFixer
 from ..core.monitoring_service import monitoring_service
 from ..core.star_formatter import STARFormatter
 from ..models.api.resume_tailoring import (
+    CoverageDetails,
+    CoverageStats,
     GapAnalysisInput,
-    IndexCalculationResult,
-    KeywordsAnalysis,
-    OptimizationStats,
+    SimilarityStats,
     TailoringResult,
     VisualMarkerStats,
 )
@@ -198,9 +198,9 @@ class ResumeTailoringService:
             prompt_config = self.prompt_service.get_prompt_config(context.language, "1.0.0")
         except FileNotFoundError:
             # Fall back to language-agnostic prompt
-            # Load the v1.0.0.yaml file directly
+            # Load the v1.1.0.yaml file directly
             prompt_config = self.prompt_service.simple_prompt_manager.load_prompt_config_by_filename(
-                "resume_tailoring", "v1.0.0.yaml"
+                "resume_tailoring", "v1.1.0.yaml"
             )
         
         # Build prompt with context
@@ -373,19 +373,14 @@ class ResumeTailoringService:
         # Count markers if included
         marker_counts = self.html_processor.count_markers(optimized_resume)
         
-        # Calculate statistics
-        optimization_stats = self._calculate_optimization_stats(
-            original_resume,
-            optimized_resume,
-            applied_improvements
-        )
+        # Statistics are now calculated via visual markers and coverage
         
         visual_markers = VisualMarkerStats(
-            keyword_count=marker_counts.get("keyword", 0),
-            keyword_existing_count=marker_counts.get("keyword-existing", 0),
-            placeholder_count=marker_counts.get("placeholder", 0),
-            new_content_count=marker_counts.get("new", 0),
-            modified_content_count=marker_counts.get("modified", 0)
+            keyword_new=marker_counts.get("keyword", 0),
+            keyword_existing=marker_counts.get("keyword-existing", 0),
+            placeholder=marker_counts.get("placeholder", 0),
+            new_section=marker_counts.get("new", 0),
+            modified=marker_counts.get("modified", 0)
         )
         
         # Generate HTML formatted improvements list
@@ -409,32 +404,37 @@ class ResumeTailoringService:
             all_keywords
         )
         
-        # Build index calculation result
-        index_calculation = IndexCalculationResult(
-            original_similarity=original_similarity,
-            optimized_similarity=optimized_index["similarity_percentage"],
-            similarity_improvement=optimized_index["similarity_percentage"] - original_similarity,
-            original_keyword_coverage=original_coverage["coverage_percentage"],
-            optimized_keyword_coverage=optimized_index["keyword_coverage"]["coverage_percentage"],
-            keyword_coverage_improvement=(
+        # Build similarity stats
+        similarity = SimilarityStats(
+            before=original_similarity,
+            after=optimized_index["similarity_percentage"],
+            improvement=optimized_index["similarity_percentage"] - original_similarity
+        )
+        
+        # Build coverage stats
+        coverage_before = CoverageDetails(
+            percentage=original_coverage["coverage_percentage"],
+            covered=original_coverage["covered_keywords"],
+            missed=[kw for kw in all_keywords if kw not in original_coverage["covered_keywords"]]
+        )
+        
+        coverage_after = CoverageDetails(
+            percentage=optimized_index["keyword_coverage"]["coverage_percentage"],
+            covered=optimized_index["keyword_coverage"]["covered_keywords"],
+            missed=[kw for kw in all_keywords if kw not in optimized_index["keyword_coverage"]["covered_keywords"]]
+        )
+        
+        coverage = CoverageStats(
+            before=coverage_before,
+            after=coverage_after,
+            improvement=(
                 optimized_index["keyword_coverage"]["coverage_percentage"] - 
                 original_coverage["coverage_percentage"]
             ),
-            new_keywords_added=list(
+            newly_added=list(
                 set(optimized_index["keyword_coverage"]["covered_keywords"]) - 
                 set(original_coverage["covered_keywords"])
             )
-        )
-        
-        # Build keywords analysis
-        keywords_analysis = KeywordsAnalysis(
-            original_keywords=gap_analysis.covered_keywords,
-            new_keywords=index_calculation.new_keywords_added,
-            total_keywords=len(all_keywords),
-            coverage_details={
-                "original": original_coverage,
-                "optimized": optimized_index["keyword_coverage"]
-            }
         )
         
         # Remove markers if not requested
@@ -442,13 +442,11 @@ class ResumeTailoringService:
             optimized_resume = self.html_processor.remove_markers(optimized_resume)
         
         return TailoringResult(
-            optimized_resume=optimized_resume,
-            applied_improvements=applied_improvements,
-            applied_improvements_html=applied_improvements_html,
-            optimization_stats=optimization_stats,
-            visual_markers=visual_markers,
-            index_calculation=index_calculation,
-            keywords_analysis=keywords_analysis
+            resume=optimized_resume,
+            improvements=applied_improvements_html,
+            markers=visual_markers,
+            similarity=similarity,
+            coverage=coverage
         )
     
     def _format_improvements_as_html(self, improvements: list[str]) -> str:
@@ -466,39 +464,18 @@ class ResumeTailoringService:
         
         return "\n".join(html_parts)
     
-    def _calculate_optimization_stats(
-        self,
-        original_resume: str,
-        optimized_resume: str,
-        applied_improvements: list[str]
-    ) -> OptimizationStats:
-        """Calculate optimization statistics"""
-        # Count sections modified
-        sections_modified = 0
-        for improvement in applied_improvements:
-            if improvement.startswith("[Section:"):
-                sections_modified += 1
-        
-        # Estimate other statistics from improvements
-        keywords_added = sum(1 for imp in applied_improvements if "keyword" in imp.lower())
-        strengths_highlighted = sum(1 for imp in applied_improvements if "strength" in imp.lower())
-        placeholders_added = optimized_resume.count("[") // 2  # Rough estimate
-        
-        return OptimizationStats(
-            sections_modified=sections_modified,
-            keywords_added=keywords_added,
-            strengths_highlighted=strengths_highlighted,
-            placeholders_added=placeholders_added
-        )
+    # Removed _calculate_optimization_stats - no longer needed in v2.1
     
     def _track_metrics(self, result: TailoringResult, duration: float, language: str):
         """Track optimization metrics"""
         self.monitoring.track_event("ResumeTailoringCompleted", {
             "duration_ms": duration * 1000,
             "language": language,
-            "sections_modified": result.optimization_stats.sections_modified,
-            "keywords_added": result.optimization_stats.keywords_added,
-            "strengths_highlighted": result.optimization_stats.strengths_highlighted,
-            "placeholders_added": result.optimization_stats.placeholders_added,
-            "improvements_applied": len(result.applied_improvements)
+            "keywords_new": result.markers.keyword_new,
+            "keywords_existing": result.markers.keyword_existing,
+            "placeholders": result.markers.placeholder,
+            "new_sections": result.markers.new_section,
+            "modified_content": result.markers.modified,
+            "similarity_improvement": result.similarity.improvement,
+            "coverage_improvement": result.coverage.improvement
         })

@@ -177,10 +177,12 @@ class TestResumeTailoringService:
         
         # Verify
         assert isinstance(result, TailoringResult)
-        assert result.optimized_resume is not None
-        assert len(result.applied_improvements) == 2
-        assert result.optimization_stats.sections_modified > 0
-        assert result.visual_markers.keyword_count > 0
+        assert result.resume is not None
+        assert result.improvements is not None
+        # Check that we have some markers
+        assert result.markers.keyword_new > 0 or result.markers.keyword_existing > 0
+        # The improvements should be formatted as HTML
+        assert '<ul>' in result.improvements or '<ol>' in result.improvements
         
         # Verify monitoring was called
         mock_dependencies['monitoring'].track_event.assert_called()
@@ -218,9 +220,9 @@ class TestResumeTailoringService:
         
         # Verify
         assert isinstance(result, TailoringResult)
-        assert result.optimized_resume is not None
-        assert "張三" in result.optimized_resume
-        assert len(result.applied_improvements) == 2
+        assert result.resume is not None
+        assert "張三" in result.resume
+        assert result.improvements is not None
     
     @pytest.mark.asyncio
     async def test_tailor_resume_without_markers(self, mock_dependencies, sample_gap_analysis, sample_resume_html):
@@ -251,8 +253,8 @@ class TestResumeTailoringService:
         )
         
         # Verify markers are removed
-        assert "opt-improvement" not in result.optimized_resume
-        assert "opt-keyword" not in result.optimized_resume
+        assert "opt-improvement" not in result.resume
+        assert "opt-keyword" not in result.resume
     
     @pytest.mark.asyncio
     async def test_validation_errors(self, mock_dependencies, sample_gap_analysis):
@@ -320,7 +322,7 @@ class TestResumeTailoringService:
         )
         
         # Verify
-        assert result.optimized_resume == "<h1>Optimized</h1>"
+        assert result.resume == "<h1>Optimized</h1>"
         assert service.llm_client.chat_completion.call_count == 3
     
     def test_parse_llm_response_valid_json(self, mock_dependencies):
@@ -352,29 +354,11 @@ class TestResumeTailoringService:
         assert len(result["applied_improvements"]) == 2
     
     def test_calculate_optimization_stats(self, mock_dependencies):
-        """Test optimization statistics calculation"""
-        service = ResumeTailoringService()
-        
-        applied_improvements = [
-            "[Section: Summary] Added keywords",
-            "[Section: Experience] Improved bullet points",
-            "Added keyword Python",
-            "Highlighted strength in ML",
-            "General improvement"
-        ]
-        
-        optimized_resume = "Resume with [PLACEHOLDER] and [ANOTHER]"
-        
-        stats = service._calculate_optimization_stats(
-            "<h1>Original</h1>",
-            optimized_resume,
-            applied_improvements
-        )
-        
-        assert stats.sections_modified == 2
-        assert stats.keywords_added == 2  # Fixed: "keyword" appears twice in improvements
-        assert stats.strengths_highlighted == 1
-        assert stats.placeholders_added == 1  # Rough estimate
+        """Test optimization statistics calculation - removed in v2.1"""
+        # This test is no longer needed as _calculate_optimization_stats
+        # was removed in v2.1. Statistics are now calculated via visual markers
+        # and coverage stats directly.
+        pass
     
     def test_remove_format_markers(self):
         """Test STAR/PAR format marker removal"""
@@ -428,6 +412,6 @@ Skills: Python, JavaScript, Machine Learning"""
         )
         
         assert result is not None
-        assert result.optimized_resume is not None
+        assert result.resume is not None
         # Should contain HTML tags after processing
-        assert '<h1>' in result.optimized_resume or '<p>' in result.optimized_resume
+        assert '<h1>' in result.resume or '<p>' in result.resume

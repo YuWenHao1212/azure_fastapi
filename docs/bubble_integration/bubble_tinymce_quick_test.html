@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>快速 TinyMCE 測試工具</title>
+    <style>
+        .quick-test {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #fff;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 9999;
+            max-width: 350px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+        }
+        
+        .quick-test h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+            font-size: 14px;
+        }
+        
+        .btn-quick {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .btn-quick:hover {
+            background: #0056b3;
+        }
+        
+        .status-box {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+        
+        .status-good { color: #28a745; }
+        .status-warn { color: #ffc107; }
+        .status-error { color: #dc3545; }
+        
+        .minimize-btn {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        
+        .minimized {
+            height: 40px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="quickTest" class="quick-test">
+        <button class="minimize-btn" onclick="toggleMinimize()">−</button>
+        <h3>🔍 TinyMCE 快速檢測</h3>
+        
+        <div class="button-group">
+            <button class="btn-quick" onclick="quickCheck()">檢測</button>
+            <button class="btn-quick" onclick="deepScanHTML()">深度掃描</button>
+            <button class="btn-quick" onclick="findGlobalObjects()">全域物件</button>
+            <button class="btn-quick" onclick="scanBubbleElements()">Bubble元素</button>
+            <button class="btn-quick" onclick="startDOMWatch()">監控DOM</button>
+            <button class="btn-quick" onclick="getContent()">取內容</button>
+            <button class="btn-quick" onclick="insertTest()">插入測試</button>
+            <button class="btn-quick" onclick="clearStatus()">清除</button>
+        </div>
+        
+        <div id="status" class="status-box"></div>
+    </div>
+
+    <script>
+        let isMinimized = false;
+        let currentEditor = null;
+        let currentIframeEditor = null;
+        let domObserver = null;
+        let isDOMWatching = false;
+        
+        function log(message, type = 'info') {
+            const status = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'status-error' : 
+                            type === 'warn' ? 'status-warn' : 
+                            type === 'good' ? 'status-good' : '';
+            
+            status.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            status.scrollTop = status.scrollHeight;
+            console.log(`[TinyMCE Quick Test] ${message}`);
+        }
+        
+        function clearStatus() {
+            document.getElementById('status').innerHTML = '';
+        }
+        
+        function toggleMinimize() {
+            const container = document.getElementById('quickTest');
+            const btn = container.querySelector('.minimize-btn');
+            isMinimized = !isMinimized;
+            
+            if (isMinimized) {
+                container.classList.add('minimized');
+                btn.textContent = '+';
+            } else {
+                container.classList.remove('minimized');
+                btn.textContent = '−';
+            }
+        }
+        
+        function quickCheck() {
+            clearStatus();
+            log('🚀 開始快速檢測...', 'info');
+            
+            // 檢查 TinyMCE
+            if (typeof tinymce !== 'undefined') {
+                log(`✅ TinyMCE v${tinymce.majorVersion}.${tinymce.minorVersion} 已載入`, 'good');
+                log(`📊 編輯器數量: ${tinymce.editors.length}`, 'info');
+                
+                if (tinymce.editors.length > 0) {
+                    currentEditor = tinymce.editors[0];
+                    log(`✅ 當前編輯器: ${currentEditor.id}`, 'good');
+                    log(`📝 內容長度: ${currentEditor.getContent().length}`, 'info');
+                } else {
+                    log('⚠️ 沒有活動編輯器', 'warn');
+                }
+            } else {
+                log('❌ TinyMCE 未載入', 'error');
+            }
+            
+            // 檢查可編輯元素
+            const editableElements = document.querySelectorAll('[contenteditable="true"]');
+            log(`📝 可編輯元素: ${editableElements.length}`, 'info');
+            
+            // 檢查 iframe
+            const iframes = document.querySelectorAll('iframe');
+            log(`🖼️ iframe 數量: ${iframes.length}`, 'info');
+            
+            // 檢查 textarea
+            const textareas = document.querySelectorAll('textarea');
+            log(`📄 textarea 數量: ${textareas.length}`, 'info');
+        }
+        
+        function getContent() {
+            clearStatus();
+            log('📖 獲取內容...', 'info');
+            
+            if (currentEditor) {
+                const content = currentEditor.getContent();
+                const textContent = currentEditor.getContent({format: 'text'});
+                log(`✅ TinyMCE 內容 (${content.length} chars)`, 'good');
+                log(content.substring(0, 200) + (content.length > 200 ? '...' : ''), 'info');
+                
+            } else if (currentIframeEditor) {
+                const content = currentIframeEditor.innerHTML;
+                log(`✅ iframe 內容 (${content.length} chars)`, 'good');
+                log(content.substring(0, 200) + (content.length > 200 ? '...' : ''), 'info');
+                
+            } else {
+                const editableElements = document.querySelectorAll('[contenteditable="true"]');
+                if (editableElements.length > 0) {
+                    const el = editableElements[0];
+                    log(`📝 可編輯元素內容 (${el.innerHTML.length} chars)`, 'info');
+                    log(el.innerHTML.substring(0, 200) + (el.innerHTML.length > 200 ? '...' : ''), 'info');
+                } else {
+                    log('❌ 沒有找到內容', 'error');
+                }
+            }
+        }
+        
+        // 深度掃描 HTML 結構
+        function deepScanHTML() {
+            clearStatus();
+            log('🔍 深度掃描 HTML 結構...', 'info');
+            
+            // 掃描所有包含 'editor', 'rich', 'text', 'mce', 'tiny' 關鍵字的元素
+            const keywords = ['editor', 'rich', 'text', 'mce', 'tiny', 'bubble'];
+            
+            keywords.forEach(keyword => {
+                // 掃描 ID
+                const idElements = document.querySelectorAll(`[id*="${keyword}"]`);
+                if (idElements.length > 0) {
+                    log(`🆔 ID 包含 "${keyword}": ${idElements.length} 個`, 'info');
+                    idElements.forEach(el => {
+                        log(`   - ${el.tagName}#${el.id} (class: ${el.className || 'none'})`, 'info');
+                        
+                        // 檢查是否有可編輯屬性
+                        if (el.contentEditable === 'true') {
+                            log(`     ✅ 可編輯元素！內容長度: ${el.innerHTML.length}`, 'good');
+                            currentIframeEditor = el;
+                        }
+                    });
+                }
+                
+                // 掃描 Class
+                const classElements = document.querySelectorAll(`[class*="${keyword}"]`);
+                if (classElements.length > 0) {
+                    log(`🏷️ Class 包含 "${keyword}": ${classElements.length} 個`, 'info');
+                    classElements.forEach(el => {
+                        log(`   - ${el.tagName}.${el.className} (id: ${el.id || 'none'})`, 'info');
+                        
+                        if (el.contentEditable === 'true') {
+                            log(`     ✅ 可編輯元素！內容長度: ${el.innerHTML.length}`, 'good');
+                            currentIframeEditor = el;
+                        }
+                    });
+                }
+                
+                // 掃描 data 屬性
+                const dataElements = document.querySelectorAll(`[data-*="${keyword}"], [data-*^="${keyword}"], [data-*$="${keyword}"]`);
+                if (dataElements.length > 0) {
+                    log(`📊 Data 屬性包含 "${keyword}": ${dataElements.length} 個`, 'info');
+                }
+            });
+            
+            // 特別檢查所有 contentEditable 元素
+            const editableElements = document.querySelectorAll('[contenteditable="true"]');
+            log(`\n📝 所有可編輯元素: ${editableElements.length}`, 'info');
+            editableElements.forEach((el, index) => {
+                log(`   ${index + 1}. ${el.tagName} (id: ${el.id || 'none'}, class: ${el.className || 'none'})`, 'info');
+                log(`      內容長度: ${el.innerHTML.length}, 文字長度: ${el.textContent.length}`, 'info');
+                
+                if (el.innerHTML.length > 0) {
+                    log(`      內容預覽: ${el.innerHTML.substring(0, 100)}...`, 'info');
+                }
+            });
+        }
+        
+        // 搜尋全域物件
+        function findGlobalObjects() {
+            clearStatus();
+            log('🌐 搜尋全域物件...', 'info');
+            
+            // 檢查常見的編輯器全域物件
+            const editorObjects = [
+                'tinymce', 'TINYMCE', 'TinyMCE',
+                'editor', 'Editor', 'EDITOR',
+                'bubble', 'Bubble', 'BUBBLE',
+                'richText', 'RichText', 'RICHTEXT',
+                'textEditor', 'TextEditor'
+            ];
+            
+            editorObjects.forEach(objName => {
+                if (window[objName]) {
+                    log(`✅ 找到全域物件: window.${objName}`, 'good');
+                    log(`   類型: ${typeof window[objName]}`, 'info');
+                    
+                    // 檢查物件屬性
+                    if (typeof window[objName] === 'object') {
+                        const keys = Object.keys(window[objName]);
+                        log(`   屬性數量: ${keys.length}`, 'info');
+                        
+                        // 顯示前 10 個屬性
+                        keys.slice(0, 10).forEach(key => {
+                            log(`   - ${key}: ${typeof window[objName][key]}`, 'info');
+                        });
+                        
+                        // 特別檢查編輯器相關屬性
+                        if (window[objName].editors) {
+                            log(`   📝 editors 屬性: ${window[objName].editors.length} 個編輯器`, 'info');
+                        }
+                        
+                        if (window[objName].get) {
+                            log(`   🔧 有 get() 方法`, 'info');
+                        }
+                        
+                        if (window[objName].getContent) {
+                            log(`   📄 有 getContent() 方法`, 'info');
+                        }
+                    }
+                }
+            });
+            
+            // 檢查 window 物件上所有包含 editor 關鍵字的屬性
+            log('\n🔍 搜尋 window 物件中的編輯器相關屬性...', 'info');
+            Object.keys(window).forEach(key => {
+                const lowerKey = key.toLowerCase();
+                if (lowerKey.includes('editor') || lowerKey.includes('tiny') || lowerKey.includes('mce') || lowerKey.includes('rich')) {
+                    log(`🎯 window.${key}: ${typeof window[key]}`, 'info');
+                }
+            });
+        }
+        
+        // 掃描 Bubble.io 特有元素
+        function scanBubbleElements() {
+            clearStatus();
+            log('🫧 掃描 Bubble.io 元素...', 'info');
+            
+            // Bubble.io 特有的選擇器
+            const bubbleSelectors = [
+                '.bubble-element',
+                '[data-bubble]',
+                '[class*="bubble"]',
+                '[id*="bubble"]',
+                '.RichTextEditor',
+                '[data-type="RichTextEditor"]',
+                '.RepeatingGroup',
+                '.Input',
+                '.MultilineInput'
+            ];
+            
+            bubbleSelectors.forEach(selector => {
+                const elements = document.querySelectorAll(selector);
+                if (elements.length > 0) {
+                    log(`🎯 ${selector}: ${elements.length} 個`, 'info');
+                    
+                    elements.forEach((el, index) => {
+                        log(`   ${index + 1}. ${el.tagName}`, 'info');
+                        log(`      ID: ${el.id || 'none'}`, 'info');
+                        log(`      Class: ${el.className || 'none'}`, 'info');
+                        
+                        // 檢查 data 屬性
+                        Array.from(el.attributes).forEach(attr => {
+                            if (attr.name.startsWith('data-')) {
+                                log(`      ${attr.name}: ${attr.value}`, 'info');
+                            }
+                        });
+                        
+                        // 檢查是否包含編輯器
+                        const innerEditors = el.querySelectorAll('[contenteditable="true"], iframe, textarea');
+                        if (innerEditors.length > 0) {
+                            log(`      ✅ 包含 ${innerEditors.length} 個編輯器元素`, 'good');
+                            
+                            innerEditors.forEach((innerEl, innerIndex) => {
+                                log(`         ${innerIndex + 1}. ${innerEl.tagName} (contentEditable: ${innerEl.contentEditable})`, 'info');
+                                if (innerEl.tagName === 'IFRAME') {
+                                    log(`            iframe src: ${innerEl.src || 'none'}`, 'info');
+                                    log(`            iframe title: ${innerEl.title || 'none'}`, 'info');
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+            
+            // 特別檢查 Bubble.io 的事件處理器
+            log('\n📡 檢查 Bubble.io 事件處理器...', 'info');
+            const allElements = document.querySelectorAll('*');
+            let eventCount = 0;
+            
+            allElements.forEach(el => {
+                Object.keys(el).forEach(key => {
+                    if (key.startsWith('on') && typeof el[key] === 'function') {
+                        eventCount++;
+                    }
+                });
+            });
+            
+            log(`找到 ${eventCount} 個事件處理器`, 'info');
+        }
+        
+        // DOM 變化監控
+        function startDOMWatch() {
+            clearStatus();
+            
+            if (isDOMWatching) {
+                // 停止監控
+                if (domObserver) {
+                    domObserver.disconnect();
+                    domObserver = null;
+                }
+                isDOMWatching = false;
+                log('⏹️ DOM 監控已停止', 'warn');
+                
+                // 更新按鈕文字
+                const btn = event.target;
+                btn.textContent = '監控DOM';
+                return;
+            }
+            
+            log('🔄 開始監控 DOM 變化...', 'info');
+            log('📡 將捕捉所有包含編輯器關鍵字的元素變化', 'info');
+            
+            isDOMWatching = true;
+            
+            // 更新按鈕文字
+            const btn = event.target;
+            btn.textContent = '停止監控';
+            
+            // 創建 MutationObserver
+            domObserver = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    // 檢查新增的節點
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(function(node) {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                checkNewElement(node, '新增');
+                            }
+                        });
+                        
+                        mutation.removedNodes.forEach(function(node) {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                checkNewElement(node, '移除');
+                            }
+                        });
+                    }
+                    
+                    // 檢查屬性變化
+                    if (mutation.type === 'attributes') {
+                        const target = mutation.target;
+                        if (isEditorRelated(target)) {
+                            log(`🔧 屬性變化: ${target.tagName}.${target.className || ''} - ${mutation.attributeName}`, 'info');
+                        }
+                    }
+                });
+            });
+            
+            // 開始監控
+            domObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'id', 'contenteditable', 'data-type']
+            });
+            
+            log('✅ DOM 監控已啟動，等待變化...', 'good');
+        }
+        
+        // 檢查新元素是否與編輯器相關
+        function checkNewElement(element, action) {
+            if (isEditorRelated(element)) {
+                log(`🆕 ${action}元素: ${element.tagName}`, action === '新增' ? 'good' : 'warn');
+                log(`   ID: ${element.id || 'none'}`, 'info');
+                log(`   Class: ${element.className || 'none'}`, 'info');
+                log(`   ContentEditable: ${element.contentEditable || 'false'}`, 'info');
+                
+                // 如果是可編輯元素，自動設置為當前編輯器
+                if (element.contentEditable === 'true') {
+                    currentIframeEditor = element;
+                    log(`   ✅ 已設置為當前編輯器`, 'good');
+                }
+                
+                // 如果是 iframe，檢查內容
+                if (element.tagName === 'IFRAME') {
+                    setTimeout(() => {
+                        try {
+                            const iframeDoc = element.contentDocument || element.contentWindow.document;
+                            if (iframeDoc) {
+                                const editableContent = iframeDoc.querySelector('[contenteditable="true"], .mce-content-body');
+                                if (editableContent) {
+                                    currentIframeEditor = editableContent;
+                                    log(`   ✅ iframe 中發現可編輯內容`, 'good');
+                                }
+                            }
+                        } catch (e) {
+                            log(`   ⚠️ 無法訪問 iframe 內容`, 'warn');
+                        }
+                    }, 1000);
+                }
+                
+                // 檢查子元素
+                const innerEditors = element.querySelectorAll('[contenteditable="true"], iframe, textarea');
+                if (innerEditors.length > 0) {
+                    log(`   📝 包含 ${innerEditors.length} 個編輯器子元素`, 'info');
+                }
+            }
+            
+            // 檢查是否包含 TinyMCE 相關的子元素
+            const tinyElements = element.querySelectorAll('[id*="mce"], [class*="mce"], [id*="tinymce"], [class*="tinymce"]');
+            if (tinyElements.length > 0) {
+                log(`🔍 ${action}了包含 TinyMCE 的元素 (${tinyElements.length} 個相關子元素)`, 'info');
+            }
+        }
+        
+        // 判斷元素是否與編輯器相關
+        function isEditorRelated(element) {
+            const keywords = ['editor', 'rich', 'text', 'mce', 'tiny', 'bubble'];
+            const id = element.id || '';
+            const className = element.className || '';
+            const tagName = element.tagName || '';
+            
+            return keywords.some(keyword => 
+                id.toLowerCase().includes(keyword) ||
+                className.toLowerCase().includes(keyword) ||
+                tagName.toLowerCase().includes(keyword)
+            ) || element.contentEditable === 'true' || tagName === 'IFRAME' || tagName === 'TEXTAREA';
+        }
+        
+        function checkIframes() {
+            clearStatus();
+            log('🖼️ 檢查 iframe...', 'info');
+            
+            const iframes = document.querySelectorAll('iframe');
+            log(`找到 ${iframes.length} 個 iframe`, 'info');
+            
+            iframes.forEach((iframe, index) => {
+                log(`--- iframe ${index + 1} ---`, 'info');
+                log(`ID: ${iframe.id || 'no ID'}`, 'info');
+                log(`Title: ${iframe.title || 'no title'}`, 'info');
+                
+                try {
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    if (iframeDoc) {
+                        const editableContent = iframeDoc.querySelector('[contenteditable="true"], .mce-content-body');
+                        if (editableContent) {
+                            currentIframeEditor = editableContent;
+                            log(`✅ 找到可編輯內容 (${editableContent.innerHTML.length} chars)`, 'good');
+                        } else {
+                            log('❌ 沒有可編輯內容', 'error');
+                        }
+                    } else {
+                        log('❌ 無法訪問 iframe', 'error');
+                    }
+                } catch (error) {
+                    log(`❌ iframe 錯誤: ${error.message}`, 'error');
+                }
+            });
+        }
+        
+        function insertTest() {
+            clearStatus();
+            log('🧪 插入測試內容...', 'info');
+            
+            const testHTML = `
+                <h2>測試履歷標題</h2>
+                <p class="opt-new">這是一個 <span class="opt-keyword">新增關鍵字</span> 的段落，包含 <span class="opt-placeholder">[PERCENTAGE]</span> 佔位符。</p>
+                <ul>
+                    <li class="opt-modified">修改過的項目with <span class="opt-keyword-existing">原有關鍵字</span></li>
+                    <li>普通項目with <span class="opt-strength">強調內容</span></li>
+                </ul>
+            `;
+            
+            let inserted = false;
+            
+            // 嘗試插入到 TinyMCE
+            if (currentEditor) {
+                try {
+                    currentEditor.setContent(testHTML);
+                    log('✅ 已插入到 TinyMCE 編輯器', 'good');
+                    inserted = true;
+                } catch (error) {
+                    log(`❌ TinyMCE 插入失敗: ${error.message}`, 'error');
+                }
+            }
+            
+            // 嘗試插入到 iframe
+            if (!inserted && currentIframeEditor) {
+                try {
+                    currentIframeEditor.innerHTML = testHTML;
+                    log('✅ 已插入到 iframe 編輯器', 'good');
+                    inserted = true;
+                } catch (error) {
+                    log(`❌ iframe 插入失敗: ${error.message}`, 'error');
+                }
+            }
+            
+            // 嘗試插入到可編輯元素
+            if (!inserted) {
+                const editableElement = document.querySelector('[contenteditable="true"]');
+                if (editableElement) {
+                    editableElement.innerHTML = testHTML;
+                    log('✅ 已插入到可編輯元素', 'good');
+                    inserted = true;
+                }
+            }
+            
+            if (!inserted) {
+                log('❌ 沒有找到可插入的編輯器', 'error');
+            }
+        }
+        
+        // 自動初始化
+        setTimeout(() => {
+            quickCheck();
+        }, 1000);
+        
+        // 定期檢查編輯器變化
+        setInterval(() => {
+            if (typeof tinymce !== 'undefined' && tinymce.editors.length > 0 && !currentEditor) {
+                currentEditor = tinymce.editors[0];
+                log(`🔄 自動檢測到編輯器: ${currentEditor.id}`, 'good');
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

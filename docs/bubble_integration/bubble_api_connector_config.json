@@ -1,0 +1,237 @@
+{
+  "api_connector_name": "AIResumeAdvisor FastAPI",
+  "description": "Enhanced resume tailoring with keyword marking and index calculation",
+  "api_root_url": "https://airesumeadvisor-fastapi.azurewebsites.net/api/v1",
+  
+  "authentication": {
+    "type": "API Key Authentication",
+    "key_name": "code",
+    "key_value": "[YOUR_FUNCTION_KEY]",
+    "add_to": "URL Parameters (Query String)"
+  },
+  
+  "api_calls": {
+    "health_check": {
+      "name": "HealthCheck",
+      "use_as": "Action",
+      "http_method": "GET",
+      "endpoint": "/health",
+      "parameters": {
+        "code": {
+          "type": "text",
+          "required": true,
+          "description": "Azure Function Key for authentication"
+        }
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "return_type": {
+        "success": "boolean",
+        "data": {
+          "service": "text",
+          "status": "text",
+          "version": "text",
+          "features": {
+            "2_round_intersection": "boolean",
+            "azure_openai_integration": "boolean",
+            "parallel_processing": "boolean",
+            "caching": "boolean",
+            "bubble_io_compatible": "boolean",
+            "bilingual_support": "boolean"
+          }
+        },
+        "error": {
+          "has_error": "boolean",
+          "code": "text",
+          "message": "text",
+          "details": "text"
+        },
+        "timestamp": "text"
+      }
+    },
+    
+    "tailor_resume": {
+      "name": "TailorResume",
+      "use_as": "Action", 
+      "http_method": "POST",
+      "endpoint": "/tailor-resume",
+      "parameters": {
+        "code": {
+          "type": "text",
+          "required": true,
+          "description": "Azure Function Key for authentication"
+        },
+        "job_description": {
+          "type": "text",
+          "required": true,
+          "description": "HTML job description (minimum 200 characters)"
+        },
+        "original_resume": {
+          "type": "text", 
+          "required": true,
+          "description": "HTML original resume (minimum 200 characters)"
+        },
+        "gap_analysis": {
+          "type": "object",
+          "required": true,
+          "description": "Gap analysis data"
+        },
+        "options": {
+          "type": "object",
+          "required": true,
+          "description": "Tailoring options"
+        }
+      },
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body_type": "JSON",
+      "return_type": {
+        "success": "boolean",
+        "data": {
+          "optimized_resume": "text",
+          "applied_improvements": "list of text",
+          "applied_improvements_html": "text",
+          "optimization_stats": {
+            "sections_modified": "number",
+            "keywords_added": "number", 
+            "strengths_highlighted": "number",
+            "placeholders_added": "number"
+          },
+          "visual_markers": {
+            "keyword_count": "number",
+            "keyword_existing_count": "number",
+            "placeholder_count": "number",
+            "new_content_count": "number",
+            "modified_content_count": "number"
+          },
+          "index_calculation": {
+            "original_similarity": "number",
+            "optimized_similarity": "number", 
+            "similarity_improvement": "number",
+            "original_keyword_coverage": "number",
+            "optimized_keyword_coverage": "number",
+            "keyword_coverage_improvement": "number",
+            "new_keywords_added": "list of text"
+          },
+          "keywords_analysis": {
+            "original_keywords": "list of text",
+            "new_keywords": "list of text",
+            "total_keywords": "number",
+            "coverage_details": "object"
+          }
+        },
+        "error": {
+          "has_error": "boolean",
+          "code": "text",
+          "message": "text",
+          "details": "text"
+        },
+        "warning": {
+          "has_warning": "boolean",
+          "message": "text"
+        },
+        "timestamp": "text"
+      }
+    }
+  },
+  
+  "data_types": {
+    "GapAnalysisInput": {
+      "core_strengths": "list of text",
+      "key_gaps": "list of text", 
+      "quick_improvements": "list of text",
+      "covered_keywords": "list of text",
+      "missing_keywords": "list of text"
+    },
+    "TailoringOptions": {
+      "include_visual_markers": "boolean",
+      "language": "text"
+    },
+    "IndexCalculationResult": {
+      "original_similarity": "number",
+      "optimized_similarity": "number",
+      "similarity_improvement": "number", 
+      "original_keyword_coverage": "number",
+      "optimized_keyword_coverage": "number",
+      "keyword_coverage_improvement": "number",
+      "new_keywords_added": "list of text"
+    },
+    "KeywordsAnalysis": {
+      "original_keywords": "list of text",
+      "new_keywords": "list of text",
+      "total_keywords": "number",
+      "coverage_details": "text"
+    },
+    "VisualMarkers": {
+      "keyword_count": "number",
+      "keyword_existing_count": "number",
+      "placeholder_count": "number",
+      "new_content_count": "number", 
+      "modified_content_count": "number"
+    },
+    "OptimizationStats": {
+      "sections_modified": "number",
+      "keywords_added": "number",
+      "strengths_highlighted": "number",
+      "placeholders_added": "number"
+    }
+  },
+  
+  "test_data": {
+    "gap_analysis": {
+      "core_strengths": [
+        "Solid Python programming foundation with 4 years of experience",
+        "Proven ability to work with data analysis and processing", 
+        "Experience in full-stack development and API creation",
+        "Strong collaboration and teamwork skills"
+      ],
+      "key_gaps": [
+        "Limited experience with machine learning frameworks",
+        "Missing cloud platform expertise (AWS, Azure, GCP)",
+        "No experience with containerization technologies",
+        "Lack of big data and MLOps knowledge",
+        "Missing data visualization tools experience"
+      ],
+      "quick_improvements": [
+        "Highlight data analysis work and quantify achievements",
+        "Emphasize Python experience and technical problem-solving",
+        "Add any cloud or ML coursework from university",
+        "Mention any personal projects involving data or analytics",
+        "Restructure skills section to emphasize relevant technologies"
+      ],
+      "covered_keywords": ["Python", "JavaScript", "MySQL", "PostgreSQL", "Flask", "Git"],
+      "missing_keywords": [
+        "Machine Learning", "scikit-learn", "TensorFlow", "PyTorch",
+        "AWS", "Azure", "GCP", "Docker", "Kubernetes",
+        "Tableau", "Power BI", "SQL", "Spark", "MLOps", "FastAPI"
+      ]
+    },
+    "options": {
+      "include_visual_markers": true,
+      "language": "en"
+    },
+    "job_description": "<h2>Senior Software Engineer - Data Science Platform</h2><p>We are seeking a Senior Software Engineer to join our Data Science Platform team. The ideal candidate will have extensive experience in Python development, machine learning frameworks, and cloud infrastructure. You will be responsible for building scalable data pipelines, implementing ML models in production, and collaborating with data scientists to deliver insights.</p><h3>Key Requirements:</h3><ul><li>5+ years of experience in Python development</li><li>Strong knowledge of machine learning libraries (scikit-learn, TensorFlow, PyTorch)</li><li>Experience with cloud platforms (AWS, Azure, GCP)</li><li>Proficiency in SQL and database optimization</li><li>Experience with containerization (Docker, Kubernetes)</li><li>Knowledge of data visualization tools (Tableau, Power BI)</li><li>Strong communication and teamwork skills</li></ul><h3>Preferred Qualifications:</h3><ul><li>Experience with big data technologies (Spark, Hadoop)</li><li>Knowledge of MLOps practices and tools</li><li>Experience with API development using FastAPI or Flask</li><li>Understanding of DevOps practices and CI/CD pipelines</li></ul>",
+    "original_resume": "<h1>Alex Chen</h1><p>Email: alex.chen@email.com | Phone: (555) 123-4567</p><p>Software Developer with 4 years of experience in web development and data analysis</p><h3>Work Experience</h3><h4>Software Developer - TechCorp Inc. (2020-2024)</h4><ul><li>Developed web applications using Python and JavaScript frameworks</li><li>Analyzed user behavior data to improve application performance</li><li>Collaborated with cross-functional teams to deliver features on time</li><li>Maintained and optimized existing codebase for better performance</li></ul><h4>Junior Developer - StartupXYZ (2019-2020)</h4><ul><li>Built REST APIs using Python Flask framework</li><li>Implemented data collection and processing scripts</li><li>Participated in code reviews and agile development processes</li></ul><h3>Skills</h3><ul><li>Programming Languages: Python, JavaScript, HTML, CSS</li><li>Frameworks: Flask, React, Node.js</li><li>Databases: MySQL, PostgreSQL</li><li>Tools: Git, Jenkins, Linux</li></ul><h3>Education</h3><p>Bachelor of Science in Computer Science<br>State University (2015-2019)</p>"
+  },
+  
+  "css_styles": {
+    "enhanced_markers": ".opt-new { background-color: #e8f5e8; border-left: 4px solid #4CAF50; padding: 8px; margin: 4px 0; } .opt-modified { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 8px; margin: 4px 0; } .opt-placeholder { background-color: #f8d7da; border-left: 4px solid #dc3545; padding: 2px 4px; font-weight: bold; } .opt-keyword { background-color: #d1ecf1; color: #0c5460; font-weight: bold; padding: 1px 3px; border-radius: 3px; } .opt-keyword-existing { background-color: #d4edda; color: #155724; font-weight: bold; padding: 1px 3px; border-radius: 3px; }"
+  },
+  
+  "error_handling": {
+    "timeout": 180,
+    "retry_policy": {
+      "max_retries": 1,
+      "retry_delay_seconds": 5
+    },
+    "common_errors": {
+      "401": "Authentication failed - check Function Key",
+      "404": "API endpoint not found - check URL",
+      "422": "Validation error - check input parameters",
+      "500": "Server error - try again later",
+      "timeout": "Request timeout - API is processing, try again"
+    }
+  }
+}
