@@ -3,7 +3,7 @@ API models for Resume Tailoring service.
 Provides request/response models for resume optimization.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -104,13 +104,13 @@ class OptimizationStats(BaseModel):
 
 class VisualMarkerStats(BaseModel):
     """Statistics about visual markers applied"""
-    strength_count: int = Field(
-        default=0,
-        description="Number of strength markers"
-    )
     keyword_count: int = Field(
         default=0,
-        description="Number of keyword markers"
+        description="Number of keyword markers (opt-keyword)"
+    )
+    keyword_existing_count: int = Field(
+        default=0,
+        description="Number of existing keyword markers (opt-keyword-existing)"
     )
     placeholder_count: int = Field(
         default=0,
@@ -120,9 +120,52 @@ class VisualMarkerStats(BaseModel):
         default=0,
         description="Number of new content markers"
     )
-    improvement_count: int = Field(
+    modified_content_count: int = Field(
         default=0,
-        description="Number of improvement markers"
+        description="Number of modified content markers"
+    )
+
+
+class IndexCalculationResult(BaseModel):
+    """Index calculation results showing optimization impact"""
+    original_similarity: int = Field(
+        description="Original resume similarity percentage (0-100)"
+    )
+    optimized_similarity: int = Field(
+        description="Optimized resume similarity percentage (0-100)"
+    )
+    similarity_improvement: int = Field(
+        description="Percentage point improvement in similarity"
+    )
+    original_keyword_coverage: int = Field(
+        description="Original keyword coverage percentage (0-100)"
+    )
+    optimized_keyword_coverage: int = Field(
+        description="Optimized keyword coverage percentage (0-100)"
+    )
+    keyword_coverage_improvement: int = Field(
+        description="Percentage point improvement in keyword coverage"
+    )
+    new_keywords_added: list[str] = Field(
+        default_factory=list,
+        description="List of new keywords successfully integrated"
+    )
+
+
+class KeywordsAnalysis(BaseModel):
+    """Detailed keywords analysis"""
+    original_keywords: list[str] = Field(
+        description="Keywords from original resume"
+    )
+    new_keywords: list[str] = Field(
+        description="New keywords added during optimization"
+    )
+    total_keywords: int = Field(
+        description="Total number of relevant keywords"
+    )
+    coverage_details: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Detailed coverage information"
     )
 
 
@@ -143,6 +186,12 @@ class TailoringResult(BaseModel):
     )
     visual_markers: VisualMarkerStats = Field(
         description="Statistics about visual markers"
+    )
+    index_calculation: IndexCalculationResult = Field(
+        description="Index calculation showing optimization impact"
+    )
+    keywords_analysis: KeywordsAnalysis = Field(
+        description="Detailed analysis of keyword optimization"
     )
 
 

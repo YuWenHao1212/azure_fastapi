@@ -34,6 +34,8 @@ httpx==0.25.2
 pytest==7.4.3
 pytest-asyncio==0.21.1
 pytest-cov==4.1.0
+pytest-xdist==3.5.0  # For parallel test execution
+pytest-timeout==2.2.0  # For test timeout management
 aiohttp==3.12.13  # For performance testing
 
 # Development

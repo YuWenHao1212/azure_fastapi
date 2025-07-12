@@ -16,12 +16,18 @@ from ..core.monitoring_service import monitoring_service
 from ..core.star_formatter import STARFormatter
 from ..models.api.resume_tailoring import (
     GapAnalysisInput,
+    IndexCalculationResult,
+    KeywordsAnalysis,
     OptimizationStats,
     TailoringResult,
     VisualMarkerStats,
 )
 from ..models.domain.tailoring import (
     TailoringContext,
+)
+from ..services.index_calculation import (
+    IndexCalculationService,
+    analyze_keyword_coverage,
 )
 from ..services.openai_client import get_azure_openai_client
 from ..services.resume_sections import SectionProcessor
@@ -104,11 +110,13 @@ class ResumeTailoringService:
             optimized_data = await self._optimize_with_llm(context)
             
             # Process the result
-            result = self._process_optimization_result(
+            result = await self._process_optimization_result(
                 optimized_data,
                 original_resume,
                 include_markers,
-                gap_analysis
+                gap_analysis,
+                job_description,
+                language
             )
             
             # Track metrics
@@ -333,12 +341,14 @@ class ResumeTailoringService:
         
         return result
     
-    def _process_optimization_result(
+    async def _process_optimization_result(
         self,
         optimized_data: dict,
         original_resume: str,
         include_markers: bool,
-        gap_analysis: GapAnalysisInput
+        gap_analysis: GapAnalysisInput,
+        job_description: str,
+        language: str
     ) -> TailoringResult:
         """Process optimization result from LLM"""
         optimized_resume = optimized_data.get("optimized_resume", "")
@@ -347,15 +357,17 @@ class ResumeTailoringService:
         # Remove format markers
         optimized_resume = self.star_formatter.remove_format_markers(optimized_resume)
         
+        # Calculate original keyword coverage before optimization
+        all_keywords = gap_analysis.covered_keywords + gap_analysis.missing_keywords
+        original_coverage = analyze_keyword_coverage(original_resume, all_keywords)
+        
         # Fix incorrectly placed markers and apply keyword markers properly
         if include_markers:
-            # Extract all keywords that should be marked
-            keywords_to_mark = gap_analysis.missing_keywords
-            
-            # Fix markers (remove from wrong elements, apply to specific keywords)
+            # Fix markers and apply keyword marking
             optimized_resume = self.marker_fixer.fix_and_enhance_markers(
                 optimized_resume,
-                keywords=keywords_to_mark
+                keywords=gap_analysis.missing_keywords,
+                original_keywords=gap_analysis.covered_keywords
             )
         
         # Count markers if included
@@ -369,15 +381,61 @@ class ResumeTailoringService:
         )
         
         visual_markers = VisualMarkerStats(
-            strength_count=marker_counts.get("strength", 0),
             keyword_count=marker_counts.get("keyword", 0),
+            keyword_existing_count=marker_counts.get("keyword-existing", 0),
             placeholder_count=marker_counts.get("placeholder", 0),
             new_content_count=marker_counts.get("new", 0),
-            improvement_count=marker_counts.get("improvement", 0)
+            modified_content_count=marker_counts.get("modified", 0)
         )
         
         # Generate HTML formatted improvements list
         applied_improvements_html = self._format_improvements_as_html(applied_improvements)
+        
+        # Calculate index and similarity
+        index_calc_service = IndexCalculationService()
+        
+        # Calculate similarity for original resume
+        from ..services.index_calculation import compute_similarity
+        
+        original_raw, original_similarity = await compute_similarity(
+            original_resume,
+            job_description
+        )
+        
+        # Calculate full index for optimized resume
+        optimized_index = await index_calc_service.calculate_index(
+            optimized_resume,
+            job_description,
+            all_keywords
+        )
+        
+        # Build index calculation result
+        index_calculation = IndexCalculationResult(
+            original_similarity=original_similarity,
+            optimized_similarity=optimized_index["similarity_percentage"],
+            similarity_improvement=optimized_index["similarity_percentage"] - original_similarity,
+            original_keyword_coverage=original_coverage["coverage_percentage"],
+            optimized_keyword_coverage=optimized_index["keyword_coverage"]["coverage_percentage"],
+            keyword_coverage_improvement=(
+                optimized_index["keyword_coverage"]["coverage_percentage"] - 
+                original_coverage["coverage_percentage"]
+            ),
+            new_keywords_added=list(
+                set(optimized_index["keyword_coverage"]["covered_keywords"]) - 
+                set(original_coverage["covered_keywords"])
+            )
+        )
+        
+        # Build keywords analysis
+        keywords_analysis = KeywordsAnalysis(
+            original_keywords=gap_analysis.covered_keywords,
+            new_keywords=index_calculation.new_keywords_added,
+            total_keywords=len(all_keywords),
+            coverage_details={
+                "original": original_coverage,
+                "optimized": optimized_index["keyword_coverage"]
+            }
+        )
         
         # Remove markers if not requested
         if not include_markers:
@@ -388,7 +446,9 @@ class ResumeTailoringService:
             applied_improvements=applied_improvements,
             applied_improvements_html=applied_improvements_html,
             optimization_stats=optimization_stats,
-            visual_markers=visual_markers
+            visual_markers=visual_markers,
+            index_calculation=index_calculation,
+            keywords_analysis=keywords_analysis
         )
     
     def _format_improvements_as_html(self, improvements: list[str]) -> str:

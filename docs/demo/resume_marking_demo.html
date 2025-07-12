@@ -95,11 +95,11 @@
             background-color: transparent !important;
         }
         
-        /* 2. 修改內容 - 淡黃色背景 */
+        /* 2. 修改內容 - 淺黃色背景 */
         .opt-modified {
-            background-color: rgba(251, 191, 36, 0.08) !important;
-            padding: 2px 0 !important;
-            position: relative;
+            background-color: #FFF3CD !important;  /* 淺黃色背景 */
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
         }
         
         /* 滑鼠懸停顯示提示 */
@@ -117,19 +117,8 @@
             z-index: 10;
         }
         
-        /* 3. 關鍵字 - 藍色背景（新增） */
+        /* 3. 新增關鍵字 - 紫色邊框（低調，需確認） */
         span.opt-keyword {
-            background-color: #2563EB !important;  /* 更深的藍色背景 */
-            color: #FFFFFF !important;              /* 白色文字 */
-            padding: 3px 8px !important;
-            border-radius: 4px !important;
-            font-weight: 600 !important;
-            margin: 0 2px !important;
-            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3) !important;
-        }
-        
-        /* 4. 已存在關鍵字 - 淡藍色背景 */
-        span.opt-keyword-existing {
             background-color: transparent !important;      /* 透明背景 */
             color: #6366F1 !important;                    /* 紫藍色文字 */
             border: 1px solid #C7D2FE !important;         /* 淡紫色邊框 */
@@ -137,6 +126,17 @@
             border-radius: 3px !important;
             font-weight: 500 !important;
             margin: 0 2px !important;
+        }
+        
+        /* 4. 原有關鍵字 - 深藍色背景（醒目強調） */
+        span.opt-keyword-existing {
+            background-color: #2563EB !important;  /* 深藍色背景 */
+            color: #FFFFFF !important;              /* 白色文字 */
+            padding: 3px 8px !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            margin: 0 2px !important;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3) !important;
         }
         
         /* 5. 佔位符 - 紅色虛線框 */
@@ -157,15 +157,8 @@
             border-color: #EF4444 !important;
         }
         
-        /* 6. 優勢標記 - 綠色背景 */
-        span.opt-strength {
-            background-color: #D1FAE5 !important;
-            color: #065F46 !important;
-            padding: 2px 6px !important;
-            border-radius: 4px !important;
-            font-weight: 600 !important;
-            margin: 0 2px !important;
-        }
+        /* 6. 優勢標記 - 已移除，簡化標記策略 */
+        /* opt-strength 類別已取消，減少 LLM 認知負擔 */
         
         /* 7. 已編輯內容 - 綠色底線 */
         span.opt-improvement {
@@ -228,42 +221,51 @@
 <body>
     <div class="header">
         <h1>履歷標記功能展示</h1>
-        <p>展示所有標記類型及其實際效果</p>
+        <p>展示簡化後的標記策略（三層級架構）</p>
     </div>
     
     <!-- 圖例 -->
     <div class="legend">
-        <h2>標記類型說明</h2>
+        <h2>標記類型說明（三層級架構）</h2>
         <div class="legend-grid">
             <div class="legend-item">
-                <span class="legend-sample opt-new">新增內容</span>
-                <span>LLM 新增的段落（綠色左邊框）</span>
+                <span class="legend-sample opt-new">新增區段</span>
+                <span>段落層級 - 新增的區段/標題（綠色左邊框）</span>
             </div>
             <div class="legend-item">
                 <span class="legend-sample opt-modified">修改內容</span>
-                <span>LLM 改寫的內容（淡黃背景）</span>
+                <span>內容層級 - 改寫的要點（淺黃色背景）</span>
             </div>
             <div class="legend-item">
                 <span class="legend-sample opt-keyword">新關鍵字</span>
-                <span>LLM 新增的關鍵字（深藍色背景）</span>
+                <span>Python 標記 - AI 建議的關鍵字（紫色邊框）</span>
             </div>
             <div class="legend-item">
                 <span class="legend-sample opt-keyword-existing">原有關鍵字</span>
-                <span>原本就有的關鍵字（紫色邊框）</span>
+                <span>Python 標記 - 已確認的關鍵字（深藍色背景）</span>
             </div>
             <div class="legend-item">
                 <span class="legend-sample opt-placeholder">[佔位符]</span>
-                <span>需用戶填寫（紅色虛線）</span>
-            </div>
-            <div class="legend-item">
-                <span class="legend-sample opt-strength">優勢強調</span>
-                <span>核心優勢（綠色）</span>
+                <span>數據層級 - 需填寫數據（紅色虛線）</span>
             </div>
             <div class="legend-item">
                 <span class="legend-sample opt-improvement">已編輯</span>
                 <span>用戶已填寫（綠色底線）</span>
             </div>
         </div>
+    </div>
+    
+    <!-- 三層級架構說明 -->
+    <div class="legend" style="background-color: #f3f4f6; border-left: 4px solid #4f46e5;">
+        <h2>三層級架構說明</h2>
+        <ol>
+            <li><strong>段落層級 (opt-new)</strong>：新增的完整區段、標題或段落，由 LLM 負責標記</li>
+            <li><strong>內容層級 (opt-modified)</strong>：改寫或優化的內容（如 bullet points），由 LLM 負責標記</li>
+            <li><strong>數據層級 (opt-placeholder)</strong>：需要用戶填寫的具體數據，由 LLM 負責標記</li>
+        </ol>
+        <p style="margin-top: 15px; color: #6b7280;">
+            <strong>注意</strong>：關鍵字標記（opt-keyword 和 opt-keyword-existing）由 Python 程式處理，確保 100% 準確率。
+        </p>
     </div>
     
     <div class="container">
@@ -301,11 +303,11 @@
             <h1>張小明</h1>
             <p>Email: xiaoming@example.com | Phone: 0912-345-678</p>
             
-            <!-- 新增的 Summary -->
+            <!-- 新增的 Summary 區段 -->
             <h2 class="opt-new">Professional Summary</h2>
             <p class="opt-new">
                 Data Analyst with <span class="opt-placeholder">[YEARS]</span> years of experience in 
-                <span class="opt-strength">transforming complex data into actionable business insights</span>. 
+                transforming complex data into actionable business insights. 
                 Proven expertise in <span class="opt-keyword">Python</span>, <span class="opt-keyword-existing">SQL</span>, 
                 and <span class="opt-keyword">Tableau</span>, with a track record of delivering data-driven solutions 
                 that increased operational efficiency by <span class="opt-placeholder">[PERCENTAGE]</span>.
@@ -315,66 +317,81 @@
             <h4>Data Analyst - ABC Company (2020-2023)</h4>
             <ul>
                 <!-- 改寫的內容包含佔位符 -->
-                <li class="opt-modified">
-                    <span class="opt-strength">Spearheaded comprehensive data analysis initiatives</span> using 
+                <li>
+                    <span class="opt-modified">Spearheaded comprehensive data analysis initiatives using 
                     <span class="opt-keyword-existing">Python</span> and <span class="opt-keyword">Pandas</span>, 
                     processing <span class="opt-placeholder">[NUMBER]</span>+ GB of data daily and 
-                    reducing analysis time by <span class="opt-placeholder">[PERCENTAGE]</span>
+                    reducing analysis time by <span class="opt-placeholder">[PERCENTAGE]</span></span>
                 </li>
                 
                 <!-- 改寫的內容，包含新關鍵字 -->
-                <li class="opt-modified">
-                    Designed and implemented automated reporting dashboards using <span class="opt-keyword">Tableau</span> 
+                <li>
+                    <span class="opt-modified">Designed and implemented automated reporting dashboards using <span class="opt-keyword">Tableau</span> 
                     and <span class="opt-keyword">Power BI</span>, replacing manual Excel processes and 
-                    enabling real-time business intelligence for <span class="opt-placeholder">[NUMBER]</span> stakeholders
+                    enabling real-time business intelligence for <span class="opt-placeholder">[NUMBER]</span> stakeholders</span>
                 </li>
                 
                 <!-- 改寫的內容，展示團隊合作 -->
-                <li class="opt-modified">
-                    Led cross-functional collaboration with <span class="opt-placeholder">[TEAM SIZE]</span> team members 
+                <li>
+                    <span class="opt-modified">Led cross-functional collaboration with <span class="opt-placeholder">[TEAM SIZE]</span> team members 
                     across engineering, product, and business teams to deliver <span class="opt-placeholder">[NUMBER]</span> 
-                    data-driven projects on time and <span class="opt-improvement">15%</span> under budget
+                    data-driven projects on time and <span class="opt-improvement">15%</span> under budget</span>
                 </li>
                 
                 <!-- 技術內容改寫 -->
-                <li class="opt-modified">
-                    Optimized <span class="opt-keyword-existing">SQL</span> queries and implemented 
+                <li>
+                    <span class="opt-modified">Optimized <span class="opt-keyword-existing">SQL</span> queries and implemented 
                     <span class="opt-keyword">database indexing strategies</span>, resulting in 
                     <span class="opt-placeholder">[PERCENTAGE]</span> improvement in query performance 
-                    and <span class="opt-improvement">$50K</span> annual cost savings
+                    and <span class="opt-improvement">$50K</span> annual cost savings</span>
                 </li>
             </ul>
             
             <h3>Skills</h3>
             <ul>
                 <!-- 技能區域的處理 -->
-                <li class="opt-modified">
-                    Programming Languages: <span class="opt-keyword-existing">Python</span>, 
+                <li>
+                    <span class="opt-modified">Programming Languages: <span class="opt-keyword-existing">Python</span>, 
                     <span class="opt-keyword-existing">SQL</span>, 
                     <span class="opt-keyword">R</span>, 
-                    <span class="opt-keyword">JavaScript</span>
+                    <span class="opt-keyword">JavaScript</span></span>
                 </li>
-                <li class="opt-modified">
-                    Data Visualization: <span class="opt-keyword">Tableau</span>, 
+                <li>
+                    <span class="opt-modified">Data Visualization: <span class="opt-keyword">Tableau</span>, 
                     <span class="opt-keyword">Power BI</span>, 
                     <span class="opt-keyword-existing">Excel</span>, 
-                    <span class="opt-keyword">Matplotlib</span>
+                    <span class="opt-keyword">Matplotlib</span></span>
                 </li>
-                <li class="opt-modified">
-                    Big Data Tools: <span class="opt-keyword">Apache Spark</span>, 
+                <li>
+                    <span class="opt-modified">Big Data Tools: <span class="opt-keyword">Apache Spark</span>, 
                     <span class="opt-keyword">Hadoop</span>, 
-                    <span class="opt-keyword">Airflow</span>
+                    <span class="opt-keyword">Airflow</span></span>
                 </li>
                 <li>Languages: Chinese (Native), English (Fluent)</li>
             </ul>
             
             <h3>Education</h3>
             <p>Bachelor of Computer Science - XYZ University (2016-2020)</p>
-            <p class="opt-new">
-                Relevant Coursework: <span class="opt-keyword">Machine Learning</span>, 
+            <p>
+                <span class="opt-modified">Relevant Coursework: <span class="opt-keyword">Machine Learning</span>, 
                 <span class="opt-keyword">Statistical Analysis</span>, 
-                <span class="opt-keyword">Database Management</span>
+                <span class="opt-keyword">Database Management</span></span>
             </p>
+            
+            <!-- 新增的 Projects 區段 - 展示段落層級 -->
+            <h3 class="opt-new">Key Projects</h3>
+            <ul class="opt-new">
+                <!-- 段落層級的新內容，裡面包含數據層級的佔位符 -->
+                <li>Built a real-time data pipeline processing <span class="opt-placeholder">[VOLUME]</span> records per day using <span class="opt-keyword">Apache Kafka</span> and <span class="opt-keyword">Spark Streaming</span></li>
+                <li>Developed predictive models achieving <span class="opt-placeholder">[ACCURACY]</span>% accuracy for customer churn prediction</li>
+            </ul>
+            
+            <!-- 新增的 Certifications 區段 -->
+            <h3 class="opt-new">Certifications</h3>
+            <ul class="opt-new">
+                <li><span class="opt-keyword">AWS Certified Data Analytics</span> - <span class="opt-placeholder">[YEAR]</span></li>
+                <li><span class="opt-keyword">Google Cloud Professional Data Engineer</span> - <span class="opt-placeholder">[YEAR]</span></li>
+            </ul>
         </div>
     </div>
     

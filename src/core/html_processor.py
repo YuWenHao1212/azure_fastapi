@@ -125,10 +125,23 @@ class HTMLProcessor:
         """Count optimization markers in HTML"""
         counts = {}
         
+        # Count old-style markers from CSS_CLASSES
         for marker_type, css_class in self.CSS_CLASSES.items():
             pattern = f'class="{css_class}"'
             count = html.count(pattern)
             counts[marker_type.value] = count
+        
+        # Count new-style markers
+        new_markers = {
+            "modified": "opt-modified",
+            "keyword": "opt-keyword", 
+            "keyword-existing": "opt-keyword-existing"
+        }
+        
+        for marker_key, css_class in new_markers.items():
+            pattern = f'class="{css_class}"'
+            count = html.count(pattern)
+            counts[marker_key] = count
         
         return counts
     
@@ -136,8 +149,15 @@ class HTMLProcessor:
         """Remove all optimization markers from HTML"""
         soup = BeautifulSoup(html, 'html.parser')
         
-        # Find all spans with optimization classes
+        # Find all spans with optimization classes (old-style)
         for css_class in self.CSS_CLASSES.values():
+            for span in soup.find_all('span', class_=css_class):
+                # Replace span with its contents
+                span.unwrap()
+        
+        # Find all spans with new-style optimization classes
+        new_marker_classes = ["opt-modified", "opt-keyword", "opt-keyword-existing"]
+        for css_class in new_marker_classes:
             for span in soup.find_all('span', class_=css_class):
                 # Replace span with its contents
                 span.unwrap()

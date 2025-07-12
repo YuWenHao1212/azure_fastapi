@@ -482,6 +482,25 @@ class DataModel(BaseModel):
     message: str = ""           # 失敗時空字串
 ```
 
+### Bubble.io + TinyMCE 整合注意事項
+
+**重要**：在 Bubble.io 使用 TinyMCE Rich Text Editor 時，CSS 樣式必須透過 JavaScript 動態注入！
+
+1. **方法**：使用 "When page is loaded" workflow 執行 JavaScript
+2. **原因**：Bubble 平台限制，無法直接設置 TinyMCE 內部樣式
+3. **實作**：
+   ```javascript
+   function injectTinyMCEStyles() {
+       if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+           var editor = tinymce.activeEditor;
+           editor.dom.addStyle('/* CSS 內容 */');
+       }
+   }
+   ```
+4. **除錯**：檢查是否有多個 CSS 來源造成衝突（page header vs page loaded）
+
+詳細說明：`.serena/memories/technical_decisions/bubble_tinymce_css_injection.md`
+
 ---
 
 ## 注意事項
@@ -554,6 +573,48 @@ class DataModel(BaseModel):
 
 **建議**：使用方法 3，確保所有環境變數都通過統一的 Settings 管理。
 
+### Code Style 自動檢查規則 (重要！)
+
+在每次完成程式碼修改後，Claude Code **必須**執行 code style 檢查：
+
+```bash
+# 執行 code style 檢查
+ruff check src/ tests/ --exclude=legacy,archive
+```
+
+如果發現任何 style 問題：
+1. **立即使用 --fix 自動修復**：
+   ```bash
+   ruff check src/ tests/ --exclude=legacy,archive --fix
+   ```
+
+2. **常見的 ruff 錯誤類型**：
+   - `I001`: Import 排序問題 → 自動修復
+   - `F401`: 未使用的 import → 自動修復
+   - `UP035`: 過時的 typing 語法 → 自動修復
+   - `UP006`: 使用舊式 type annotation → 自動修復
+   - `SIM`: 簡化程式碼建議 → 部分可自動修復
+
+3. **在提交程式碼前，確保看到**：
+   ```
+   All checks passed!
+   ```
+
+4. **Claude Code 工作流程**：
+   ```
+   編寫/修改程式碼
+   ↓
+   執行 ruff check
+   ↓
+   如有錯誤 → ruff check --fix
+   ↓
+   確認 "All checks passed!"
+   ↓
+   才告知使用者完成
+   ```
+
+這樣可以避免使用者在執行 precommit tests 時才發現 style 問題！
+
 ### 預提交測試流程
 
 #### 測試策略規則
@@ -607,11 +668,14 @@ class DataModel(BaseModel):
 
 #### 執行測試命令
 ```bash
-# 完整測試（修改程式碼後必須執行）
-./run_precommit_tests.sh
+# 完整測試（修改程式碼後必須執行）- 使用並行執行避免超時
+./run_precommit_tests.sh --parallel
 
 # 快速測試（僅修改文檔/配置時可用）
 ./run_precommit_tests.sh --no-api
+
+# 傳統單線程測試（僅在並行測試出現問題時使用）
+./run_precommit_tests.sh
 ```
 
 #### 測試決策流程圖
@@ -632,7 +696,7 @@ class DataModel(BaseModel):
 ```bash
 # 情境 1: 修改了 monitoring_service.py
 git status  # modified: src/core/monitoring_service.py
-./run_precommit_tests.sh  # 必須完整測試
+./run_precommit_tests.sh --parallel  # 必須完整測試（並行執行）
 
 # 情境 2: 只更新了文檔
 git status  # modified: docs/monitoring-summary.md
@@ -640,11 +704,11 @@ git status  # modified: docs/monitoring-summary.md
 
 # 情境 3: 修改了多個檔案
 git status  # modified: CLAUDE.md, src/api/endpoints.py
-./run_precommit_tests.sh  # 因為有 src/ 檔案，必須完整測試
+./run_precommit_tests.sh --parallel  # 因為有 src/ 檔案，必須完整測試（並行執行）
 
 # 情境 4: 準備最終提交
 git status  # 任何檔案
-./run_precommit_tests.sh  # 最終提交前，一律完整測試
+./run_precommit_tests.sh --parallel  # 最終提交前，一律完整測試（並行執行）
 ```
 
 #### 測試涵蓋範圍

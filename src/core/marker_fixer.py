@@ -106,20 +106,69 @@ class MarkerFixer:
         
         return result
     
-    def fix_and_enhance_markers(self, html: str, keywords: list[str] = None, 
-                               strengths: list[str] = None) -> str:
-        """Complete fix and enhancement of markers"""
+    def fix_and_enhance_markers(self, html: str, keywords: list[str] = None,
+                               original_keywords: list[str] = None) -> str:
+        """Complete fix and enhancement of markers with keyword marking.
+        
+        Args:
+            html: HTML content to process
+            keywords: New keywords to mark (missing keywords)
+            original_keywords: Original keywords already in resume
+            
+        Returns:
+            HTML with fixed markers and marked keywords
+        """
         # First, fix incorrectly placed markers
-        html = self.fix_markers(html)
+        html = self._move_markers_to_spans(html)
+        html = self._clean_empty_markers(html)
         
-        # Then, apply keyword markers if keywords are provided
-        if keywords:
-            html = self.apply_keyword_markers(html, keywords)
-        
-        # Apply strength markers if strengths are provided
-        if strengths:
-            # Similar to keywords but with opt-strength class
-            # Implementation would be similar to apply_keyword_markers
-            pass
+        # Then, apply keyword markers using EnhancedMarker
+        if keywords is not None or original_keywords is not None:
+            from .enhanced_marker import EnhancedMarker
+            
+            enhanced_marker = EnhancedMarker()
+            html = enhanced_marker.mark_keywords(
+                html,
+                original_keywords=original_keywords or [],
+                new_keywords=keywords or []
+            )
         
         return html
+    
+    def _move_markers_to_spans(self, html: str) -> str:
+        """Move span-only markers from block elements to spans."""
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Find all elements with span-only classes
+        for class_name in self.SPAN_ONLY_CLASSES:
+            for element in soup.find_all(class_=class_name):
+                if element.name != 'span':
+                    # Remove the class
+                    classes = element.get('class', [])
+                    if class_name in classes:
+                        classes.remove(class_name)
+                        if classes:
+                            element['class'] = classes
+                        else:
+                            del element['class']
+                    
+                    # For opt-modified, wrap content in span
+                    if class_name == 'opt-modified' and element.string:
+                        # Create new span with the content
+                        new_span = soup.new_tag('span', **{'class': 'opt-modified'})
+                        new_span.string = element.string
+                        element.clear()
+                        element.append(new_span)
+        
+        return str(soup)
+    
+    def _clean_empty_markers(self, html: str) -> str:
+        """Remove empty marker elements."""
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Find all spans with opt- classes
+        for span in soup.find_all('span', class_=re.compile(r'^opt-')):
+            if not span.get_text(strip=True):
+                span.decompose()
+        
+        return str(soup)

@@ -10,10 +10,75 @@ from httpx import AsyncClient
 
 from src.main import app
 from src.models.api.resume_tailoring import (
+    IndexCalculationResult,
+    KeywordsAnalysis,
     OptimizationStats,
     TailoringResult,
     VisualMarkerStats,
 )
+
+
+def create_mock_tailoring_result(
+    optimized_resume: str = '<h1>Optimized Resume</h1>',
+    applied_improvements: list[str] = None,
+    sections_modified: int = 2,
+    keywords_added: int = 3
+) -> TailoringResult:
+    """Helper to create valid TailoringResult with all required fields."""
+    if applied_improvements is None:
+        applied_improvements = [
+            "[Section: Summary] Added senior-level positioning",
+            "[Section: Skills] Added AWS, Docker, Kubernetes"
+        ]
+    
+    return TailoringResult(
+        optimized_resume=optimized_resume,
+        applied_improvements=applied_improvements,
+        applied_improvements_html='<ul><li>' + '</li><li>'.join(applied_improvements) + '</li></ul>',
+        optimization_stats=OptimizationStats(
+            sections_modified=sections_modified,
+            keywords_added=keywords_added,
+            strengths_highlighted=2,
+            placeholders_added=1
+        ),
+        visual_markers=VisualMarkerStats(
+            keyword_count=3,
+            keyword_existing_count=2,
+            placeholder_count=1,
+            new_content_count=2,
+            modified_content_count=3
+        ),
+        index_calculation=IndexCalculationResult(
+            original_similarity=75,
+            optimized_similarity=85,
+            similarity_improvement=10,
+            original_keyword_coverage=60,
+            optimized_keyword_coverage=80,
+            keyword_coverage_improvement=20,
+            new_keywords_added=["AWS", "Docker", "Kubernetes"]
+        ),
+        keywords_analysis=KeywordsAnalysis(
+            original_keywords=["Python", "Software Engineer"],
+            new_keywords=["AWS", "Docker", "Kubernetes"],
+            total_keywords=5,
+            coverage_details={
+                "original": {
+                    "total_keywords": 5,
+                    "covered_count": 2,
+                    "coverage_percentage": 40,
+                    "covered_keywords": ["Python", "Software Engineer"],
+                    "missed_keywords": ["AWS", "Docker", "Kubernetes"]
+                },
+                "optimized": {
+                    "total_keywords": 5,
+                    "covered_count": 5,
+                    "coverage_percentage": 100,
+                    "covered_keywords": ["Python", "Software Engineer", "AWS", "Docker", "Kubernetes"],
+                    "missed_keywords": []
+                }
+            }
+        )
+    )
 
 
 @pytest.fixture
@@ -146,26 +211,11 @@ class TestResumeTailoringAPI:
             # Mock the service at the module level where it's instantiated
             with patch('src.api.v1.resume_tailoring.tailoring_service') as mock_service:
                 # Mock successful response
-                mock_service.tailor_resume = AsyncMock(return_value=TailoringResult(
-                    optimized_resume='<h1>Optimized Resume</h1><p class="opt-keyword">Python</p>',
-                    applied_improvements=[
-                        "[Section: Summary] Added senior-level positioning",
-                        "[Section: Skills] Added AWS, Docker, Kubernetes"
-                    ],
-                    optimization_stats=OptimizationStats(
-                        sections_modified=2,
-                        keywords_added=3,
-                        strengths_highlighted=2,
-                        placeholders_added=1
-                    ),
-                    visual_markers=VisualMarkerStats(
-                        strength_count=2,
-                        keyword_count=3,
-                        placeholder_count=1,
-                        new_content_count=0,
-                        improvement_count=2
+                mock_service.tailor_resume = AsyncMock(
+                    return_value=create_mock_tailoring_result(
+                        optimized_resume='<h1>Optimized Resume</h1><p class="opt-keyword">Python</p>'
                     )
-                ))
+                )
                 
                 # Make request
                 response = await client.post(
@@ -190,26 +240,15 @@ class TestResumeTailoringAPI:
         async with AsyncClient(app=app, base_url="http://test") as client:
             with patch('src.api.v1.resume_tailoring.tailoring_service') as mock_service:
                 # Mock Chinese response
-                mock_service.tailor_resume = AsyncMock(return_value=TailoringResult(
-                    optimized_resume='<h1>優化後的履歷</h1><p class="opt-keyword">Python</p>',
-                    applied_improvements=[
-                        "[章節: 摘要] 加入資深工程師定位",
-                        "[章節: 技能] 新增AWS、Docker、Kubernetes"
-                    ],
-                    optimization_stats=OptimizationStats(
-                        sections_modified=2,
-                        keywords_added=3,
-                        strengths_highlighted=1,
-                        placeholders_added=0
-                    ),
-                    visual_markers=VisualMarkerStats(
-                        strength_count=1,
-                        keyword_count=3,
-                        placeholder_count=0,
-                        new_content_count=1,
-                        improvement_count=2
+                mock_service.tailor_resume = AsyncMock(
+                    return_value=create_mock_tailoring_result(
+                        optimized_resume='<h1>優化後的履歷</h1><p class="opt-keyword">Python</p>',
+                        applied_improvements=[
+                            "[章節: 摘要] 加入資深工程師定位",
+                            "[章節: 技能] 新增AWS、Docker、Kubernetes"
+                        ]
                     )
-                ))
+                )
                 
                 # Make request
                 response = await client.post(
@@ -229,23 +268,14 @@ class TestResumeTailoringAPI:
         async with AsyncClient(app=app, base_url="http://test") as client:
             with patch('src.api.v1.resume_tailoring.tailoring_service') as mock_service:
                 # Mock response without markers
-                mock_service.tailor_resume = AsyncMock(return_value=TailoringResult(
-                    optimized_resume='<h1>Optimized Resume</h1><p>Clean text without markers</p>',
-                    applied_improvements=["Improvements applied"],
-                    optimization_stats=OptimizationStats(
+                mock_service.tailor_resume = AsyncMock(
+                    return_value=create_mock_tailoring_result(
+                        optimized_resume='<h1>Optimized Resume</h1><p>Clean text without markers</p>',
+                        applied_improvements=["Improvements applied"],
                         sections_modified=1,
-                        keywords_added=0,
-                        strengths_highlighted=0,
-                        placeholders_added=0
-                    ),
-                    visual_markers=VisualMarkerStats(
-                        strength_count=0,
-                        keyword_count=0,
-                        placeholder_count=0,
-                        new_content_count=0,
-                        improvement_count=0
+                        keywords_added=0
                     )
-                ))
+                )
                 
                 # Modify request to disable markers
                 request_data = sample_request_data.copy()
@@ -332,23 +362,14 @@ class TestResumeTailoringAPI:
         async with AsyncClient(app=app, base_url="http://test") as client:
             with patch('src.api.v1.resume_tailoring.tailoring_service') as mock_service:
                 # Test success case
-                mock_service.tailor_resume = AsyncMock(return_value=TailoringResult(
-                    optimized_resume='<h1>Resume</h1>',
-                    applied_improvements=[],
-                    optimization_stats=OptimizationStats(
+                mock_service.tailor_resume = AsyncMock(
+                    return_value=create_mock_tailoring_result(
+                        optimized_resume='<h1>Resume</h1>',
+                        applied_improvements=[],
                         sections_modified=0,
-                        keywords_added=0,
-                        strengths_highlighted=0,
-                        placeholders_added=0
-                    ),
-                    visual_markers=VisualMarkerStats(
-                        strength_count=0,
-                        keyword_count=0,
-                        placeholder_count=0,
-                        new_content_count=0,
-                        improvement_count=0
+                        keywords_added=0
                     )
-                ))
+                )
                 
                 response = await client.post(
                     "/api/v1/tailor-resume",

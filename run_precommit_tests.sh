@@ -2,10 +2,12 @@
 
 # Pre-commit Test Suite
 # Run this script before committing to ensure code quality
-# Usage: ./run_precommit_tests.sh [--no-api] [--full-perf]
+# Usage: ./run_precommit_tests.sh [options]
 # Options:
 #   --no-api: Skip API server startup and online tests
 #   --full-perf: Run all performance tests including flaky ones (default: skip flaky tests)
+#   --parallel: Run tests in parallel using multiple CPU cores
+#   --timeout <seconds>: Set custom timeout (default: 300 seconds)
 
 set -e  # Exit on error
 
@@ -29,6 +31,8 @@ SKIPPED_TESTS=0
 # Parse command line arguments
 SKIP_API_STARTUP=false
 RUN_FULL_PERF_TESTS=false
+PARALLEL_EXECUTION=false
+TIMEOUT_SECONDS=300  # 5 minutes default
 for arg in "$@"; do
     case $arg in
         --no-api)
@@ -38,6 +42,14 @@ for arg in "$@"; do
         --full-perf)
             RUN_FULL_PERF_TESTS=true
             shift
+            ;;
+        --parallel)
+            PARALLEL_EXECUTION=true
+            shift
+            ;;
+        --timeout)
+            TIMEOUT_SECONDS=$2
+            shift 2
             ;;
     esac
 done
@@ -49,6 +61,21 @@ run_test_category() {
     
     echo -e "${YELLOW}📋 Running $category...${NC}"
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    
+    # Add parallel execution flag if enabled
+    if [ "$PARALLEL_EXECUTION" = true ] && [[ $command == pytest* ]]; then
+        # Detect number of CPUs
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            NUM_CPUS=$(sysctl -n hw.ncpu)
+        else
+            NUM_CPUS=$(nproc)
+        fi
+        # Use half the CPUs to avoid overload
+        WORKERS=$((NUM_CPUS / 2))
+        [ $WORKERS -lt 1 ] && WORKERS=1
+        command="${command/pytest/pytest -n $WORKERS}"
+        echo -e "   🚀 Running with $WORKERS parallel workers"
+    fi
     
     if eval "$command"; then
         echo -e "${GREEN}✅ $category passed${NC}\n"
@@ -210,6 +237,10 @@ run_test_category "Resume Format Test" \
 run_test_category "Resume Tailoring Test" \
     "pytest tests/unit/test_resume_tailoring.py -v --tb=short"
 
+# NEW: Add Enhanced Marker Test
+run_test_category "Enhanced Marker Test" \
+    "pytest tests/unit/test_enhanced_marker.py -v --tb=short"
+
 # 3. Run Integration Tests (partial)
 echo "═══════════════════════════════════════"
 echo "🔗 INTEGRATION TESTS"
@@ -226,6 +257,10 @@ run_test_category "Resume Format Integration Test" \
 
 run_test_category "Resume Tailoring API Test" \
     "pytest tests/integration/test_resume_tailoring_api.py -v --tb=short"
+
+# NEW: Add Resume Tailoring with Index Test
+run_test_category "Resume Tailoring with Index Test" \
+    "pytest tests/integration/test_resume_tailoring_with_index.py -v --tb=short"
 
 # Run performance tests based on API availability
 if check_api_server; then
@@ -302,6 +337,7 @@ echo -e "\n${YELLOW}Checking for required prompt files...${NC}"
 missing_prompts=0
 prompt_files=(
     "src/prompts/resume_tailoring/v1.0.0.yaml"
+    "src/prompts/resume_tailoring/v1.1.0.yaml"
     "src/prompts/keyword_extraction/v1.4.0-en.yaml"
     "src/prompts/keyword_extraction/v1.4.0-zh-TW.yaml"
     "src/prompts/gap_analysis/v1.0.0.yaml"
@@ -340,7 +376,9 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "📝 Usage tips:"
     echo "   ./run_precommit_tests.sh              # Run with auto API startup (default)"
     echo "   ./run_precommit_tests.sh --no-api     # Skip API tests for quick check"
+    echo "   ./run_precommit_tests.sh --parallel   # Run tests in parallel (faster)"
     echo "   ./run_precommit_tests.sh --full-perf  # Include flaky performance tests"
+    echo "   ./run_precommit_tests.sh --timeout 600 # Set 10 minute timeout"
     exit 0
 else
     echo -e "${RED}❌ Some tests failed. Please fix before committing.${NC}"

@@ -792,6 +792,30 @@ span.opt-strength {
     line-height: inherit !important;
 }
 
+/* 修改內容 - 淺黃色背景 - 只在 span 上 */
+span.opt-modified {
+    background-color: #FFF3CD !important;  /* 淺黃色背景 */
+    padding: 2px 6px !important;
+    border-radius: 3px !important;
+    display: inline !important;
+    line-height: inherit !important;
+}
+
+/* 防止錯誤使用在區塊元素上 */
+li.opt-modified,
+p.opt-modified,
+h1.opt-modified,
+h2.opt-modified,
+h3.opt-modified,
+h4.opt-modified,
+h5.opt-modified {
+    background-color: transparent !important;
+    background: none !important;
+    color: inherit !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+}
+
 /* 佔位符標記 - 紅色（可點擊編輯） */
 span.opt-placeholder {
     background-color: #FEE2E2 !important;  /* 淺紅色背景 */
