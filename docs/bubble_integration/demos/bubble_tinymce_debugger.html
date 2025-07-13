@@ -1,0 +1,349 @@
+<!-- 完整的 Bubble HTML Element 內容 - 直接複製貼上到 Bubble -->
+<div id="tinymce-debugger" style="
+    background: white;
+    border: 2px solid #333;
+    border-radius: 8px;
+    padding: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+">
+    <h3 style="margin: 0 0 10px 0; font-size: 14px;">🔍 TinyMCE 除錯工具</h3>
+    
+    <div style="margin-bottom: 10px;">
+        <button id="btn-identify" style="
+            background: #2563EB;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+        ">識別編輯器</button>
+        
+        <button id="btn-check" style="
+            background: #2563EB;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+        ">檢查樣式</button>
+        
+        <button id="btn-inject" style="
+            background: #10B981;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+        ">注入樣式</button>
+        
+        <button id="btn-clear" style="
+            background: #EF4444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+        ">清除</button>
+    </div>
+    
+    <div id="debug-output" style="
+        background: #f5f5f5;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 10px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        min-height: 100px;
+        max-height: 300px;
+        overflow-y: auto;
+    ">等待操作...</div>
+</div>
+
+<script>
+(function() {
+    // 除錯工具物件
+    const debugTool = {
+        output: null,
+        
+        init: function() {
+            this.output = document.getElementById('debug-output');
+            if (!this.output) {
+                console.error('找不到 debug-output 元素');
+                return;
+            }
+            
+            // 綁定事件
+            document.getElementById('btn-identify').addEventListener('click', () => this.identify());
+            document.getElementById('btn-check').addEventListener('click', () => this.checkStyles());
+            document.getElementById('btn-inject').addEventListener('click', () => this.inject());
+            document.getElementById('btn-clear').addEventListener('click', () => this.clear());
+            
+            this.log('除錯工具已載入', 'info');
+            
+            // 自動識別編輯器
+            setTimeout(() => {
+                this.log('自動掃描編輯器...', 'info');
+                this.identify();
+            }, 2000);
+        },
+        
+        log: function(message, type = 'info') {
+            if (!this.output) {
+                console.log(message);
+                return;
+            }
+            
+            const time = new Date().toLocaleTimeString('zh-TW');
+            const colors = {
+                'info': '#3B82F6',
+                'success': '#10B981',
+                'warning': '#F59E0B',
+                'error': '#EF4444'
+            };
+            
+            const line = document.createElement('div');
+            line.style.color = colors[type] || '#000';
+            line.style.marginBottom = '4px';
+            line.textContent = `[${time}] ${message}`;
+            
+            this.output.appendChild(line);
+            this.output.scrollTop = this.output.scrollHeight;
+            
+            // 同時輸出到控制台
+            console.log(`[TinyMCE Debug] ${message}`);
+        },
+        
+        clear: function() {
+            if (this.output) {
+                this.output.innerHTML = '';
+                this.log('日誌已清除', 'info');
+            }
+        },
+        
+        identify: function() {
+            this.log('========== 識別 TinyMCE 編輯器 ==========', 'info');
+            
+            if (typeof tinymce === 'undefined') {
+                this.log('錯誤: TinyMCE 未載入！請確認頁面已完全載入。', 'error');
+                this.log('提示: 可能需要等待更長時間，或檢查 TinyMCE 是否正確初始化', 'warning');
+                return;
+            }
+            
+            const editors = tinymce.editors;
+            this.log(`找到 ${editors.length} 個 TinyMCE 編輯器`, editors.length > 0 ? 'success' : 'warning');
+            
+            if (editors.length === 0) {
+                this.log('沒有找到任何編輯器，請確認：', 'warning');
+                this.log('1. TinyMCE 編輯器是否已經添加到頁面', 'warning');
+                this.log('2. 編輯器是否已經初始化完成', 'warning');
+                return;
+            }
+            
+            editors.forEach((editor, idx) => {
+                const isReadOnly = editor.mode.get() === 'readonly';
+                this.log(`\n編輯器 ${idx + 1}:`, 'info');
+                this.log(`  ID: ${editor.id}`, 'info');
+                this.log(`  狀態: ${editor.initialized ? '已初始化' : '未初始化'}`, editor.initialized ? 'success' : 'warning');
+                this.log(`  模式: ${editor.mode.get()} ${isReadOnly ? '(唯讀)' : '(可編輯)'}`, 'info');
+                this.log(`  可見: ${!editor.isHidden() ? '是' : '否'}`, 'info');
+                
+                // 特別標記已知的編輯器
+                if (editor.id === 'TinyMCE_Editor') {
+                    this.log('  → 這是原始編輯器 (可編輯)', 'success');
+                } else if (editor.id === 'TinyMCE_Editor_initial_resume') {
+                    this.log('  → 這是初始履歷編輯器 (唯讀)', 'success');
+                }
+            });
+            
+            // 檢查特定編輯器
+            this.log('\n檢查特定編輯器存在性:', 'info');
+            const editor1 = tinymce.get('TinyMCE_Editor');
+            const editor2 = tinymce.get('TinyMCE_Editor_initial_resume');
+            
+            this.log(`TinyMCE_Editor: ${editor1 ? '✓ 存在' : '✗ 不存在'}`, 
+                     editor1 ? 'success' : 'error');
+            this.log(`TinyMCE_Editor_initial_resume: ${editor2 ? '✓ 存在' : '✗ 不存在'}`, 
+                     editor2 ? 'success' : 'error');
+        },
+        
+        checkStyles: function() {
+            this.log('========== 檢查樣式狀態 ==========', 'info');
+            
+            if (!tinymce || !tinymce.editors || tinymce.editors.length === 0) {
+                this.log('錯誤: 沒有找到 TinyMCE 編輯器', 'error');
+                return;
+            }
+            
+            const targetClasses = [
+                'opt-keyword',
+                'opt-keyword-existing',
+                'opt-modified',
+                'opt-new',
+                'opt-placeholder',
+                'opt-improvement'
+            ];
+            
+            tinymce.editors.forEach((editor) => {
+                this.log(`\n檢查編輯器: ${editor.id}`, 'info');
+                
+                if (!editor.getBody()) {
+                    this.log('  編輯器主體未載入', 'warning');
+                    return;
+                }
+                
+                // 檢查是否有注入標記
+                const hasStyles = editor.dom.hasClass(editor.getBody(), 'styles-injected');
+                this.log(`  樣式注入標記: ${hasStyles ? '✓ 已注入' : '✗ 未注入'}`, 
+                         hasStyles ? 'success' : 'warning');
+                
+                // 檢查各個樣式類別
+                let totalElements = 0;
+                targetClasses.forEach(className => {
+                    const elements = editor.dom.select('.' + className);
+                    if (elements.length > 0) {
+                        totalElements += elements.length;
+                        this.log(`  .${className}: 找到 ${elements.length} 個元素`, 'info');
+                        
+                        // 檢查第一個元素的樣式
+                        if (elements[0]) {
+                            const styles = editor.getWin().getComputedStyle(elements[0]);
+                            this.log(`    - 背景: ${styles.backgroundColor}`, 'info');
+                            this.log(`    - 顏色: ${styles.color}`, 'info');
+                        }
+                    }
+                });
+                
+                if (totalElements === 0) {
+                    this.log('  沒有找到任何標記元素', 'warning');
+                }
+                
+                // 檢查 style 標籤
+                const styleElements = editor.dom.select('style');
+                this.log(`  <style> 標籤數量: ${styleElements.length}`, 'info');
+            });
+        },
+        
+        inject: function() {
+            this.log('========== 注入樣式到所有編輯器 ==========', 'info');
+            
+            if (!tinymce || !tinymce.editors || tinymce.editors.length === 0) {
+                this.log('錯誤: 沒有找到 TinyMCE 編輯器', 'error');
+                return;
+            }
+            
+            // 完整的樣式定義
+            const fullCSS = `
+                /* 原有關鍵字 - 深藍色背景 */
+                span.opt-keyword-existing {
+                    background-color: #2563EB !important;
+                    color: #FFFFFF !important;
+                    padding: 3px 8px !important;
+                    border-radius: 4px !important;
+                    font-weight: 600 !important;
+                    margin: 0 2px !important;
+                    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3) !important;
+                }
+                
+                /* 新增關鍵字 - 紫色邊框 */
+                span.opt-keyword {
+                    background-color: transparent !important;
+                    color: #6366F1 !important;
+                    border: 1px solid #C7D2FE !important;
+                    padding: 2px 6px !important;
+                    border-radius: 3px !important;
+                    font-weight: 500 !important;
+                    margin: 0 2px !important;
+                }
+                
+                /* 修改內容 - 淺黃色背景 */
+                span.opt-modified {
+                    background-color: #FFF3CD !important;
+                    padding: 2px 6px !important;
+                    border-radius: 3px !important;
+                    display: inline !important;
+                }
+                
+                /* 新增內容 - 綠色左邊框 */
+                .opt-new {
+                    border-left: 4px solid #10B981 !important;
+                    padding-left: 16px !important;
+                    background-color: rgba(209, 250, 229, 0.1) !important;
+                    margin-left: -20px !important;
+                    padding-right: 16px !important;
+                }
+                
+                /* 佔位符 - 紅色虛線框 */
+                span.opt-placeholder {
+                    background-color: #FEE2E2 !important;
+                    color: #991B1B !important;
+                    border: 1px dashed #F87171 !important;
+                    padding: 2px 8px !important;
+                    border-radius: 4px !important;
+                    font-style: italic !important;
+                    font-weight: 500 !important;
+                    cursor: pointer !important;
+                    margin: 0 2px !important;
+                }
+                
+                /* 已編輯內容 - 綠色底線 */
+                span.opt-improvement {
+                    border-bottom: 2px solid #10B981 !important;
+                    color: #065F46 !important;
+                    padding-bottom: 1px !important;
+                    font-weight: 500 !important;
+                }
+            `;
+            
+            let successCount = 0;
+            let failCount = 0;
+            
+            tinymce.editors.forEach(editor => {
+                try {
+                    if (!editor.initialized) {
+                        this.log(`跳過未初始化的編輯器: ${editor.id}`, 'warning');
+                        return;
+                    }
+                    
+                    // 注入樣式
+                    editor.dom.addStyle(fullCSS);
+                    
+                    // 添加標記
+                    editor.dom.addClass(editor.getBody(), 'styles-injected');
+                    
+                    successCount++;
+                    this.log(`✓ 成功注入樣式到: ${editor.id}`, 'success');
+                    
+                } catch (error) {
+                    failCount++;
+                    this.log(`✗ 注入失敗 (${editor.id}): ${error.message}`, 'error');
+                }
+            });
+            
+            this.log(`\n總結: 成功 ${successCount} 個, 失敗 ${failCount} 個`, 
+                     failCount === 0 ? 'success' : 'warning');
+            
+            if (successCount > 0) {
+                this.log('提示: 樣式已注入，請檢查編輯器內容是否正確顯示', 'info');
+            }
+        }
+    };
+    
+    // 等待 DOM 載入完成
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => debugTool.init());
+    } else {
+        // DOM 已經載入完成
+        setTimeout(() => debugTool.init(), 100);
+    }
+    
+    // 將工具暴露到全局（方便手動調用）
+    window.tinyMCEDebugTool = debugTool;
+})();
+</script>

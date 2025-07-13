@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Tailoring Result - Modern UI Demo</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #64748b;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--background);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* Layout */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Header Toolbar */
+        .toolbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .toolbar-section {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .toolbar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-right: 24px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--background);
+        }
+
+        .btn-icon {
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: var(--background);
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-icon.active {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        /* View Toggle Group */
+        .view-toggle {
+            display: flex;
+            background: var(--background);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .view-toggle button {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: var(--surface);
+            color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* Main Content Area */
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: var(--surface);
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stat-change {
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .stat-change.positive {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Resume Content */
+        .resume-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 32px;
+            background: var(--background);
+        }
+
+        .resume-content {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--surface);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            padding: 48px;
+        }
+
+        /* Visual Markers Styles */
+        .opt-new {
+            border-left: 4px solid var(--success-color);
+            padding-left: 16px;
+            margin-left: -20px;
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .opt-modified {
+            background-color: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .opt-placeholder {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px dashed #f87171;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-style: italic;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .opt-placeholder:hover {
+            background-color: #fecaca;
+            border-color: #ef4444;
+            transform: scale(1.05);
+        }
+
+        .opt-keyword {
+            background-color: transparent;
+            color: #6366f1;
+            border: 1px solid #c7d2fe;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .opt-keyword-existing {
+            background-color: #2563eb;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: var(--surface);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 32px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 16px;
+        }
+
+        /* Marker Controls */
+        .marker-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+
+        .marker-control label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .marker-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .marker-indicator.keyword {
+            background: #6366f1;
+            border: 1px solid #c7d2fe;
+        }
+
+        .marker-indicator.existing {
+            background: #2563eb;
+        }
+
+        .marker-indicator.modified {
+            background: #ffc107;
+        }
+
+        .marker-indicator.new {
+            background: #10b981;
+        }
+
+        .marker-indicator.placeholder {
+            background: #ef4444;
+            border: 1px dashed #fff;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--background);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        /* Floating Action Button */
+        .fab-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 1000;
+        }
+
+        .fab {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+
+        .fab-main {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .fab-main:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+        }
+
+        .fab-menu {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .fab-menu.show {
+            display: flex;
+        }
+
+        .fab-item {
+            width: 48px;
+            height: 48px;
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            font-size: 16px;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-lg);
+            display: none;
+            animation: slideUp 0.3s ease-out;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        /* Dropdown */
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            padding: 8px;
+            min-width: 200px;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .dropdown.show .dropdown-menu {
+            display: block;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: var(--background);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 8px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                right: -320px;
+                top: 0;
+                height: 100%;
+                transition: right 0.3s;
+                z-index: 1001;
+            }
+
+            .sidebar.show {
+                right: 0;
+            }
+
+            .resume-content {
+                padding: 24px;
+            }
+
+            .stats-bar {
+                padding: 12px 16px;
+                gap: 16px;
+            }
+        }
+
+        /* Hide markers when toggle is off */
+        .hide-keywords .opt-keyword,
+        .hide-keywords .opt-keyword-existing {
+            background: transparent !important;
+            border: none !important;
+            color: inherit !important;
+            padding: 0 !important;
+        }
+
+        .hide-modified .opt-modified {
+            background: transparent !important;
+            padding: 0 !important;
+        }
+
+        .hide-new .opt-new {
+            background: transparent !important;
+            border: none !important;
+            padding-left: 0 !important;
+            margin-left: 0 !important;
+        }
+
+        .hide-placeholder .opt-placeholder {
+            background: transparent !important;
+            border: none !important;
+            color: inherit !important;
+            font-style: normal !important;
+            padding: 0 !important;
+        }
+
+        /* Plain text view */
+        .plain-text-view {
+            white-space: pre-wrap;
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 24px;
+            border-radius: 8px;
+        }
+
+        /* Preview mode */
+        .preview-mode * {
+            all: revert;
+        }
+
+        .preview-mode .opt-new,
+        .preview-mode .opt-modified,
+        .preview-mode .opt-placeholder,
+        .preview-mode .opt-keyword,
+        .preview-mode .opt-keyword-existing {
+            all: revert;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header Toolbar -->
+        <header class="toolbar">
+            <div class="toolbar-section">
+                <span class="toolbar-title">Resume Tailoring Result</span>
+                
+                <!-- View Mode Toggle -->
+                <div class="view-toggle">
+                    <button class="active" onclick="setViewMode('html')">
+                        <i class="fas fa-code"></i> HTML
+                    </button>
+                    <button onclick="setViewMode('preview')">
+                        <i class="fas fa-eye"></i> Preview
+                    </button>
+                    <button onclick="setViewMode('plain')">
+                        <i class="fas fa-file-alt"></i> Plain Text
+                    </button>
+                </div>
+
+                <!-- Quick Actions -->
+                <button class="btn-icon" onclick="toggleAllMarkers()" title="Toggle all markers">
+                    <i class="fas fa-highlighter"></i>
+                </button>
+                <button class="btn-icon" onclick="toggleSidebar()" title="Toggle sidebar">
+                    <i class="fas fa-sliders-h"></i>
+                </button>
+            </div>
+
+            <div class="toolbar-section">
+                <!-- Copy Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-secondary" onclick="toggleDropdown(this)">
+                        <i class="fas fa-copy"></i> Copy
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="dropdown-item" onclick="copyWithMarkers()">
+                            <i class="fas fa-highlighter"></i> Copy with Markers
+                        </div>
+                        <div class="dropdown-item" onclick="copyClean()">
+                            <i class="fas fa-file"></i> Copy Clean HTML
+                        </div>
+                        <div class="dropdown-item" onclick="copyPlainText()">
+                            <i class="fas fa-file-alt"></i> Copy Plain Text
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Download Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-primary" onclick="toggleDropdown(this)">
+                        <i class="fas fa-download"></i> Download
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu">
+                        <div class="dropdown-item" onclick="downloadPDF()">
+                            <i class="fas fa-file-pdf"></i> Download as PDF
+                        </div>
+                        <div class="dropdown-item" onclick="downloadWord()">
+                            <i class="fas fa-file-word"></i> Download as Word
+                        </div>
+                        <div class="dropdown-item" onclick="downloadHTML()">
+                            <i class="fas fa-file-code"></i> Download as HTML
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-item" onclick="downloadPlainText()">
+                            <i class="fas fa-file-alt"></i> Download as Text
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-secondary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Print
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="content-wrapper">
+                <!-- Stats Bar -->
+                <div class="stats-bar">
+                    <div class="stat-item">
+                        <span class="stat-label">Similarity Score</span>
+                        <span class="stat-value">88%</span>
+                        <span class="stat-change positive">+24%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Keyword Coverage</span>
+                        <span class="stat-value">90%</span>
+                        <span class="stat-change positive">+61%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">New Keywords</span>
+                        <span class="stat-value">8</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Placeholders</span>
+                        <span class="stat-value">6</span>
+                    </div>
+                </div>
+
+                <!-- Resume Container -->
+                <div class="resume-container">
+                    <div class="resume-content" id="resume-content">
+                        <h1>Alex Chen</h1>
+                        <p>Email: alex.chen@email.com | Phone: (555) 123-4567</p>
+                        
+                        <h2 class="opt-new">Professional Summary</h2>
+                        <p class="opt-new">Senior Software Engineer with 4+ years of experience in <span class="opt-keyword-existing">Python</span> development, data analysis, and full-stack web development. Proven ability to create scalable APIs and analyze complex datasets to drive insights. Currently expanding expertise in <span class="opt-keyword">machine learning</span> and <span class="opt-keyword">cloud platforms</span> to deliver innovative solutions.</p>
+                        
+                        <h2>Work Experience</h2>
+                        <h3>Software Developer - TechCorp Inc. (2020-2024)</h3>
+                        <ul>
+                            <li><span class="opt-modified">Designed and developed web applications using <span class="opt-keyword-existing">Python</span> and <span class="opt-keyword-existing">JavaScript</span>, improving user engagement by <span class="opt-placeholder">[PERCENTAGE]</span></span></li>
+                            <li><span class="opt-modified">Conducted data analysis on user behavior, identifying key trends that enhanced application performance by <span class="opt-placeholder">[PERCENTAGE]</span></span></li>
+                            <li>Collaborated with cross-functional teams to deliver new features, ensuring on-time delivery for <span class="opt-placeholder">[NUMBER]</span> projects</li>
+                            <li>Maintained and optimized existing codebase for better performance</li>
+                        </ul>
+                        
+                        <h2>Skills</h2>
+                        <h3>Technical Skills</h3>
+                        <ul>
+                            <li><strong>Programming Languages:</strong> <span class="opt-keyword-existing">Python</span> (pandas, numpy, scikit-learn), <span class="opt-keyword">SQL</span>, JavaScript</li>
+                            <li><strong>Data Tools:</strong> <span class="opt-keyword-existing">MySQL</span>, PostgreSQL, <span class="opt-keyword">Tableau</span>, <span class="opt-keyword">Power BI</span>, Excel</li>
+                            <li><strong>Cloud & DevOps:</strong> <span class="opt-keyword">AWS</span>, <span class="opt-keyword">Docker</span>, <span class="opt-keyword">Kubernetes</span>, Git</li>
+                            <li><strong>Machine Learning:</strong> <span class="opt-modified">Regression, Classification, Data Preprocessing, <span class="opt-keyword">TensorFlow</span></span></li>
+                        </ul>
+                        
+                        <h2>Education</h2>
+                        <h3>BS Computer Science - State University (2016-2020)</h3>
+                        <p><span class="opt-modified">Relevant Coursework: Machine Learning, Data Structures, Database Systems, <span class="opt-placeholder">[ADDITIONAL_COURSES]</span></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-section">
+                    <h3>Visual Markers</h3>
+                    
+                    <div class="marker-control">
+                        <label>
+                            <span class="marker-indicator keyword"></span>
+                            <span>New Keywords (8)</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" checked onchange="toggleMarkerType('keywords', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="marker-control">
+                        <label>
+                            <span class="marker-indicator existing"></span>
+                            <span>Existing Keywords (3)</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" checked onchange="toggleMarkerType('keywords', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="marker-control">
+                        <label>
+                            <span class="marker-indicator modified"></span>
+                            <span>Modified Content (4)</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" checked onchange="toggleMarkerType('modified', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="marker-control">
+                        <label>
+                            <span class="marker-indicator new"></span>
+                            <span>New Sections (2)</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" checked onchange="toggleMarkerType('new', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                    
+                    <div class="marker-control">
+                        <label>
+                            <span class="marker-indicator placeholder"></span>
+                            <span>Placeholders (6)</span>
+                        </label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" checked onchange="toggleMarkerType('placeholder', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Coverage Analysis</h3>
+                    <div style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 14px;">Before</span>
+                            <span style="font-size: 14px; font-weight: 600;">40%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 40%; background: var(--secondary-color);"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 14px;">After</span>
+                            <span style="font-size: 14px; font-weight: 600;">90%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 90%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Quick Actions</h3>
+                    <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px;" onclick="highlightPlaceholders()">
+                        <i class="fas fa-search"></i> Find Placeholders
+                    </button>
+                    <button class="btn btn-secondary" style="width: 100%; margin-bottom: 8px;" onclick="compareVersions()">
+                        <i class="fas fa-columns"></i> Compare Versions
+                    </button>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="showEditMode()">
+                        <i class="fas fa-edit"></i> Edit Mode
+                    </button>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Floating Action Button -->
+        <div class="fab-container">
+            <div class="fab-menu" id="fab-menu">
+                <button class="fab fab-item" onclick="showHelp()" title="Help">
+                    <i class="fas fa-question"></i>
+                </button>
+                <button class="fab fab-item" onclick="showKeyboardShortcuts()" title="Keyboard Shortcuts">
+                    <i class="fas fa-keyboard"></i>
+                </button>
+                <button class="fab fab-item" onclick="toggleEditMode()" title="Edit Mode">
+                    <i class="fas fa-edit"></i>
+                </button>
+            </div>
+            <button class="fab fab-main" onclick="toggleFabMenu()">
+                <i class="fas fa-plus" id="fab-icon"></i>
+            </button>
+        </div>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast"></div>
+
+        <!-- Modal -->
+        <div class="modal" id="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Modal Title</h2>
+                    <button class="btn-icon" onclick="closeModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="modal-body">
+                    <!-- Modal content goes here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Store original content
+        const originalContent = document.getElementById('resume-content').innerHTML;
+        let currentMode = 'html';
+        let markersVisible = {
+            keywords: true,
+            modified: true,
+            new: true,
+            placeholder: true
+        };
+
+        // View Mode Management
+        function setViewMode(mode) {
+            currentMode = mode;
+            const content = document.getElementById('resume-content');
+            const buttons = document.querySelectorAll('.view-toggle button');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            switch(mode) {
+                case 'preview':
+                    content.classList.add('preview-mode');
+                    content.classList.remove('plain-text-view');
+                    break;
+                case 'plain':
+                    content.classList.add('plain-text-view');
+                    content.classList.remove('preview-mode');
+                    content.innerText = content.innerText;
+                    break;
+                default: // html
+                    content.classList.remove('preview-mode', 'plain-text-view');
+                    content.innerHTML = originalContent;
+                    applyMarkerVisibility();
+            }
+        }
+
+        // Marker Toggle Management
+        function toggleMarkerType(type, visible) {
+            markersVisible[type] = visible;
+            applyMarkerVisibility();
+        }
+
+        function applyMarkerVisibility() {
+            const container = document.getElementById('resume-content');
+            
+            if (!markersVisible.keywords) {
+                container.classList.add('hide-keywords');
+            } else {
+                container.classList.remove('hide-keywords');
+            }
+            
+            if (!markersVisible.modified) {
+                container.classList.add('hide-modified');
+            } else {
+                container.classList.remove('hide-modified');
+            }
+            
+            if (!markersVisible.new) {
+                container.classList.add('hide-new');
+            } else {
+                container.classList.remove('hide-new');
+            }
+            
+            if (!markersVisible.placeholder) {
+                container.classList.add('hide-placeholder');
+            } else {
+                container.classList.remove('hide-placeholder');
+            }
+        }
+
+        function toggleAllMarkers() {
+            const allVisible = Object.values(markersVisible).every(v => v);
+            const newState = !allVisible;
+            
+            Object.keys(markersVisible).forEach(key => {
+                markersVisible[key] = newState;
+            });
+            
+            // Update all toggle switches
+            document.querySelectorAll('.toggle-switch input').forEach(input => {
+                input.checked = newState;
+            });
+            
+            applyMarkerVisibility();
+            
+            showToast(newState ? 'All markers shown' : 'All markers hidden');
+        }
+
+        // Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('show');
+        }
+
+        // Dropdown Management
+        function toggleDropdown(button) {
+            const dropdown = button.parentElement;
+            const wasOpen = dropdown.classList.contains('show');
+            
+            // Close all dropdowns
+            document.querySelectorAll('.dropdown').forEach(d => {
+                d.classList.remove('show');
+            });
+            
+            // Toggle this dropdown
+            if (!wasOpen) {
+                dropdown.classList.add('show');
+            }
+        }
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown').forEach(d => {
+                    d.classList.remove('show');
+                });
+            }
+        });
+
+        // Copy Functions
+        function copyWithMarkers() {
+            const content = document.getElementById('resume-content').innerHTML;
+            copyToClipboard(content);
+            showToast('Copied with markers!');
+        }
+
+        function copyClean() {
+            const temp = document.createElement('div');
+            temp.innerHTML = originalContent;
+            
+            // Remove all marker classes
+            temp.querySelectorAll('[class*="opt-"]').forEach(el => {
+                el.className = '';
+            });
+            
+            copyToClipboard(temp.innerHTML);
+            showToast('Copied clean HTML!');
+        }
+
+        function copyPlainText() {
+            const content = document.getElementById('resume-content').innerText;
+            copyToClipboard(content);
+            showToast('Copied plain text!');
+        }
+
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (err) {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+            }
+        }
+
+        // Download Functions
+        function downloadPDF() {
+            showToast('PDF download would be implemented here');
+            // In real implementation, use jsPDF or similar
+        }
+
+        function downloadWord() {
+            showToast('Word download would be implemented here');
+            // In real implementation, use docx library
+        }
+
+        function downloadHTML() {
+            const content = document.getElementById('resume-content').innerHTML;
+            downloadFile(content, 'resume.html', 'text/html');
+            showToast('HTML downloaded!');
+        }
+
+        function downloadPlainText() {
+            const content = document.getElementById('resume-content').innerText;
+            downloadFile(content, 'resume.txt', 'text/plain');
+            showToast('Text file downloaded!');
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // FAB Menu
+        function toggleFabMenu() {
+            const menu = document.getElementById('fab-menu');
+            const icon = document.getElementById('fab-icon');
+            
+            menu.classList.toggle('show');
+            
+            if (menu.classList.contains('show')) {
+                icon.style.transform = 'rotate(45deg)';
+            } else {
+                icon.style.transform = 'rotate(0)';
+            }
+        }
+
+        // Toast Notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Modal Management
+        function showModal(title, content) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-body').innerHTML = content;
+            document.getElementById('modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        // Feature Functions
+        function highlightPlaceholders() {
+            const placeholders = document.querySelectorAll('.opt-placeholder');
+            placeholders.forEach(p => {
+                p.style.animation = 'pulse 1s 3';
+            });
+            
+            showToast(`Found ${placeholders.length} placeholders`);
+            
+            // Scroll to first placeholder
+            if (placeholders.length > 0) {
+                placeholders[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function compareVersions() {
+            const content = `
+                <p>This feature would show a side-by-side comparison of the original and optimized resume.</p>
+                <div style="display: flex; gap: 16px; margin-top: 16px;">
+                    <div style="flex: 1; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+                        <h4>Original</h4>
+                        <p>Original resume content...</p>
+                    </div>
+                    <div style="flex: 1; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+                        <h4>Optimized</h4>
+                        <p>Optimized resume content...</p>
+                    </div>
+                </div>
+            `;
+            showModal('Compare Versions', content);
+        }
+
+        function showEditMode() {
+            const content = document.getElementById('resume-content');
+            content.contentEditable = true;
+            content.style.border = '2px dashed var(--primary-color)';
+            showToast('Edit mode enabled - Click to edit');
+            
+            content.addEventListener('blur', () => {
+                content.contentEditable = false;
+                content.style.border = 'none';
+                showToast('Changes saved');
+            }, { once: true });
+        }
+
+        function showHelp() {
+            const content = `
+                <h3>How to use this tool</h3>
+                <ul style="margin-top: 16px; padding-left: 20px;">
+                    <li><strong>View Modes:</strong> Switch between HTML, Preview, and Plain Text views</li>
+                    <li><strong>Markers:</strong> Toggle different types of highlights and markers</li>
+                    <li><strong>Copy:</strong> Copy content with or without formatting</li>
+                    <li><strong>Download:</strong> Export in various formats (PDF, Word, HTML, Text)</li>
+                    <li><strong>Edit:</strong> Click the edit button to make direct changes</li>
+                </ul>
+                <h4 style="margin-top: 20px;">Marker Types</h4>
+                <ul style="margin-top: 8px; padding-left: 20px;">
+                    <li><span class="marker-indicator keyword" style="display: inline-block;"></span> New keywords added</li>
+                    <li><span class="marker-indicator existing" style="display: inline-block;"></span> Existing keywords enhanced</li>
+                    <li><span class="marker-indicator modified" style="display: inline-block;"></span> Modified content</li>
+                    <li><span class="marker-indicator new" style="display: inline-block;"></span> New sections</li>
+                    <li><span class="marker-indicator placeholder" style="display: inline-block;"></span> Placeholders to fill</li>
+                </ul>
+            `;
+            showModal('Help', content);
+        }
+
+        function showKeyboardShortcuts() {
+            const content = `
+                <h3>Keyboard Shortcuts</h3>
+                <div style="margin-top: 16px;">
+                    <table style="width: 100%;">
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Ctrl</kbd> + <kbd>C</kbd></td>
+                            <td style="padding: 8px;">Copy clean version</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd></td>
+                            <td style="padding: 8px;">Copy with markers</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Ctrl</kbd> + <kbd>P</kbd></td>
+                            <td style="padding: 8px;">Print</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Ctrl</kbd> + <kbd>D</kbd></td>
+                            <td style="padding: 8px;">Download as PDF</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Ctrl</kbd> + <kbd>H</kbd></td>
+                            <td style="padding: 8px;">Toggle HTML view</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Ctrl</kbd> + <kbd>M</kbd></td>
+                            <td style="padding: 8px;">Toggle all markers</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px;"><kbd>Esc</kbd></td>
+                            <td style="padding: 8px;">Close modals</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+            showModal('Keyboard Shortcuts', content);
+        }
+
+        // Keyboard Shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case 'c':
+                        if (e.shiftKey) {
+                            e.preventDefault();
+                            copyWithMarkers();
+                        }
+                        break;
+                    case 'd':
+                        e.preventDefault();
+                        downloadPDF();
+                        break;
+                    case 'h':
+                        e.preventDefault();
+                        setViewMode('html');
+                        break;
+                    case 'm':
+                        e.preventDefault();
+                        toggleAllMarkers();
+                        break;
+                }
+            } else if (e.key === 'Escape') {
+                closeModal();
+                document.getElementById('fab-menu').classList.remove('show');
+            }
+        });
+
+        // Initialize placeholder interactions
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.opt-placeholder').forEach(placeholder => {
+                placeholder.addEventListener('click', function() {
+                    const currentValue = this.textContent;
+                    const newValue = prompt(`Enter value for ${currentValue}:`, '');
+                    if (newValue !== null && newValue !== '') {
+                        this.textContent = newValue;
+                        this.style.background = '#d1fae5';
+                        this.style.color = '#065f46';
+                        this.style.border = '1px solid #10b981';
+                        showToast('Placeholder updated!');
+                    }
+                });
+            });
+        });
+
+        // Add pulse animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

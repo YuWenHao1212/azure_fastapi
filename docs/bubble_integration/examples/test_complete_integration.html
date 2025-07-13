@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bubble.io TinyMCE 整合測試頁面</title>
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"></script>
+    
+    <!-- 從 complete_header_with_placeholder_click.html 複製的完整系統 -->
+    <script>
+    // 系統 1: 單一控制系統
+    (function() {
+        'use strict';
+        
+        window.markerStylesInjected = false;
+        
+        window.injectDefaultMarkerStyles = function() {
+            if (window.markerStylesInjected) {
+                console.log('✅ 樣式已存在，無需重複注入');
+                return true;
+            }
+            
+            try {
+                if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                    console.log('⏳ TinyMCE 尚未準備好');
+                    return false;
+                }
+                
+                const editor = tinymce.activeEditor;
+                const iframeDoc = editor.getDoc();
+                
+                const style = iframeDoc.createElement('style');
+                style.id = 'default-marker-styles';
+                style.textContent = `
+                    .opt-new {
+                        background-color: rgba(16, 185, 129, 0.1) !important;
+                        border-left: 4px solid #10B981 !important;
+                        padding-left: 16px !important;
+                        margin: 4px 0 !important;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .opt-modified {
+                        background-color: #fef3c7 !important;
+                        padding: 2px 6px !important;
+                        border-radius: 3px !important;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .opt-placeholder {
+                        background-color: #fee2e2 !important;
+                        color: #991b1b !important;
+                        border: 1px dashed #f87171 !important;
+                        padding: 2px 8px !important;
+                        border-radius: 4px !important;
+                        font-style: italic !important;
+                        transition: all 0.3s ease;
+                        cursor: pointer !important;
+                        display: inline-block !important;
+                    }
+                    
+                    .opt-placeholder:hover {
+                        background-color: #fecaca !important;
+                        border-color: #ef4444 !important;
+                    }
+                    
+                    .opt-keyword {
+                        background-color: transparent !important;
+                        color: #6366f1 !important;
+                        border: 1px solid #c7d2fe !important;
+                        padding: 2px 6px !important;
+                        border-radius: 3px !important;
+                        font-weight: 500 !important;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .opt-keyword-existing {
+                        background-color: #2563eb !important;
+                        color: white !important;
+                        padding: 3px 8px !important;
+                        border-radius: 4px !important;
+                        font-weight: 600 !important;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    body.markers-hidden .opt-new,
+                    body.markers-hidden .opt-modified,
+                    body.markers-hidden .opt-placeholder,
+                    body.markers-hidden .opt-keyword,
+                    body.markers-hidden .opt-keyword-existing {
+                        background-color: transparent !important;
+                        border: none !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        color: inherit !important;
+                        font-weight: normal !important;
+                        font-style: normal !important;
+                        border-radius: 0 !important;
+                    }
+                `;
+                
+                iframeDoc.head.appendChild(style);
+                window.markerStylesInjected = true;
+                console.log('✅ 預設標記樣式已成功注入');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ 注入樣式時發生錯誤:', error);
+                return false;
+            }
+        };
+        
+        window.toggleMarkers = function(hideMarkers) {
+            try {
+                if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                    console.error('❌ TinyMCE 編輯器未找到');
+                    return false;
+                }
+                
+                const editor = tinymce.activeEditor;
+                const iframeDoc = editor.getDoc();
+                const body = iframeDoc.body;
+                
+                if (!window.markerStylesInjected) {
+                    window.injectDefaultMarkerStyles();
+                }
+                
+                if (hideMarkers) {
+                    body.classList.add('markers-hidden');
+                    console.log('🔴 標記已隱藏');
+                } else {
+                    body.classList.remove('markers-hidden');
+                    console.log('🟢 標記已顯示');
+                }
+                
+                body.style.opacity = '0.99';
+                setTimeout(() => {
+                    body.style.opacity = '1';
+                }, 10);
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ 切換標記時發生錯誤:', error);
+                return false;
+            }
+        };
+        
+        window.initializeMarkerSystem = function() {
+            console.log('🚀 初始化標記系統...');
+            
+            const checkInterval = setInterval(function() {
+                if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+                    if (window.injectDefaultMarkerStyles()) {
+                        clearInterval(checkInterval);
+                        console.log('✅ 標記系統初始化完成');
+                        
+                        const editor = tinymce.activeEditor;
+                        const iframeDoc = editor.getDoc();
+                        iframeDoc.body.classList.remove('markers-hidden');
+                        console.log('🟢 初始狀態：顯示標記');
+                    }
+                }
+            }, 500);
+            
+            setTimeout(() => clearInterval(checkInterval), 30000);
+        };
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', window.initializeMarkerSystem);
+        } else {
+            window.initializeMarkerSystem();
+        }
+        
+        window.markersVisible = true;
+        
+    })();
+
+    window.toggleTinyMCEMarkers = function(hideMarkers) {
+        return window.toggleMarkers(hideMarkers);
+    };
+    </script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #45a049;
+        }
+        
+        .btn-secondary {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #da190b;
+        }
+        
+        .editor-container {
+            margin-top: 20px;
+        }
+        
+        .info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #1976d2;
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Bubble.io TinyMCE 整合測試</h1>
+        
+        <div class="controls">
+            <button class="btn-primary" onclick="toggleAll()">切換所有標記</button>
+            <button class="btn-secondary" onclick="hideAll()">隱藏所有</button>
+            <button class="btn-primary" onclick="showAll()">顯示所有</button>
+        </div>
+        
+        <div class="editor-container">
+            <textarea id="tinymce-editor">
+                <h2>測試履歷內容</h2>
+                <p class="opt-new">這是新增的專業摘要，展示了候選人在 <span class="opt-keyword">Python</span> 和 <span class="opt-keyword">機器學習</span> 方面的專長。</p>
+                
+                <h3>工作經驗</h3>
+                <ul>
+                    <li class="opt-modified">領導開發團隊完成專案，提升效能 <span class="opt-placeholder">[PERCENTAGE]</span></li>
+                    <li>使用 <span class="opt-keyword-existing">JavaScript</span> 開發前端應用</li>
+                    <li class="opt-modified">管理 <span class="opt-placeholder">[TEAM SIZE]</span> 的開發團隊</li>
+                    <li>專案預算 <span class="opt-placeholder">[AMOUNT]</span>，工期 <span class="opt-placeholder">[TIME PERIOD]</span></li>
+                </ul>
+                
+                <h3>技能</h3>
+                <p>精通 <span class="opt-keyword">Docker</span>、<span class="opt-keyword">Kubernetes</span> 和 <span class="opt-keyword-existing">Git</span></p>
+            </textarea>
+        </div>
+        
+        <div class="info">
+            <strong>測試說明：</strong>
+            <ul>
+                <li>綠色背景 (opt-new)：新增的內容</li>
+                <li>黃色背景 (opt-modified)：修改過的內容</li>
+                <li>紅色邊框 (opt-placeholder)：可點擊編輯的佔位符</li>
+                <li>紫色邊框 (opt-keyword)：新增的關鍵字</li>
+                <li>藍色背景 (opt-keyword-existing)：已存在的關鍵字</li>
+            </ul>
+        </div>
+        
+        <div class="status" id="status">狀態：初始化中...</div>
+    </div>
+    
+    <script>
+        // 初始化 TinyMCE
+        tinymce.init({
+            selector: '#tinymce-editor',
+            height: 500,
+            menubar: false,
+            plugins: 'lists link',
+            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.6; }',
+            setup: function(editor) {
+                editor.on('init', function() {
+                    document.getElementById('status').textContent = '狀態：編輯器已初始化，標記系統就緒';
+                    
+                    // 測試 placeholder 點擊功能
+                    setTimeout(() => {
+                        const doc = editor.getDoc();
+                        const placeholders = doc.querySelectorAll('.opt-placeholder');
+                        console.log(`找到 ${placeholders.length} 個 placeholder`);
+                    }, 1000);
+                });
+            }
+        });
+        
+        // 控制函數
+        let allVisible = true;
+        
+        function toggleAll() {
+            allVisible = !allVisible;
+            window.toggleTinyMCEMarkers(!allVisible);
+            updateStatus(allVisible ? '顯示' : '隱藏');
+        }
+        
+        function showAll() {
+            allVisible = true;
+            window.toggleTinyMCEMarkers(false);
+            updateStatus('顯示');
+        }
+        
+        function hideAll() {
+            allVisible = false;
+            window.toggleTinyMCEMarkers(true);
+            updateStatus('隱藏');
+        }
+        
+        function updateStatus(state) {
+            document.getElementById('status').textContent = `狀態：所有標記已${state}`;
+        }
+    </script>
+</body>
+</html>

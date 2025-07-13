@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE Toggle 增強版除錯工具（含測試標記）</title>
+    <style>
+        #toggle-debugger {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            width: 680px;
+            max-height: 780px;
+            overflow-y: auto;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            z-index: 10000;
+        }
+        
+        #toggle-debugger.minimized {
+            height: 40px;
+            overflow: hidden;
+        }
+        
+        #toggle-debugger h3 {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #1F2937;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        #toggle-debugger button {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 2px;
+            font-size: 11px;
+            font-family: inherit;
+        }
+        
+        #toggle-debugger button:hover {
+            background: #2563EB;
+        }
+        
+        #toggle-debugger button.danger {
+            background: #EF4444;
+        }
+        
+        #toggle-debugger button.danger:hover {
+            background: #DC2626;
+        }
+        
+        #toggle-debugger button.success {
+            background: #10B981;
+        }
+        
+        #toggle-debugger button.success:hover {
+            background: #059669;
+        }
+        
+        #toggle-debugger button.warning {
+            background: #F59E0B;
+        }
+        
+        #toggle-debugger button.warning:hover {
+            background: #D97706;
+        }
+        
+        #toggle-debugger button.purple {
+            background: #8B5CF6;
+        }
+        
+        #toggle-debugger button.purple:hover {
+            background: #7C3AED;
+        }
+        
+        .debug-section {
+            background: #F9FAFB;
+            border: 1px solid #E5E7EB;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 10px 0;
+        }
+        
+        .debug-section h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            color: #374151;
+            font-weight: 600;
+        }
+        
+        .log-entry {
+            padding: 4px 8px;
+            margin: 2px 0;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .log-entry.success {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        
+        .log-entry.error {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        
+        .log-entry.warning {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        
+        .log-entry.info {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        
+        .editor-card {
+            background: white;
+            border: 1px solid #D1D5DB;
+            border-radius: 6px;
+            padding: 10px;
+            margin: 8px 0;
+        }
+        
+        .editor-card.active {
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+        
+        .editor-card h5 {
+            margin: 0 0 6px 0;
+            font-size: 12px;
+            color: #1F2937;
+            font-weight: 600;
+        }
+        
+        .editor-info {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 4px 12px;
+            font-size: 11px;
+        }
+        
+        .editor-info .label {
+            color: #6B7280;
+            font-weight: 500;
+        }
+        
+        .editor-info .value {
+            color: #111827;
+            font-family: 'Consolas', monospace;
+        }
+        
+        .editor-info .value.true {
+            color: #059669;
+        }
+        
+        .editor-info .value.false {
+            color: #DC2626;
+        }
+        
+        .minimize-btn {
+            background: #6B7280;
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin: 10px 0;
+        }
+        
+        .snapshot {
+            background: #F3F4F6;
+            border: 1px solid #D1D5DB;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 4px 0;
+            font-size: 10px;
+        }
+        
+        .snapshot-time {
+            color: #6B7280;
+            font-weight: 600;
+        }
+        
+        pre {
+            background: #1F2937;
+            color: #F9FAFB;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 11px;
+            margin: 8px 0;
+        }
+        
+        .style-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+        
+        .style-check .indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .style-check .indicator.found {
+            background: #10B981;
+        }
+        
+        .style-check .indicator.missing {
+            background: #EF4444;
+        }
+        
+        .test-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .test-badge.pass {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        
+        .test-badge.fail {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        
+        /* 新增樣式診斷區域的樣式 */
+        .style-diagnostic {
+            background: #F3F4F6;
+            border: 1px solid #D1D5DB;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 4px 0;
+            font-size: 11px;
+        }
+        
+        .style-element {
+            margin: 4px 0;
+            padding: 4px;
+            background: white;
+            border-radius: 3px;
+        }
+        
+        .element-visible {
+            border-left: 3px solid #10B981;
+        }
+        
+        .element-hidden {
+            border-left: 3px solid #EF4444;
+        }
+        
+        /* 測試內容選擇器 */
+        .test-content-selector {
+            display: flex;
+            gap: 8px;
+            margin: 8px 0;
+            align-items: center;
+        }
+        
+        .test-content-selector select {
+            padding: 4px 8px;
+            border: 1px solid #D1D5DB;
+            border-radius: 4px;
+            font-size: 11px;
+            font-family: inherit;
+        }
+        
+        .test-content-selector label {
+            font-size: 11px;
+            color: #374151;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    
+<div id="toggle-debugger">
+    <h3>
+        🔍 TinyMCE Toggle 增強版除錯工具（含測試標記）
+        <button class="minimize-btn" onclick="toggleMinimize()">最小化</button>
+    </h3>
+    
+    <!-- 快速操作按鈕 -->
+    <div class="button-group">
+        <button onclick="runFullDiagnostic()">🔍 完整診斷</button>
+        <button onclick="checkEditorStates()">📊 檢查編輯器狀態</button>
+        <button onclick="diagnoseStyleInjection()">🎨 診斷樣式注入</button>
+        <button onclick="testToggleFunctions()">🔄 測試 Toggle 函數</button>
+        <button class="purple" onclick="insertTestContent()">🏷️ 插入測試標記</button>
+        <button onclick="captureSnapshot()">📸 擷取快照</button>
+        <button onclick="monitorChanges()">👁️ 監控變化</button>
+        <button class="warning" onclick="fixStyleInjection()">🔧 修復樣式</button>
+        <button class="success" onclick="copyAllLogs()">📋 複製日誌</button>
+        <button class="danger" onclick="clearLogs()">🗑️ 清除日誌</button>
+    </div>
+    
+    <!-- 測試內容選擇器 -->
+    <div class="test-content-selector">
+        <label>測試內容類型：</label>
+        <select id="test-content-type">
+            <option value="all">所有標記類型</option>
+            <option value="keywords">只有關鍵字</option>
+            <option value="modifications">只有修改內容</option>
+            <option value="new">只有新增內容</option>
+            <option value="placeholders">只有佔位符</option>
+            <option value="mixed">混合內容</option>
+        </select>
+        <label>目標編輯器：</label>
+        <select id="target-editor">
+            <option value="active">當前編輯器</option>
+            <option value="all">所有編輯器</option>
+            <option value="1">編輯器 1</option>
+            <option value="2">編輯器 2</option>
+        </select>
+    </div>
+    
+    <!-- 編輯器狀態顯示區 -->
+    <div class="debug-section">
+        <h4>編輯器狀態</h4>
+        <div id="editor-status">
+            <div class="log-entry info">等待檢查...</div>
+        </div>
+    </div>
+    
+    <!-- 樣式診斷區 -->
+    <div class="debug-section">
+        <h4>樣式診斷</h4>
+        <div id="style-diagnosis">
+            <div class="log-entry info">尚未執行樣式診斷</div>
+        </div>
+    </div>
+    
+    <!-- Toggle 函數測試區 -->
+    <div class="debug-section">
+        <h4>Toggle 函數測試</h4>
+        <div id="toggle-tests">
+            <div class="log-entry info">尚未執行測試</div>
+        </div>
+    </div>
+    
+    <!-- 事件日誌 -->
+    <div class="debug-section">
+        <h4>事件日誌</h4>
+        <div id="event-log" style="max-height: 200px; overflow-y: auto;">
+            <div class="log-entry info">監聽中...</div>
+        </div>
+    </div>
+    
+    <!-- 快照記錄 -->
+    <div class="debug-section">
+        <h4>狀態快照</h4>
+        <div id="snapshots">
+            <div class="log-entry info">尚無快照</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 全局變數
+var debuggerState = {
+    monitoring: false,
+    monitorInterval: null,
+    snapshots: [],
+    editorHistory: new Map(),
+    toggleFunctionTests: [],
+    lastActiveEditor: null
+};
+
+// 工具函數
+function log(section, message, type) {
+    if (!type) type = 'info';
+    
+    var container = document.getElementById(section);
+    if (!container) return;
+    
+    var entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    
+    var timestamp = new Date().toLocaleTimeString();
+    entry.innerHTML = '[' + timestamp + '] ' + message;
+    
+    if (section === 'event-log') {
+        container.insertBefore(entry, container.firstChild);
+        // 保持最多 50 條記錄
+        while (container.children.length > 50) {
+            container.removeChild(container.lastChild);
+        }
+    } else {
+        container.appendChild(entry);
+    }
+}
+
+function clearSection(sectionId) {
+    var section = document.getElementById(sectionId);
+    if (section) {
+        section.innerHTML = '';
+    }
+}
+
+// 最小化功能
+function toggleMinimize() {
+    var debugPanel = document.getElementById('toggle-debugger');
+    if (debugPanel.classList.contains('minimized')) {
+        debugPanel.classList.remove('minimized');
+    } else {
+        debugPanel.classList.add('minimized');
+    }
+}
+
+// 清除日誌
+function clearLogs() {
+    var sections = ['editor-status', 'style-diagnosis', 'toggle-tests', 'event-log', 'snapshots'];
+    for (var i = 0; i < sections.length; i++) {
+        clearSection(sections[i]);
+    }
+    log('event-log', '日誌已清除', 'info');
+}
+
+// ===== 新增功能：插入測試標記 =====
+function insertTestContent() {
+    log('event-log', '🏷️ 開始插入測試標記...', 'info');
+    
+    if (typeof tinymce === 'undefined') {
+        log('event-log', '❌ TinyMCE 未載入', 'error');
+        return;
+    }
+    
+    var contentType = document.getElementById('test-content-type').value;
+    var targetEditor = document.getElementById('target-editor').value;
+    
+    // 定義測試內容
+    var testContents = {
+        all: `
+            <h3>測試標記內容</h3>
+            <p>這是一段包含 <span class="opt-keyword-existing">Python</span> 和 <span class="opt-keyword-existing">JavaScript</span> 的測試文字。</p>
+            <p>新增的關鍵字包括 <span class="opt-keyword">React</span>、<span class="opt-keyword">Vue.js</span> 和 <span class="opt-keyword">Angular</span>。</p>
+            <p>這段文字有一些 <span class="opt-modified">修改過的內容展示效果</span>，可以用來測試樣式。</p>
+            <div class="opt-new">
+                <p>這是一個新增的段落，展示新內容的樣式效果。</p>
+                <p>通常用綠色左邊框來標示。</p>
+            </div>
+            <p>請填寫 <span class="opt-placeholder">您的姓名</span> 和 <span class="opt-placeholder">聯絡電話</span>。</p>
+            <p>這裡還有 <span class="opt-placeholder">電子郵件地址</span> 和 <span class="opt-placeholder">公司名稱</span> 需要填寫。</p>
+            <div class="opt-new">
+                <p>另一個新增段落，包含更多 <span class="opt-modified">修改過的文字</span>。</p>
+            </div>
+        `,
+        keywords: `
+            <p>關鍵字測試：<span class="opt-keyword-existing">Python</span>、<span class="opt-keyword-existing">JavaScript</span>、<span class="opt-keyword-existing">TypeScript</span></p>
+            <p>新關鍵字：<span class="opt-keyword">React</span>、<span class="opt-keyword">Vue.js</span>、<span class="opt-keyword">Angular</span>、<span class="opt-keyword">Node.js</span></p>
+        `,
+        modifications: `
+            <p>這是 <span class="opt-modified">第一個修改過的內容</span>，還有 <span class="opt-modified">第二個修改</span>。</p>
+            <p>整個句子都被 <span class="opt-modified">標記為已修改的內容，用來展示黃色背景效果</span>。</p>
+        `,
+        new: `
+            <div class="opt-new">
+                <h4>新增章節 1</h4>
+                <p>這是完全新增的內容區塊，應該顯示綠色左邊框。</p>
+            </div>
+            <div class="opt-new">
+                <h4>新增章節 2</h4>
+                <p>另一個新增的內容區塊，包含列表：</p>
+                <ul>
+                    <li>項目一</li>
+                    <li>項目二</li>
+                </ul>
+            </div>
+        `,
+        placeholders: `
+            <p>基本資料：<span class="opt-placeholder">姓名</span>、<span class="opt-placeholder">電話</span>、<span class="opt-placeholder">Email</span></p>
+            <p>工作經歷：<span class="opt-placeholder">公司名稱</span>、<span class="opt-placeholder">職位</span>、<span class="opt-placeholder">工作期間</span></p>
+        `,
+        mixed: `
+            <h3>混合測試內容</h3>
+            <p>我精通 <span class="opt-keyword-existing">Python</span> 和 <span class="opt-keyword">React</span> 開發。</p>
+            <p>具有 <span class="opt-modified">5年以上的全端開發經驗</span>。</p>
+            <div class="opt-new">
+                <p>新增技能：<span class="opt-keyword">Docker</span>、<span class="opt-keyword">Kubernetes</span></p>
+            </div>
+            <p>聯絡方式：<span class="opt-placeholder">您的Email</span></p>
+        `
+    };
+    
+    var contentToInsert = testContents[contentType] || testContents.all;
+    
+    // 決定目標編輯器
+    var editors = [];
+    if (targetEditor === 'active') {
+        if (tinymce.activeEditor) {
+            editors = [tinymce.activeEditor];
+        } else {
+            log('event-log', '❌ 沒有 active editor', 'error');
+            return;
+        }
+    } else if (targetEditor === 'all') {
+        var allEditors = tinymce.get();
+        editors = Array.isArray(allEditors) ? allEditors : [allEditors];
+    } else {
+        // 特定編輯器索引
+        var index = parseInt(targetEditor) - 1;
+        var allEditors = tinymce.get();
+        var editorArray = Array.isArray(allEditors) ? allEditors : [allEditors];
+        if (editorArray[index]) {
+            editors = [editorArray[index]];
+        } else {
+            log('event-log', '❌ 找不到編輯器 ' + targetEditor, 'error');
+            return;
+        }
+    }
+    
+    // 插入內容到每個目標編輯器
+    var successCount = 0;
+    for (var i = 0; i < editors.length; i++) {
+        var editor = editors[i];
+        if (editor && editor.initialized) {
+            try {
+                // 保存當前內容
+                var currentContent = editor.getContent();
+                
+                // 如果編輯器是空的，直接設置內容
+                if (!currentContent || currentContent.trim() === '') {
+                    editor.setContent(contentToInsert);
+                } else {
+                    // 否則追加到現有內容後面
+                    editor.setContent(currentContent + '<hr>' + contentToInsert);
+                }
+                
+                successCount++;
+                log('event-log', '✅ 已插入測試內容到編輯器: ' + editor.id, 'success');
+                
+            } catch (e) {
+                log('event-log', '❌ 插入失敗 (' + editor.id + '): ' + e.message, 'error');
+            }
+        }
+    }
+    
+    if (successCount > 0) {
+        log('event-log', '🏷️ 測試標記插入完成！成功: ' + successCount + '/' + editors.length, 'info');
+        
+        // 自動執行診斷
+        setTimeout(function() {
+            checkEditorStates();
+            diagnoseStyleInjection();
+        }, 500);
+    }
+}
+
+// 1. 檢查編輯器狀態
+function checkEditorStates() {
+    clearSection('editor-status');
+    
+    if (typeof tinymce === 'undefined') {
+        log('editor-status', '❌ TinyMCE 未載入！', 'error');
+        return;
+    }
+    
+    var editors = tinymce.get();
+    if (!editors) {
+        log('editor-status', '未找到任何編輯器', 'warning');
+        return;
+    }
+    
+    var editorArray = Array.isArray(editors) ? editors : [editors];
+    log('editor-status', '找到 ' + editorArray.length + ' 個編輯器', 'success');
+    
+    var activeEditor = tinymce.activeEditor;
+    if (activeEditor) {
+        log('editor-status', '當前 activeEditor: ' + activeEditor.id, 'info');
+    } else {
+        log('editor-status', '沒有 activeEditor', 'warning');
+    }
+    
+    // 為每個編輯器創建卡片
+    for (var i = 0; i < editorArray.length; i++) {
+        var editor = editorArray[i];
+        var card = document.createElement('div');
+        card.className = 'editor-card';
+        
+        if (editor === activeEditor) {
+            card.className += ' active';
+        }
+        
+        var isActive = editor === activeEditor;
+        var body = editor.getBody();
+        var doc = editor.getDoc();
+        
+        // 檢查各種狀態
+        var hasMarkersHidden = body ? body.classList.contains('markers-hidden') : false;
+        var hasDefaultStyles = doc ? !!doc.getElementById('default-marker-styles') : false;
+        var hasCompleteStyles = doc ? !!doc.getElementById('tinymce-complete-styles') : false;
+        var hasMultiTagStyles = doc ? !!doc.getElementById('multi-tag-styles') : false;
+        var hasToggleStyles = doc ? !!doc.getElementById('toggle-ensure-styles') : false;
+        var hasFixStyles = doc ? !!doc.getElementById('style-fix-applied') : false;
+        
+        // 檢查隱藏類別
+        var hiddenClasses = [];
+        if (body) {
+            var tagTypes = ['opt-new', 'opt-modified', 'opt-placeholder', 'opt-keyword', 'opt-keyword-existing'];
+            for (var j = 0; j < tagTypes.length; j++) {
+                if (body.classList.contains('hide-' + tagTypes[j])) {
+                    hiddenClasses.push(tagTypes[j]);
+                }
+            }
+        }
+        
+        var cardHTML = '<h5>編輯器 ' + (i + 1) + ': ' + editor.id;
+        if (isActive) {
+            cardHTML += '<span class="test-badge pass">Active</span>';
+        }
+        cardHTML += '</h5>';
+        
+        cardHTML += '<div class="editor-info">';
+        cardHTML += '<span class="label">ID:</span>';
+        cardHTML += '<span class="value">' + editor.id + '</span>';
+        
+        cardHTML += '<span class="label">已初始化:</span>';
+        cardHTML += '<span class="value ' + editor.initialized + '">' + editor.initialized + '</span>';
+        
+        cardHTML += '<span class="label">模式:</span>';
+        cardHTML += '<span class="value">' + editor.mode.get() + '</span>';
+        
+        cardHTML += '<span class="label">可見:</span>';
+        cardHTML += '<span class="value ' + (!editor.isHidden()) + '">' + (!editor.isHidden()) + '</span>';
+        
+        cardHTML += '<span class="label">markers-hidden:</span>';
+        cardHTML += '<span class="value ' + hasMarkersHidden + '">' + hasMarkersHidden + '</span>';
+        
+        cardHTML += '<span class="label">樣式注入:</span>';
+        cardHTML += '<span class="value">';
+        cardHTML += '預設: ' + (hasDefaultStyles ? '✓' : '✗') + ' | ';
+        cardHTML += '完整: ' + (hasCompleteStyles ? '✓' : '✗') + ' | ';
+        cardHTML += '多標記: ' + (hasMultiTagStyles ? '✓' : '✗') + ' | ';
+        cardHTML += 'Toggle: ' + (hasToggleStyles ? '✓' : '✗') + ' | ';
+        cardHTML += '修復: ' + (hasFixStyles ? '✓' : '✗');
+        cardHTML += '</span>';
+        
+        // 顯示內容統計
+        if (editor.dom) {
+            var elementCounts = {
+                'opt-keyword-existing': editor.dom.select('span.opt-keyword-existing').length,
+                'opt-keyword': editor.dom.select('span.opt-keyword').length,
+                'opt-modified': editor.dom.select('span.opt-modified').length,
+                'opt-new': editor.dom.select('.opt-new').length,
+                'opt-placeholder': editor.dom.select('span.opt-placeholder').length
+            };
+            
+            var hasContent = false;
+            for (var key in elementCounts) {
+                if (elementCounts[key] > 0) hasContent = true;
+            }
+            
+            if (hasContent) {
+                cardHTML += '<span class="label">標記統計:</span>';
+                cardHTML += '<span class="value">';
+                var stats = [];
+                for (var className in elementCounts) {
+                    if (elementCounts[className] > 0) {
+                        stats.push(className.replace('opt-', '') + ':' + elementCounts[className]);
+                    }
+                }
+                cardHTML += stats.join(', ');
+                cardHTML += '</span>';
+            }
+        }
+        
+        if (hiddenClasses.length > 0) {
+            cardHTML += '<span class="label">隱藏的標記:</span>';
+            cardHTML += '<span class="value">' + hiddenClasses.join(', ') + '</span>';
+        }
+        
+        cardHTML += '</div>';
+        
+        card.innerHTML = cardHTML;
+        document.getElementById('editor-status').appendChild(card);
+    }
+}
+
+// 2. 診斷樣式注入
+function diagnoseStyleInjection() {
+    clearSection('style-diagnosis');
+    log('style-diagnosis', '===== 開始診斷樣式注入問題 =====', 'info');
+    
+    if (typeof tinymce === 'undefined') {
+        log('style-diagnosis', '❌ TinyMCE 未載入', 'error');
+        return;
+    }
+    
+    var editors = tinymce.get();
+    var editorArray = Array.isArray(editors) ? editors : [editors];
+    
+    for (var i = 0; i < editorArray.length; i++) {
+        var editor = editorArray[i];
+        var diagnostic = document.createElement('div');
+        diagnostic.className = 'style-diagnostic';
+        
+        var diagHTML = '<strong>編輯器 ' + (i + 1) + ' (' + editor.id + '):</strong><br>';
+        
+        var body = editor.getBody();
+        var doc = editor.getDoc();
+        
+        if (doc) {
+            // 檢查 style 標籤
+            var styles = doc.querySelectorAll('style');
+            diagHTML += '📄 Style 標籤數量: ' + styles.length + '<br>';
+            
+            var hasKeywordStyles = false;
+            var hasHiddenStyles = false;
+            var hasNotHiddenStyles = false;
+            
+            for (var j = 0; j < styles.length; j++) {
+                var content = styles[j].textContent || styles[j].innerHTML;
+                if (content.includes('opt-keyword-existing')) {
+                    hasKeywordStyles = true;
+                }
+                if (content.includes('markers-hidden')) {
+                    hasHiddenStyles = true;
+                }
+                if (content.includes(':not(.markers-hidden)')) {
+                    hasNotHiddenStyles = true;
+                }
+            }
+            
+            diagHTML += '🎨 包含關鍵字樣式: ' + (hasKeywordStyles ? '✅' : '❌') + '<br>';
+            diagHTML += '🙈 包含隱藏樣式: ' + (hasHiddenStyles ? '✅' : '❌') + '<br>';
+            diagHTML += '👁️ 包含 :not(.markers-hidden) 樣式: ' + (hasNotHiddenStyles ? '✅' : '❌') + '<br>';
+        }
+        
+        // 檢查實際元素
+        if (editor.dom) {
+            diagHTML += '<br><strong>標記元素檢查:</strong><br>';
+            
+            var testElements = {
+                'opt-keyword-existing': editor.dom.select('span.opt-keyword-existing'),
+                'opt-keyword': editor.dom.select('span.opt-keyword'),
+                'opt-modified': editor.dom.select('span.opt-modified'),
+                'opt-new': editor.dom.select('.opt-new'),
+                'opt-placeholder': editor.dom.select('span.opt-placeholder')
+            };
+            
+            var hasAnyElements = false;
+            for (var className in testElements) {
+                var elements = testElements[className];
+                if (elements.length > 0) {
+                    hasAnyElements = true;
+                    diagHTML += '<div class="style-element">';
+                    diagHTML += '.' + className + ': ' + elements.length + ' 個元素<br>';
+                    
+                    // 檢查第一個元素的樣式
+                    if (elements[0] && editor.getWin()) {
+                        var computed = editor.getWin().getComputedStyle(elements[0]);
+                        var bgColor = computed.backgroundColor;
+                        var isTransparent = bgColor === 'rgba(0, 0, 0, 0)' || 
+                                          bgColor === 'transparent' || 
+                                          bgColor === '';
+                        
+                        diagHTML += '&nbsp;&nbsp;背景色: ' + bgColor;
+                        if (isTransparent) {
+                            diagHTML += ' <span style="color: #EF4444">(透明 - 可能被隱藏)</span>';
+                        } else {
+                            diagHTML += ' <span style="color: #10B981">(有顏色 - 正常顯示)</span>';
+                        }
+                        diagHTML += '<br>';
+                        
+                        // 檢查其他重要樣式
+                        diagHTML += '&nbsp;&nbsp;顏色: ' + computed.color + '<br>';
+                        diagHTML += '&nbsp;&nbsp;padding: ' + computed.padding + '<br>';
+                        diagHTML += '&nbsp;&nbsp;display: ' + computed.display + '<br>';
+                    }
+                    diagHTML += '</div>';
+                }
+            }
+            
+            if (!hasAnyElements) {
+                diagHTML += '<div class="log-entry warning">沒有找到任何標記元素（可使用「插入測試標記」功能）</div>';
+            }
+        }
+        
+        diagnostic.innerHTML = diagHTML;
+        document.getElementById('style-diagnosis').appendChild(diagnostic);
+    }
+    
+    // 測試注入新樣式
+    log('style-diagnosis', '\n嘗試注入測試樣式...', 'info');
+    
+    var testStyles = 'body { border: 2px solid #10B981 !important; }';
+    
+    for (var k = 0; k < editorArray.length; k++) {
+        var testEditor = editorArray[k];
+        if (testEditor && testEditor.initialized) {
+            try {
+                testEditor.dom.addStyle(testStyles);
+                log('style-diagnosis', '✅ 測試樣式注入成功到編輯器 ' + (k + 1), 'success');
+            } catch (e) {
+                log('style-diagnosis', '❌ 測試樣式注入失敗: ' + e.message, 'error');
+            }
+        }
+    }
+}
+
+// 3. 修復樣式注入
+function fixStyleInjection() {
+    log('event-log', '🔧 開始修復樣式注入...', 'warning');
+    
+    if (typeof tinymce === 'undefined') {
+        log('event-log', '❌ TinyMCE 未載入，無法修復', 'error');
+        return;
+    }
+    
+    var fullStyles = `
+        /* 顯示樣式 - 使用 :not() 確保優先級 */
+        body:not(.markers-hidden) span.opt-keyword-existing {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+            padding: 3px 8px !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            margin: 0 2px !important;
+            display: inline-block !important;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3) !important;
+        }
+        
+        body:not(.markers-hidden) span.opt-keyword {
+            background-color: transparent !important;
+            color: #6366F1 !important;
+            border: 1px solid #C7D2FE !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            font-weight: 500 !important;
+            margin: 0 2px !important;
+            display: inline-block !important;
+        }
+        
+        body:not(.markers-hidden) span.opt-modified {
+            background-color: #FFF3CD !important;
+            color: #856404 !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            border: 1px solid #FFEAA7 !important;
+            display: inline !important;
+        }
+        
+        body:not(.markers-hidden) .opt-new {
+            border-left: 4px solid #10B981 !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+            margin: 8px 0 !important;
+            background-color: rgba(209, 250, 229, 0.3) !important;
+            display: block !important;
+        }
+        
+        body:not(.markers-hidden) span.opt-placeholder {
+            background-color: #FEE2E2 !important;
+            color: #991B1B !important;
+            border: 1px dashed #F87171 !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            font-style: italic !important;
+            font-weight: 500 !important;
+            display: inline-block !important;
+        }
+        
+        /* 隱藏樣式 */
+        body.markers-hidden span.opt-keyword-existing,
+        body.markers-hidden span.opt-keyword,
+        body.markers-hidden span.opt-modified,
+        body.markers-hidden .opt-new,
+        body.markers-hidden span.opt-placeholder,
+        body.markers-hidden span.opt-improvement {
+            all: unset !important;
+            color: inherit !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-weight: inherit !important;
+            font-style: inherit !important;
+            text-decoration: none !important;
+            display: inline !important;
+            box-shadow: none !important;
+        }
+        
+        body.markers-hidden .opt-new {
+            display: block !important;
+        }
+    `;
+    
+    var editors = tinymce.get();
+    if (editors) {
+        var editorArray = Array.isArray(editors) ? editors : [editors];
+        var successCount = 0;
+        
+        for (var i = 0; i < editorArray.length; i++) {
+            var editor = editorArray[i];
+            if (editor.initialized) {
+                try {
+                    // 先移除 markers-hidden 以確保看到效果
+                    var body = editor.getBody();
+                    if (body && body.classList.contains('markers-hidden')) {
+                        body.classList.remove('markers-hidden');
+                    }
+                    
+                    // 注入完整樣式
+                    editor.dom.addStyle(fullStyles);
+                    
+                    // 添加修復標記
+                    var doc = editor.getDoc();
+                    if (doc && !doc.getElementById('style-fix-applied')) {
+                        var marker = doc.createElement('style');
+                        marker.id = 'style-fix-applied';
+                        marker.innerHTML = '/* Style fix applied */';
+                        doc.head.appendChild(marker);
+                    }
+                    
+                    successCount++;
+                    log('event-log', '✅ 樣式已修復: 編輯器 ' + (i + 1) + ' (' + editor.id + ')', 'success');
+                } catch (e) {
+                    log('event-log', '❌ 修復失敗: 編輯器 ' + (i + 1) + ' - ' + e.message, 'error');
+                }
+            }
+        }
+        
+        log('event-log', '🔧 修復完成！成功: ' + successCount + '/' + editorArray.length, 'info');
+        
+        // 刷新診斷
+        setTimeout(function() {
+            checkEditorStates();
+            diagnoseStyleInjection();
+        }, 500);
+    }
+}
+
+// 修復 Toggle 功能（整合原有功能）
+window.fixToggleDisplay = fixStyleInjection;
+
+// 4. 測試 Toggle 函數
+function testToggleFunctions() {
+    clearSection('toggle-tests');
+    
+    var functionsToTest = [
+        'toggleTinyMCEMarkers',
+        'toggleMarkers',
+        'toggleMarkersAllEditors',
+        'showMarkers',
+        'hideMarkers',
+        'toggleSingleTag',
+        'showAllTags',
+        'hideAllTags',
+        'injectDefaultMarkerStyles',
+        'window.markerStylesInjected',
+        'window.markersVisible',
+        'window.markersCurrentlyVisible'
+    ];
+    
+    log('toggle-tests', '檢查可用的 Toggle 函數...', 'info');
+    
+    for (var i = 0; i < functionsToTest.length; i++) {
+        var funcName = functionsToTest[i];
+        var exists = false;
+        var value = undefined;
+        
+        try {
+            if (funcName.indexOf('.') > -1) {
+                // 處理 window.property 格式
+                exists = eval('typeof ' + funcName) !== 'undefined';
+                if (exists) {
+                    value = eval(funcName);
+                }
+            } else {
+                exists = typeof window[funcName] !== 'undefined';
+                if (exists) {
+                    value = window[funcName];
+                }
+            }
+        } catch (e) {
+            exists = false;
+        }
+        
+        var badge = exists 
+            ? '<span class="test-badge pass">存在</span>' 
+            : '<span class="test-badge fail">不存在</span>';
+        
+        var displayValue = '';
+        if (exists && typeof value !== 'function') {
+            displayValue = ' = ' + JSON.stringify(value);
+        }
+        
+        log('toggle-tests', funcName + displayValue + ' ' + badge, exists ? 'success' : 'error');
+    }
+    
+    // 測試實際執行
+    log('toggle-tests', '\n測試 Toggle 執行...', 'info');
+    
+    // 測試隱藏
+    setTimeout(function() {
+        try {
+            if (window.hideMarkers) {
+                window.hideMarkers();
+                log('toggle-tests', 'hideMarkers() 執行成功', 'success');
+                
+                // 檢查結果
+                setTimeout(function() {
+                    var editors = tinymce.get();
+                    if (editors) {
+                        var editorArray = Array.isArray(editors) ? editors : [editors];
+                        for (var i = 0; i < editorArray.length; i++) {
+                            var body = editorArray[i].getBody();
+                            if (body) {
+                                var hidden = body.classList.contains('markers-hidden');
+                                log('toggle-tests', '編輯器 ' + (i+1) + ' markers-hidden: ' + hidden, hidden ? 'success' : 'error');
+                            }
+                        }
+                    }
+                }, 500);
+            } else if (typeof window.toggleMarkers === 'function') {
+                log('toggle-tests', '使用 toggleMarkers 替代', 'info');
+                window.toggleMarkers();
+            } else {
+                log('toggle-tests', 'hideMarkers 函數不存在', 'error');
+            }
+        } catch (e) {
+            log('toggle-tests', 'hideMarkers() 錯誤: ' + e.message, 'error');
+        }
+    }, 100);
+    
+    // 測試顯示（延遲執行）
+    setTimeout(function() {
+        try {
+            if (window.showMarkers) {
+                window.showMarkers();
+                log('toggle-tests', 'showMarkers() 執行成功', 'success');
+                
+                // 檢查結果
+                setTimeout(function() {
+                    var editors = tinymce.get();
+                    if (editors) {
+                        var editorArray = Array.isArray(editors) ? editors : [editors];
+                        for (var i = 0; i < editorArray.length; i++) {
+                            var body = editorArray[i].getBody();
+                            if (body) {
+                                var hidden = body.classList.contains('markers-hidden');
+                                log('toggle-tests', '編輯器 ' + (i+1) + ' markers-hidden: ' + hidden, hidden ? 'error' : 'success');
+                            }
+                        }
+                    }
+                }, 500);
+            } else if (typeof window.toggleMarkers === 'function') {
+                log('toggle-tests', '使用 toggleMarkers 替代', 'info');
+                window.toggleMarkers();
+            } else {
+                log('toggle-tests', 'showMarkers 函數不存在', 'error');
+            }
+        } catch (e) {
+            log('toggle-tests', 'showMarkers() 錯誤: ' + e.message, 'error');
+        }
+    }, 2000);
+}
+
+// 5. 擷取快照
+function captureSnapshot() {
+    var snapshot = {
+        time: new Date().toLocaleTimeString(),
+        editors: [],
+        functions: {},
+        activeEditor: null,
+        globalVars: {}
+    };
+    
+    // 記錄編輯器狀態
+    if (tinymce) {
+        var editors = tinymce.get();
+        if (editors) {
+            var editorArray = Array.isArray(editors) ? editors : [editors];
+            for (var i = 0; i < editorArray.length; i++) {
+                var editor = editorArray[i];
+                var body = editor.getBody();
+                var doc = editor.getDoc();
+                
+                var editorSnapshot = {
+                    id: editor.id,
+                    initialized: editor.initialized,
+                    mode: editor.mode.get(),
+                    markersHidden: body ? body.classList.contains('markers-hidden') : null,
+                    bodyClasses: body ? Array.from(body.classList) : [],
+                    styleCount: doc ? doc.querySelectorAll('style').length : 0,
+                    elementCounts: {}
+                };
+                
+                // 記錄元素數量
+                if (editor.dom) {
+                    editorSnapshot.elementCounts = {
+                        'opt-keyword-existing': editor.dom.select('span.opt-keyword-existing').length,
+                        'opt-keyword': editor.dom.select('span.opt-keyword').length,
+                        'opt-modified': editor.dom.select('span.opt-modified').length,
+                        'opt-new': editor.dom.select('.opt-new').length,
+                        'opt-placeholder': editor.dom.select('span.opt-placeholder').length
+                    };
+                }
+                
+                snapshot.editors.push(editorSnapshot);
+            }
+        }
+        
+        snapshot.activeEditor = tinymce.activeEditor ? tinymce.activeEditor.id : null;
+    }
+    
+    // 記錄函數狀態
+    var funcs = ['toggleTinyMCEMarkers', 'toggleMarkers', 'showMarkers', 'hideMarkers'];
+    for (var j = 0; j < funcs.length; j++) {
+        snapshot.functions[funcs[j]] = typeof window[funcs[j]] !== 'undefined';
+    }
+    
+    // 記錄全局變數
+    snapshot.globalVars = {
+        markersVisible: window.markersVisible,
+        markersCurrentlyVisible: window.markersCurrentlyVisible,
+        markerStylesInjected: window.markerStylesInjected
+    };
+    
+    // 保存快照
+    debuggerState.snapshots.push(snapshot);
+    
+    // 顯示快照
+    var snapshotDiv = document.createElement('div');
+    snapshotDiv.className = 'snapshot';
+    snapshotDiv.innerHTML = 
+        '<div class="snapshot-time">快照 - ' + snapshot.time + '</div>' +
+        '<div>編輯器數量: ' + snapshot.editors.length + '</div>' +
+        '<div>Active Editor: ' + (snapshot.activeEditor || 'None') + '</div>' +
+        '<div>編輯器狀態: ' + snapshot.editors.map(function(e) { 
+            return e.id + '(hidden:' + e.markersHidden + ')'; 
+        }).join(', ') + '</div>' +
+        '<div>全局變數: markersVisible=' + snapshot.globalVars.markersVisible + 
+        ', markersCurrentlyVisible=' + snapshot.globalVars.markersCurrentlyVisible + '</div>';
+    
+    var container = document.getElementById('snapshots');
+    if (container.firstChild && container.firstChild.classList && container.firstChild.classList.contains('info')) {
+        container.innerHTML = '';
+    }
+    container.insertBefore(snapshotDiv, container.firstChild);
+    
+    log('event-log', '已擷取狀態快照', 'success');
+}
+
+// 6. 監控變化
+function monitorChanges() {
+    if (debuggerState.monitoring) {
+        // 停止監控
+        clearInterval(debuggerState.monitorInterval);
+        debuggerState.monitoring = false;
+        log('event-log', '已停止監控', 'warning');
+        return;
+    }
+    
+    debuggerState.monitoring = true;
+    log('event-log', '開始監控編輯器變化...', 'info');
+    
+    // 記錄初始狀態
+    var initialState = new Map();
+    if (tinymce) {
+        var editors = tinymce.get();
+        if (editors) {
+            var editorArray = Array.isArray(editors) ? editors : [editors];
+            for (var i = 0; i < editorArray.length; i++) {
+                var editor = editorArray[i];
+                var body = editor.getBody();
+                initialState.set(editor.id, {
+                    markersHidden: body ? body.classList.contains('markers-hidden') : null,
+                    bodyClasses: body ? Array.from(body.classList) : []
+                });
+            }
+        }
+    }
+    
+    // 每秒檢查一次
+    debuggerState.monitorInterval = setInterval(function() {
+        if (!tinymce) return;
+        
+        var editors = tinymce.get();
+        if (!editors) return;
+        
+        var editorArray = Array.isArray(editors) ? editors : [editors];
+        
+        // 檢查新編輯器
+        for (var i = 0; i < editorArray.length; i++) {
+            var editor = editorArray[i];
+            if (!initialState.has(editor.id)) {
+                log('event-log', '🆕 檢測到新編輯器: ' + editor.id, 'warning');
+                var body = editor.getBody();
+                initialState.set(editor.id, {
+                    markersHidden: body ? body.classList.contains('markers-hidden') : null,
+                    bodyClasses: body ? Array.from(body.classList) : []
+                });
+            }
+        }
+        
+        // 檢查狀態變化
+        for (var j = 0; j < editorArray.length; j++) {
+            var checkEditor = editorArray[j];
+            var checkBody = checkEditor.getBody();
+            if (!checkBody) continue;
+            
+            var previousState = initialState.get(checkEditor.id);
+            if (!previousState) continue;
+            
+            var currentHidden = checkBody.classList.contains('markers-hidden');
+            var currentClasses = Array.from(checkBody.classList);
+            
+            // 檢查 markers-hidden 變化
+            if (previousState.markersHidden !== currentHidden) {
+                log('event-log', '🔄 ' + checkEditor.id + ' markers-hidden: ' + previousState.markersHidden + ' → ' + currentHidden, 'warning');
+                previousState.markersHidden = currentHidden;
+            }
+            
+            // 檢查其他 class 變化
+            var addedClasses = currentClasses.filter(function(c) { 
+                return !previousState.bodyClasses.includes(c); 
+            });
+            var removedClasses = previousState.bodyClasses.filter(function(c) { 
+                return !currentClasses.includes(c); 
+            });
+            
+            if (addedClasses.length > 0) {
+                log('event-log', '➕ ' + checkEditor.id + ' 新增 class: ' + addedClasses.join(', '), 'info');
+            }
+            
+            if (removedClasses.length > 0) {
+                log('event-log', '➖ ' + checkEditor.id + ' 移除 class: ' + removedClasses.join(', '), 'info');
+            }
+            
+            previousState.bodyClasses = currentClasses;
+        }
+        
+        // 檢查 activeEditor 變化
+        var currentActive = tinymce.activeEditor ? tinymce.activeEditor.id : null;
+        if (debuggerState.lastActiveEditor !== currentActive) {
+            log('event-log', '🎯 ActiveEditor 變更: ' + debuggerState.lastActiveEditor + ' → ' + currentActive, 'warning');
+            debuggerState.lastActiveEditor = currentActive;
+        }
+        
+    }, 1000);
+}
+
+// 7. 完整診斷
+function runFullDiagnostic() {
+    log('event-log', '開始執行完整診斷...', 'info');
+    
+    // 清除所有區域
+    var sections = ['editor-status', 'style-diagnosis', 'toggle-tests'];
+    for (var i = 0; i < sections.length; i++) {
+        clearSection(sections[i]);
+    }
+    
+    // 執行所有測試
+    checkEditorStates();
+    
+    setTimeout(function() {
+        diagnoseStyleInjection();
+    }, 500);
+    
+    setTimeout(function() {
+        testToggleFunctions();
+    }, 1000);
+    
+    setTimeout(function() {
+        captureSnapshot();
+    }, 1500);
+    
+    // 額外的診斷
+    setTimeout(function() {
+        // 檢查 page header 的初始化狀態
+        log('event-log', '\n檢查 Page Header 系統...', 'info');
+        
+        var systems = {
+            '標記系統已注入': window.markerStylesInjected,
+            '標記可見': window.markersVisible,
+            '多標記系統': typeof window.tagTypes !== 'undefined',
+            'Placeholder 處理器': typeof window.initBubblePlaceholderHandler !== 'undefined'
+        };
+        
+        for (var system in systems) {
+            log('event-log', system + ': ' + (systems[system] ? '✅' : '❌'), systems[system] ? 'success' : 'error');
+        }
+        
+        // 提供修復建議
+        log('event-log', '\n診斷完成！', 'info');
+        if (document.getElementById('style-diagnosis').innerHTML.includes('透明')) {
+            log('event-log', '💡 發現樣式問題，建議執行「修復樣式」', 'warning');
+        }
+        
+        // 檢查是否需要插入測試內容
+        var hasContent = false;
+        var editors = tinymce.get();
+        if (editors) {
+            var editorArray = Array.isArray(editors) ? editors : [editors];
+            for (var i = 0; i < editorArray.length; i++) {
+                if (editorArray[i].dom) {
+                    var elements = editorArray[i].dom.select('span.opt-keyword-existing, span.opt-keyword, span.opt-modified, .opt-new, span.opt-placeholder');
+                    if (elements.length > 0) {
+                        hasContent = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (!hasContent) {
+            log('event-log', '💡 沒有發現測試標記，建議使用「插入測試標記」功能', 'warning');
+        }
+    }, 2000);
+}
+
+// 8. 複製所有日誌
+function copyAllLogs() {
+    var logContent = '=== TinyMCE Toggle 增強版除錯日誌 ===\n';
+    logContent += '時間: ' + new Date().toLocaleString() + '\n\n';
+    
+    // 1. 基本資訊
+    logContent += '【基本資訊】\n';
+    if (typeof tinymce !== 'undefined') {
+        var editors = tinymce.get();
+        var editorCount = editors ? (Array.isArray(editors) ? editors.length : 1) : 0;
+        logContent += 'TinyMCE 版本: ' + (tinymce.majorVersion || 'unknown') + '.' + (tinymce.minorVersion || 'unknown') + '\n';
+        logContent += '編輯器數量: ' + editorCount + '\n';
+        logContent += 'activeEditor: ' + (tinymce.activeEditor ? tinymce.activeEditor.id : 'none') + '\n';
+    } else {
+        logContent += 'TinyMCE 未載入\n';
+    }
+    logContent += '\n';
+    
+    // 2. 編輯器狀態
+    logContent += '【編輯器狀態】\n';
+    var editorStatus = document.getElementById('editor-status');
+    if (editorStatus) {
+        var cards = editorStatus.getElementsByClassName('editor-card');
+        for (var i = 0; i < cards.length; i++) {
+            var cardText = cards[i].innerText || cards[i].textContent;
+            logContent += cardText + '\n';
+        }
+    }
+    logContent += '\n';
+    
+    // 3. 樣式診斷
+    logContent += '【樣式診斷】\n';
+    var styleDiagnosis = document.getElementById('style-diagnosis');
+    if (styleDiagnosis) {
+        var diagnostics = styleDiagnosis.getElementsByClassName('style-diagnostic');
+        for (var j = 0; j < diagnostics.length; j++) {
+            var diagText = diagnostics[j].innerText || diagnostics[j].textContent;
+            logContent += diagText + '\n';
+        }
+    }
+    logContent += '\n';
+    
+    // 4. Toggle 函數測試結果
+    logContent += '【Toggle 函數測試】\n';
+    var toggleTests = document.getElementById('toggle-tests');
+    if (toggleTests) {
+        var entries = toggleTests.getElementsByClassName('log-entry');
+        for (var k = 0; k < entries.length; k++) {
+            var entryText = entries[k].innerText || entries[k].textContent;
+            logContent += entryText + '\n';
+        }
+    }
+    logContent += '\n';
+    
+    // 5. 事件日誌（最近 30 條）
+    logContent += '【事件日誌（最近 30 條）】\n';
+    var eventLog = document.getElementById('event-log');
+    if (eventLog) {
+        var logEntries = eventLog.getElementsByClassName('log-entry');
+        var maxEntries = Math.min(30, logEntries.length);
+        for (var l = 0; l < maxEntries; l++) {
+            var logText = logEntries[l].innerText || logEntries[l].textContent;
+            logContent += logText + '\n';
+        }
+    }
+    logContent += '\n';
+    
+    // 6. 快照
+    logContent += '【狀態快照】\n';
+    if (debuggerState.snapshots.length > 0) {
+        for (var s = 0; s < debuggerState.snapshots.length; s++) {
+            var snapshot = debuggerState.snapshots[s];
+            logContent += '快照 ' + (s + 1) + ' - ' + snapshot.time + '\n';
+            logContent += '  編輯器: ' + JSON.stringify(snapshot.editors) + '\n';
+            logContent += '  activeEditor: ' + snapshot.activeEditor + '\n';
+            logContent += '  全局變數: ' + JSON.stringify(snapshot.globalVars) + '\n';
+        }
+    } else {
+        logContent += '無快照記錄\n';
+    }
+    logContent += '\n';
+    
+    // 7. Page Header 系統狀態
+    logContent += '【Page Header 系統狀態】\n';
+    logContent += 'markerStylesInjected: ' + (window.markerStylesInjected || false) + '\n';
+    logContent += 'markersVisible: ' + (window.markersVisible || 'undefined') + '\n';
+    logContent += 'markersCurrentlyVisible: ' + (window.markersCurrentlyVisible || 'undefined') + '\n';
+    logContent += 'toggleTinyMCEMarkers 存在: ' + (typeof window.toggleTinyMCEMarkers !== 'undefined') + '\n';
+    logContent += 'toggleMarkers 存在: ' + (typeof window.toggleMarkers !== 'undefined') + '\n';
+    logContent += 'showMarkers 存在: ' + (typeof window.showMarkers !== 'undefined') + '\n';
+    logContent += 'hideMarkers 存在: ' + (typeof window.hideMarkers !== 'undefined') + '\n';
+    logContent += '\n';
+    
+    // 8. 詳細編輯器資訊
+    logContent += '【詳細編輯器資訊】\n';
+    if (typeof tinymce !== 'undefined' && tinymce.get()) {
+        var allEditors = tinymce.get();
+        var editorArray = Array.isArray(allEditors) ? allEditors : [allEditors];
+        for (var e = 0; e < editorArray.length; e++) {
+            var editor = editorArray[e];
+            var body = editor.getBody();
+            var doc = editor.getDoc();
+            
+            logContent += '編輯器 ' + (e + 1) + ' (' + editor.id + '):\n';
+            logContent += '  - initialized: ' + editor.initialized + '\n';
+            logContent += '  - mode: ' + editor.mode.get() + '\n';
+            logContent += '  - hidden: ' + editor.isHidden() + '\n';
+            
+            if (body) {
+                logContent += '  - body classes: ' + body.className + '\n';
+                logContent += '  - markers-hidden: ' + body.classList.contains('markers-hidden') + '\n';
+            }
+            
+            if (doc) {
+                var styles = doc.querySelectorAll('style');
+                logContent += '  - style 標籤數: ' + styles.length + '\n';
+                for (var st = 0; st < styles.length; st++) {
+                    if (styles[st].id) {
+                        logContent += '    - #' + styles[st].id + '\n';
+                    }
+                }
+            }
+            
+            // 元素統計
+            if (editor.dom) {
+                logContent += '  - 標記元素:\n';
+                var counts = {
+                    'opt-keyword-existing': editor.dom.select('span.opt-keyword-existing').length,
+                    'opt-keyword': editor.dom.select('span.opt-keyword').length,
+                    'opt-modified': editor.dom.select('span.opt-modified').length,
+                    'opt-new': editor.dom.select('.opt-new').length,
+                    'opt-placeholder': editor.dom.select('span.opt-placeholder').length
+                };
+                for (var cls in counts) {
+                    if (counts[cls] > 0) {
+                        logContent += '    - ' + cls + ': ' + counts[cls] + ' 個\n';
+                    }
+                }
+            }
+            
+            logContent += '\n';
+        }
+    }
+    
+    // 複製到剪貼板
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(logContent).then(function() {
+            log('event-log', '✅ 日誌已複製到剪貼板', 'success');
+            alert('日誌已複製到剪貼板！');
+        }).catch(function(err) {
+            log('event-log', '❌ 複製失敗: ' + err, 'error');
+            fallbackCopyTextToClipboard(logContent);
+        });
+    } else {
+        fallbackCopyTextToClipboard(logContent);
+    }
+}
+
+// 降級的複製方法
+function fallbackCopyTextToClipboard(text) {
+    var textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        var successful = document.execCommand('copy');
+        if (successful) {
+            log('event-log', '✅ 日誌已複製到剪貼板（降級方法）', 'success');
+            alert('日誌已複製到剪貼板！');
+        } else {
+            log('event-log', '❌ 複製失敗', 'error');
+            alert('複製失敗，請手動選擇並複製');
+        }
+    } catch (err) {
+        log('event-log', '❌ 複製錯誤: ' + err, 'error');
+        alert('複製失敗: ' + err);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// 設置事件監聽
+if (tinymce) {
+    tinymce.on('AddEditor', function(e) {
+        log('event-log', '📌 TinyMCE 事件: AddEditor (' + e.editor.id + ')', 'warning');
+    });
+    
+    tinymce.on('RemoveEditor', function(e) {
+        log('event-log', '📌 TinyMCE 事件: RemoveEditor (' + e.editor.id + ')', 'warning');
+    });
+}
+
+// 自動執行初始診斷
+setTimeout(function() {
+    log('event-log', '除錯工具已載入，執行初始檢查...', 'success');
+    checkEditorStates();
+}, 1000);
+
+// 全局快捷函數
+window.toggleDebug = {
+    diagnose: runFullDiagnostic,
+    checkEditors: checkEditorStates,
+    diagnoseStyles: diagnoseStyleInjection,
+    fixStyles: fixStyleInjection,
+    testToggle: testToggleFunctions,
+    insertTest: insertTestContent,
+    snapshot: captureSnapshot,
+    monitor: monitorChanges,
+    clear: clearLogs,
+    copyLogs: copyAllLogs
+};
+
+console.log('%c🔍 Toggle 增強版除錯工具（含測試標記）已載入！', 
+    'background: #3B82F6; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
+console.log('新功能: toggleDebug.insertTest() - 插入測試標記到編輯器');
+console.log('可用命令: toggleDebug.diagnose(), toggleDebug.fixStyles(), toggleDebug.copyLogs()');
+</script>
+
+</body>
+</html>

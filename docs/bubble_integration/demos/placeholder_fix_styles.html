@@ -1,0 +1,97 @@
+<!-- 修正 Placeholder 隱藏樣式 - 保留點擊功能 -->
+
+<script>
+/**
+ * 修正 Placeholder 隱藏時仍可點擊的樣式
+ */
+window.fixPlaceholderHiddenStyle = function() {
+    try {
+        if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+            console.log('⏳ TinyMCE 尚未準備好');
+            return false;
+        }
+        
+        const editor = tinymce.activeEditor;
+        const iframeDoc = editor.getDoc();
+        
+        // 移除舊的 multi-tag-styles
+        const oldStyle = iframeDoc.getElementById('multi-tag-styles');
+        if (oldStyle) {
+            oldStyle.remove();
+        }
+        
+        // 創建新的樣式，修正 placeholder 隱藏模式
+        const style = iframeDoc.createElement('style');
+        style.id = 'multi-tag-styles-fixed';
+        style.textContent = `
+            /* === 個別隱藏樣式 (修正版) === */
+            
+            /* 隱藏 opt-new */
+            body.hide-opt-new .opt-new {
+                background-color: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            
+            /* 隱藏 opt-modified */
+            body.hide-opt-modified .opt-modified {
+                background-color: transparent !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+            }
+            
+            /* 隱藏 opt-placeholder - 保留互動性 */
+            body.hide-opt-placeholder .opt-placeholder {
+                /* 只隱藏視覺效果，保留功能 */
+                background-color: transparent !important;
+                border: 1px solid transparent !important;
+                /* 保留 padding 和 cursor，維持可點擊區域 */
+                /* color: inherit !important; -- 移除這行，保留原色 */
+                /* font-style: normal !important; -- 移除這行，保留斜體 */
+                
+                /* 添加微妙的 hover 效果，讓用戶知道可以點擊 */
+                cursor: pointer !important;
+                transition: all 0.2s ease;
+            }
+            
+            /* 隱藏狀態下的 placeholder hover 效果 */
+            body.hide-opt-placeholder .opt-placeholder:hover {
+                background-color: rgba(248, 113, 113, 0.05) !important;
+                border: 1px dashed rgba(248, 113, 113, 0.3) !important;
+            }
+            
+            /* 隱藏 opt-keyword */
+            body.hide-opt-keyword .opt-keyword {
+                background-color: transparent !important;
+                color: inherit !important;
+                border: none !important;
+                padding: 0 !important;
+                font-weight: normal !important;
+            }
+            
+            /* 隱藏 opt-keyword-existing */
+            body.hide-opt-keyword-existing .opt-keyword-existing {
+                background-color: transparent !important;
+                color: inherit !important;
+                padding: 0 !important;
+                font-weight: normal !important;
+                border-radius: 0 !important;
+            }
+        `;
+        
+        iframeDoc.head.appendChild(style);
+        console.log('✅ 修正的多標記樣式已注入');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ 注入修正樣式時發生錯誤:', error);
+        return false;
+    }
+};
+
+// 自動應用修正
+setTimeout(function() {
+    window.fixPlaceholderHiddenStyle();
+}, 2000);
+</script>

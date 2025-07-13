@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume Tailoring - Enhanced UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Section */
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        /* Control Bar */
+        .control-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-label {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+        }
+
+        /* View Mode Toggle */
+        .view-mode-toggle {
+            display: flex;
+            gap: 5px;
+            background: #f5f5f5;
+            padding: 4px;
+            border-radius: 4px;
+        }
+
+        .view-mode-btn {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 13px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .view-mode-btn.active {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            background: #E3F2FD;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #1976D2;
+        }
+
+        .stat-improvement {
+            font-size: 14px;
+            color: #4CAF50;
+            margin-top: 2px;
+        }
+
+        /* Main Content Wrapper */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 20px;
+        }
+
+        /* Main Content Column */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Resume Container */
+        .resume-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        /* Visual Markers */
+        .opt-keyword {
+            background-color: #c8e6c9;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .opt-keyword-existing {
+            background-color: #dcedc8;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .opt-placeholder {
+            background-color: #ffccbc;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .opt-modified {
+            background-color: #fff9c4;
+            padding: 8px;
+            margin: 4px 0;
+            border-left: 4px solid #FFC107;
+        }
+
+        .opt-new {
+            background-color: #e8f5e9;
+            padding: 8px;
+            margin: 4px 0;
+            border-left: 4px solid #4CAF50;
+        }
+
+        /* Hide markers when toggle is off */
+        .hide-new-keywords .opt-keyword {
+            background-color: transparent;
+            padding: 0;
+            font-weight: normal;
+        }
+
+        .hide-existing-keywords .opt-keyword-existing {
+            background-color: transparent;
+            padding: 0;
+        }
+
+        .hide-placeholders .opt-placeholder {
+            background-color: transparent;
+            padding: 0;
+            font-weight: normal;
+        }
+
+        .hide-modified .opt-modified {
+            background-color: transparent;
+            padding: 0;
+            border-left: none;
+            margin: 0;
+        }
+
+        /* Keywords Section */
+        .keywords-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .keywords-content {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .keywords-group {
+            margin-bottom: 0;
+        }
+
+        .keywords-subtitle {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .keywords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .keyword-tag {
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 16px;
+            font-weight: 500;
+            display: inline-block;
+        }
+
+        .keyword-tag.new {
+            background-color: #c8e6c9;
+            color: #2e7d32;
+        }
+
+        .keyword-tag.existing {
+            background-color: #e1f5fe;
+            color: #0277bd;
+        }
+
+        .keyword-tag.missing {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Marker Controls Section */
+        .marker-controls-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .marker-controls-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .control-label-full {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        /* Vertical Marker Toggles */
+        .marker-toggles-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-left: 10px;
+        }
+
+        .marker-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .marker-toggle input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .marker-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .marker-new { background-color: #4CAF50; }
+        .marker-existing { background-color: #8BC34A; }
+        .marker-placeholder { background-color: #FF5722; }
+        .marker-modified { background-color: #FFC107; }
+
+        /* Improvements Section */
+        .improvements-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .improvements-header {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .improvements-list {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .improvements-list ul {
+            padding-left: 20px;
+        }
+
+        .improvements-list li {
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        /* Actions Section */
+        .actions-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1976D2;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e8e8e8;
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+
+            .keywords-content {
+                grid-template-columns: 1fr;
+            }
+
+            .control-bar {
+                flex-wrap: wrap;
+            }
+
+            .stats-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Resume Tailoring Result</h1>
+            <p style="color: #666;">AI-powered resume optimization with keyword matching</p>
+        </div>
+
+        <!-- Control Bar -->
+        <div class="control-bar">
+            <div class="control-group">
+                <span class="control-label">Resume Version:</span>
+                <div class="view-mode-toggle">
+                    <button class="view-mode-btn active" onclick="toggleResumeVersion('optimized')">Optimized</button>
+                    <button class="view-mode-btn" onclick="toggleResumeVersion('original')">Original</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <span class="control-label">View Mode:</span>
+                <div class="view-mode-toggle">
+                    <button class="view-mode-btn active" onclick="setViewMode('formatted')">Formatted</button>
+                    <button class="view-mode-btn" onclick="setViewMode('plain')">Plain Text</button>
+                    <button class="view-mode-btn" onclick="setViewMode('html')">HTML Source</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-label">Similarity Score</div>
+                <div class="stat-value">88%</div>
+                <div class="stat-improvement">+24% improved</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Keyword Coverage</div>
+                <div class="stat-value">92%</div>
+                <div class="stat-improvement">+45% improved</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">New Keywords</div>
+                <div class="stat-value">15</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Placeholders</div>
+                <div class="stat-value">8</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content-wrapper">
+            <!-- Left Column: Resume and Keywords -->
+            <div class="main-content">
+                <!-- Resume Content -->
+                <div class="resume-container" id="resume-content">
+                    <h1>John Smith</h1>
+                    <p>Email: john.smith@email.com | Phone: (555) 123-4567 | LinkedIn: linkedin.com/in/johnsmith</p>
+                    
+                    <div class="opt-new">
+                        <h2>Professional Summary</h2>
+                        <p>Experienced Software Engineer with <span class="opt-placeholder">[YEARS]</span> years of expertise in <span class="opt-keyword">Python</span>, <span class="opt-keyword">machine learning</span>, and <span class="opt-keyword">cloud platforms</span>. Proven track record of delivering scalable solutions and leading cross-functional teams to achieve <span class="opt-placeholder">[PERCENTAGE]</span>% improvement in system performance.</p>
+                    </div>
+
+                    <h2>Work Experience</h2>
+                    <h3>Senior Software Developer - TechCorp Inc. (2020-Present)</h3>
+                    <ul>
+                        <li class="opt-modified">Led development of <span class="opt-keyword">microservices</span> architecture using <span class="opt-keyword-existing">Python</span> and <span class="opt-keyword">Docker</span>, resulting in <span class="opt-placeholder">[PERCENTAGE]</span>% reduction in deployment time</li>
+                        <li>Implemented <span class="opt-keyword">CI/CD pipelines</span> using <span class="opt-keyword">Jenkins</span> and <span class="opt-keyword">GitHub Actions</span></li>
+                        <li class="opt-modified">Collaborated with data science team to deploy <span class="opt-keyword">machine learning models</span> using <span class="opt-keyword">TensorFlow</span> and <span class="opt-keyword">scikit-learn</span></li>
+                    </ul>
+
+                    <h2>Technical Skills</h2>
+                    <ul>
+                        <li><strong>Languages:</strong> <span class="opt-keyword-existing">Python</span>, <span class="opt-keyword-existing">JavaScript</span>, <span class="opt-keyword">Java</span>, <span class="opt-keyword">Go</span></li>
+                        <li><strong>Cloud Platforms:</strong> <span class="opt-keyword">AWS</span>, <span class="opt-keyword">Azure</span>, <span class="opt-keyword">GCP</span></li>
+                        <li><strong>ML/AI:</strong> <span class="opt-keyword">TensorFlow</span>, <span class="opt-keyword">PyTorch</span>, <span class="opt-keyword">scikit-learn</span></li>
+                        <li><strong>DevOps:</strong> <span class="opt-keyword">Docker</span>, <span class="opt-keyword">Kubernetes</span>, <span class="opt-keyword">Terraform</span></li>
+                    </ul>
+                </div>
+
+                <!-- Keywords Section -->
+                <div class="keywords-section">
+                    <h3 class="improvements-header">Keywords Analysis</h3>
+                    <div class="keywords-content">
+                        <div class="keywords-group">
+                            <h4 class="keywords-subtitle">New Keywords Added (15)</h4>
+                            <div class="keywords-list">
+                                <span class="keyword-tag new">machine learning</span>
+                                <span class="keyword-tag new">Docker</span>
+                                <span class="keyword-tag new">microservices</span>
+                                <span class="keyword-tag new">CI/CD pipelines</span>
+                                <span class="keyword-tag new">Jenkins</span>
+                                <span class="keyword-tag new">GitHub Actions</span>
+                                <span class="keyword-tag new">TensorFlow</span>
+                                <span class="keyword-tag new">scikit-learn</span>
+                                <span class="keyword-tag new">Java</span>
+                                <span class="keyword-tag new">Go</span>
+                                <span class="keyword-tag new">AWS</span>
+                                <span class="keyword-tag new">Azure</span>
+                                <span class="keyword-tag new">GCP</span>
+                                <span class="keyword-tag new">Kubernetes</span>
+                                <span class="keyword-tag new">Terraform</span>
+                            </div>
+                        </div>
+                        <div class="keywords-group">
+                            <h4 class="keywords-subtitle">Existing Keywords Enhanced (6)</h4>
+                            <div class="keywords-list">
+                                <span class="keyword-tag existing">Python</span>
+                                <span class="keyword-tag existing">JavaScript</span>
+                                <span class="keyword-tag existing">Docker</span>
+                                <span class="keyword-tag existing">Git</span>
+                                <span class="keyword-tag existing">Jenkins</span>
+                                <span class="keyword-tag existing">MySQL</span>
+                            </div>
+                        </div>
+                        <div class="keywords-group">
+                            <h4 class="keywords-subtitle">Keywords Still Missing (3)</h4>
+                            <div class="keywords-list">
+                                <span class="keyword-tag missing">Hadoop</span>
+                                <span class="keyword-tag missing">Spark</span>
+                                <span class="keyword-tag missing">MLOps</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Marker Controls -->
+                <div class="marker-controls-section">
+                    <h3 class="improvements-header">Display Options</h3>
+                    <div class="marker-controls-content">
+                        <div class="control-group">
+                            <label class="control-label-full">
+                                <span>Show All Markers</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="toggle-all-markers" checked onchange="toggleAllMarkers()">
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                        </div>
+                        <div class="marker-toggles-vertical">
+                            <label class="marker-toggle">
+                                <input type="checkbox" id="toggle-new-keywords" checked onchange="toggleMarker('new-keywords')">
+                                <span class="marker-indicator marker-new"></span>
+                                <span>New Keywords</span>
+                            </label>
+                            <label class="marker-toggle">
+                                <input type="checkbox" id="toggle-existing-keywords" checked onchange="toggleMarker('existing-keywords')">
+                                <span class="marker-indicator marker-existing"></span>
+                                <span>Existing Keywords</span>
+                            </label>
+                            <label class="marker-toggle">
+                                <input type="checkbox" id="toggle-placeholders" checked onchange="toggleMarker('placeholders')">
+                                <span class="marker-indicator marker-placeholder"></span>
+                                <span>Placeholders</span>
+                            </label>
+                            <label class="marker-toggle">
+                                <input type="checkbox" id="toggle-modified" checked onchange="toggleMarker('modified')">
+                                <span class="marker-indicator marker-modified"></span>
+                                <span>Modified Content</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Improvements Section -->
+                <div class="improvements-section">
+                    <h3 class="improvements-header">Applied Improvements</h3>
+                    <div class="improvements-list">
+                        <ul>
+                            <li><strong>[Section: Summary]</strong> Added professional summary highlighting Python expertise and cloud experience</li>
+                            <li><strong>[Section: Experience]</strong> Enhanced bullet points with quantifiable achievements and relevant keywords</li>
+                            <li><strong>[Section: Skills]</strong> Reorganized skills into categories and added missing technical keywords</li>
+                            <li><strong>[Keywords]</strong> Added 15 new relevant keywords from job description</li>
+                            <li><strong>[Placeholders]</strong> Added 8 placeholders for specific metrics</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Actions Section -->
+                <div class="actions-section">
+                    <h3 class="improvements-header">Actions</h3>
+                    <div class="action-buttons">
+                        <button class="btn btn-primary" onclick="copyCleanHTML()">Copy Clean HTML</button>
+                        <button class="btn btn-secondary" onclick="downloadPDF()">Download as PDF</button>
+                        <button class="btn btn-secondary" onclick="exportWord()">Export to Word</button>
+                        <button class="btn btn-secondary" onclick="copyPlainText()">Copy Plain Text</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Resume content storage
+        let currentViewMode = 'formatted';
+        let currentVersion = 'optimized';
+        let optimizedHTML = document.getElementById('resume-content').innerHTML;
+        let originalResumeHTML = `
+            <h1>John Smith</h1>
+            <p>Email: john.smith@email.com | Phone: (555) 123-4567 | LinkedIn: linkedin.com/in/johnsmith</p>
+            
+            <h2>Work Experience</h2>
+            <h3>Senior Software Developer - TechCorp Inc. (2020-Present)</h3>
+            <ul>
+                <li>Led development of web applications using Python and JavaScript</li>
+                <li>Managed team of 5 developers in agile environment</li>
+                <li>Collaborated with stakeholders to deliver projects on time</li>
+            </ul>
+
+            <h2>Technical Skills</h2>
+            <ul>
+                <li><strong>Languages:</strong> Python, JavaScript, HTML, CSS</li>
+                <li><strong>Frameworks:</strong> Django, React, Node.js</li>
+                <li><strong>Databases:</strong> MySQL, PostgreSQL, MongoDB</li>
+                <li><strong>Tools:</strong> Git, Docker, Jenkins</li>
+            </ul>
+
+            <h2>Education</h2>
+            <p><strong>Bachelor of Science in Computer Science</strong><br>
+            State University (2016-2020)</p>
+        `;
+        
+        let currentHTML = optimizedHTML;
+
+        // Toggle between original and optimized resume
+        function toggleResumeVersion(version) {
+            currentVersion = version;
+            const content = document.getElementById('resume-content');
+            const buttons = event.target.parentElement.querySelectorAll('.view-mode-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (version === 'original') {
+                currentHTML = originalResumeHTML;
+                content.innerHTML = originalResumeHTML;
+                // Disable marker controls when viewing original
+                document.querySelector('.marker-toggles-vertical').style.opacity = '0.5';
+                document.querySelector('.marker-toggles-vertical').style.pointerEvents = 'none';
+                document.getElementById('toggle-all-markers').disabled = true;
+                
+                // Update stats to show original values
+                updateStatsForOriginal();
+            } else {
+                currentHTML = optimizedHTML;
+                content.innerHTML = optimizedHTML;
+                // Enable marker controls
+                document.querySelector('.marker-toggles-vertical').style.opacity = '1';
+                document.querySelector('.marker-toggles-vertical').style.pointerEvents = 'auto';
+                document.getElementById('toggle-all-markers').disabled = false;
+                applyMarkerVisibility();
+                
+                // Update stats to show optimized values
+                updateStatsForOptimized();
+            }
+
+            // Reapply current view mode
+            if (currentViewMode !== 'formatted') {
+                setViewMode(currentViewMode);
+            }
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            const content = document.getElementById('resume-content');
+            const buttons = event.target.parentElement.querySelectorAll('.view-mode-btn');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            switch(mode) {
+                case 'plain':
+                    content.innerText = content.innerText;
+                    break;
+                case 'html':
+                    content.textContent = currentHTML;
+                    break;
+                default: // formatted
+                    content.innerHTML = currentHTML;
+                    if (currentVersion === 'optimized') {
+                        applyMarkerVisibility();
+                    }
+            }
+        }
+
+        // Update stats display
+        function updateStatsForOriginal() {
+            document.querySelector('.stat-item:nth-child(1) .stat-value').textContent = '64%';
+            document.querySelector('.stat-item:nth-child(1) .stat-improvement').textContent = 'Original score';
+            document.querySelector('.stat-item:nth-child(2) .stat-value').textContent = '47%';
+            document.querySelector('.stat-item:nth-child(2) .stat-improvement').textContent = 'Original coverage';
+            document.querySelector('.stat-item:nth-child(3) .stat-value').textContent = '0';
+            document.querySelector('.stat-item:nth-child(4) .stat-value').textContent = '0';
+        }
+
+        function updateStatsForOptimized() {
+            document.querySelector('.stat-item:nth-child(1) .stat-value').textContent = '88%';
+            document.querySelector('.stat-item:nth-child(1) .stat-improvement').textContent = '+24% improved';
+            document.querySelector('.stat-item:nth-child(2) .stat-value').textContent = '92%';
+            document.querySelector('.stat-item:nth-child(2) .stat-improvement').textContent = '+45% improved';
+            document.querySelector('.stat-item:nth-child(3) .stat-value').textContent = '15';
+            document.querySelector('.stat-item:nth-child(4) .stat-value').textContent = '8';
+        }
+
+        // Marker toggle functions
+        function toggleAllMarkers() {
+            const isChecked = document.getElementById('toggle-all-markers').checked;
+            const checkboxes = document.querySelectorAll('.marker-toggle input[type="checkbox"]');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            
+            applyMarkerVisibility();
+        }
+
+        function toggleMarker(type) {
+            applyMarkerVisibility();
+        }
+
+        function applyMarkerVisibility() {
+            const content = document.getElementById('resume-content');
+            
+            // Remove all hide classes
+            content.classList.remove('hide-new-keywords', 'hide-existing-keywords', 'hide-placeholders', 'hide-modified');
+            
+            // Apply hide classes based on unchecked toggles
+            if (!document.getElementById('toggle-new-keywords').checked) {
+                content.classList.add('hide-new-keywords');
+            }
+            if (!document.getElementById('toggle-existing-keywords').checked) {
+                content.classList.add('hide-existing-keywords');
+            }
+            if (!document.getElementById('toggle-placeholders').checked) {
+                content.classList.add('hide-placeholders');
+            }
+            if (!document.getElementById('toggle-modified').checked) {
+                content.classList.add('hide-modified');
+            }
+        }
+
+        // Export functions
+        function copyCleanHTML() {
+            const content = document.getElementById('resume-content').cloneNode(true);
+            
+            // Remove all marker classes
+            const markers = content.querySelectorAll('.opt-keyword, .opt-keyword-existing, .opt-placeholder, .opt-modified, .opt-new');
+            markers.forEach(marker => {
+                if (marker.classList.contains('opt-new') || marker.classList.contains('opt-modified')) {
+                    // For block-level markers, unwrap the content
+                    while (marker.firstChild) {
+                        marker.parentNode.insertBefore(marker.firstChild, marker);
+                    }
+                    marker.parentNode.removeChild(marker);
+                } else {
+                    // For inline markers, just remove the span
+                    const text = marker.textContent;
+                    marker.parentNode.replaceChild(document.createTextNode(text), marker);
+                }
+            });
+            
+            // Copy to clipboard
+            const cleanHTML = content.innerHTML;
+            navigator.clipboard.writeText(cleanHTML).then(() => {
+                showNotification('Clean HTML copied to clipboard!');
+            });
+        }
+
+        function copyPlainText() {
+            const content = document.getElementById('resume-content').innerText;
+            navigator.clipboard.writeText(content).then(() => {
+                showNotification('Plain text copied to clipboard!');
+            });
+        }
+
+        function downloadPDF() {
+            showNotification('PDF download feature - integrate with your preferred PDF library');
+        }
+
+        function exportWord() {
+            showNotification('Word export feature - integrate with your preferred document library');
+        }
+
+        // Notification helper
+        function showNotification(message) {
+            // Simple alert for demo - replace with toast notification
+            alert(message);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            applyMarkerVisibility();
+        });
+    </script>
+</body>
+</html>

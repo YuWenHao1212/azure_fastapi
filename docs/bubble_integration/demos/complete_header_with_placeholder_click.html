@@ -1,0 +1,725 @@
+<!-- === 完整的 Page HTML Header - 包含三個系統 === -->
+
+<!-- 系統 1: 原本的單一控制系統 -->
+<script>
+/**
+ * 優雅解決方案 - 讓我們的樣式成為預設樣式
+ * Elegant Solution - Making our styles the default
+ * 
+ * 這個方案只需要在頁面載入時注入一次樣式，之後只需切換 class
+ */
+
+(function() {
+    'use strict';
+    
+    // 標記我們的樣式是否已經注入
+    window.markerStylesInjected = false;
+    
+    /**
+     * 注入預設樣式 - 只需執行一次
+     * 這會讓 opt-tags 預設就有我們定義的可見樣式
+     */
+    window.injectDefaultMarkerStyles = function() {
+        if (window.markerStylesInjected) {
+            console.log('✅ 樣式已存在，無需重複注入');
+            return true;
+        }
+        
+        try {
+            // 等待 TinyMCE 準備好
+            if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                console.log('⏳ TinyMCE 尚未準備好');
+                return false;
+            }
+            
+            const editor = tinymce.activeEditor;
+            const iframeDoc = editor.getDoc();
+            
+            // 創建樣式元素
+            const style = iframeDoc.createElement('style');
+            style.id = 'default-marker-styles';
+            style.textContent = `
+                /* === 預設樣式 - opt-tags 的可見狀態 === */
+                
+                /* opt-new - 新增區段 (綠色) */
+                .opt-new {
+                    background-color: rgba(16, 185, 129, 0.1) !important;
+                    border-left: 4px solid #10B981 !important;
+                    padding-left: 16px !important;
+                    margin: 4px 0 !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-modified - 修改內容 (黃色) */
+                .opt-modified {
+                    background-color: #fef3c7 !important;
+                    padding: 2px 6px !important;
+                    border-radius: 3px !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-placeholder - 佔位符 (紅色) */
+                .opt-placeholder {
+                    background-color: #fee2e2 !important;
+                    color: #991b1b !important;
+                    border: 1px dashed #f87171 !important;
+                    padding: 2px 8px !important;
+                    border-radius: 4px !important;
+                    font-style: italic !important;
+                    transition: all 0.3s ease;
+                    cursor: pointer !important;
+                    display: inline-block !important;
+                }
+                
+                .opt-placeholder:hover {
+                    background-color: #fecaca !important;
+                    border-color: #ef4444 !important;
+                }
+                
+                /* opt-keyword - 新關鍵字 (紫色) */
+                .opt-keyword {
+                    background-color: transparent !important;
+                    color: #6366f1 !important;
+                    border: 1px solid #c7d2fe !important;
+                    padding: 2px 6px !important;
+                    border-radius: 3px !important;
+                    font-weight: 500 !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-keyword-existing - 現有關鍵字 (藍色) */
+                .opt-keyword-existing {
+                    background-color: #2563eb !important;
+                    color: white !important;
+                    padding: 3px 8px !important;
+                    border-radius: 4px !important;
+                    font-weight: 600 !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* === 隱藏模式 - 當 body 有 markers-hidden class 時 === */
+                
+                body.markers-hidden .opt-new,
+                body.markers-hidden .opt-modified,
+                body.markers-hidden .opt-placeholder,
+                body.markers-hidden .opt-keyword,
+                body.markers-hidden .opt-keyword-existing {
+                    background-color: transparent !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    color: inherit !important;
+                    font-weight: normal !important;
+                    font-style: normal !important;
+                    border-radius: 0 !important;
+                }
+            `;
+            
+            // 注入樣式到 iframe head
+            iframeDoc.head.appendChild(style);
+            
+            // 標記樣式已注入
+            window.markerStylesInjected = true;
+            
+            console.log('✅ 預設標記樣式已成功注入');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ 注入樣式時發生錯誤:', error);
+            return false;
+        }
+    };
+    
+    /**
+     * 簡單的切換函數 - 只需切換 class
+     * @param {boolean} hideMarkers - true 隱藏, false 顯示
+     */
+    window.toggleMarkers = function(hideMarkers) {
+        try {
+            if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                console.error('❌ TinyMCE 編輯器未找到');
+                return false;
+            }
+            
+            const editor = tinymce.activeEditor;
+            const iframeDoc = editor.getDoc();
+            const body = iframeDoc.body;
+            
+            // 確保樣式已注入
+            if (!window.markerStylesInjected) {
+                window.injectDefaultMarkerStyles();
+            }
+            
+            // 簡單切換 class
+            if (hideMarkers) {
+                body.classList.add('markers-hidden');
+                console.log('🔴 標記已隱藏');
+            } else {
+                body.classList.remove('markers-hidden');
+                console.log('🟢 標記已顯示');
+            }
+            
+            // 輕量級刷新
+            body.style.opacity = '0.99';
+            setTimeout(() => {
+                body.style.opacity = '1';
+            }, 10);
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ 切換標記時發生錯誤:', error);
+            return false;
+        }
+    };
+    
+    /**
+     * 自動初始化 - 在 TinyMCE 準備好時注入樣式
+     */
+    window.initializeMarkerSystem = function() {
+        console.log('🚀 初始化標記系統...');
+        
+        const checkInterval = setInterval(function() {
+            if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+                // 注入預設樣式
+                if (window.injectDefaultMarkerStyles()) {
+                    clearInterval(checkInterval);
+                    console.log('✅ 標記系統初始化完成');
+                    
+                    // 確保初始狀態是顯示標記（移除 markers-hidden class）
+                    const editor = tinymce.activeEditor;
+                    const iframeDoc = editor.getDoc();
+                    iframeDoc.body.classList.remove('markers-hidden');
+                    console.log('🟢 初始狀態：顯示標記');
+                }
+            }
+        }, 500);
+        
+        // 30秒後停止嘗試
+        setTimeout(() => clearInterval(checkInterval), 30000);
+    };
+    
+    // 頁面載入時自動初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.initializeMarkerSystem);
+    } else {
+        window.initializeMarkerSystem();
+    }
+    
+    // 初始化全局狀態變數（與頁面載入時的顯示狀態一致）
+    window.markersVisible = true;
+    
+})();
+
+// === 全局函數供 Bubble 使用 ===
+
+/**
+ * 主要的 toggle 函數 - 供 Bubble workflow 調用
+ */
+window.toggleTinyMCEMarkers = function(hideMarkers) {
+    return window.toggleMarkers(hideMarkers);
+};
+
+/**
+ * 便利函數
+ */
+window.showMarkers = function() {
+    return window.toggleMarkers(false);
+};
+
+window.hideMarkers = function() {
+    return window.toggleMarkers(true);
+};
+</script>
+
+<!-- 系統 2: 多標記獨立控制系統 -->
+<script>
+/**
+ * 多標記獨立控制系統
+ * 可以分別控制5種不同的 opt-tag 顯示/隱藏
+ */
+
+(function() {
+    'use strict';
+    
+    // 定義5種標記類型
+    window.tagTypes = {
+        'opt-new': {
+            name: '新增區段',
+            color: 'green',
+            visible: true
+        },
+        'opt-modified': {
+            name: '修改內容',
+            color: 'yellow',
+            visible: true
+        },
+        'opt-placeholder': {
+            name: '佔位符',
+            color: 'red',
+            visible: true
+        },
+        'opt-keyword': {
+            name: '新關鍵字',
+            color: 'purple',
+            visible: true
+        },
+        'opt-keyword-existing': {
+            name: '現有關鍵字',
+            color: 'blue',
+            visible: true
+        }
+    };
+    
+    // 注入多標記控制樣式
+    window.injectMultiTagStyles = function() {
+        try {
+            if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                console.log('⏳ TinyMCE 尚未準備好');
+                return false;
+            }
+            
+            const editor = tinymce.activeEditor;
+            const iframeDoc = editor.getDoc();
+            
+            // 檢查是否已注入
+            if (iframeDoc.getElementById('multi-tag-styles')) {
+                console.log('✅ 樣式已存在');
+                return true;
+            }
+            
+            const style = iframeDoc.createElement('style');
+            style.id = 'multi-tag-styles';
+            style.textContent = `
+                /* === 個別隱藏樣式 === */
+                
+                /* 隱藏 opt-new */
+                body.hide-opt-new .opt-new {
+                    background-color: transparent !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                
+                /* 隱藏 opt-modified */
+                body.hide-opt-modified .opt-modified {
+                    background-color: transparent !important;
+                    padding: 0 !important;
+                    border-radius: 0 !important;
+                }
+                
+                /* 隱藏 opt-placeholder - 保留點擊功能 */
+                body.hide-opt-placeholder .opt-placeholder {
+                    background-color: transparent !important;
+                    color: inherit !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    font-style: normal !important;  /* 重要：隱藏時不是斜體 */
+                    cursor: pointer !important;     /* 保持可點擊 */
+                    transition: all 0.2s ease;
+                }
+                
+                /* 隱藏狀態下的 hover 效果 - 提示可點擊 */
+                body.hide-opt-placeholder .opt-placeholder:hover {
+                    background-color: rgba(254, 226, 226, 0.1) !important;
+                    border: 1px dashed rgba(248, 113, 113, 0.2) !important;
+                    padding: 2px 8px !important;
+                }
+                
+                /* 隱藏 opt-keyword */
+                body.hide-opt-keyword .opt-keyword {
+                    background-color: transparent !important;
+                    color: inherit !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    font-weight: normal !important;
+                }
+                
+                /* 隱藏 opt-keyword-existing */
+                body.hide-opt-keyword-existing .opt-keyword-existing {
+                    background-color: transparent !important;
+                    color: inherit !important;
+                    padding: 0 !important;
+                    font-weight: normal !important;
+                    border-radius: 0 !important;
+                }
+            `;
+            
+            iframeDoc.head.appendChild(style);
+            console.log('✅ 多標記樣式已注入');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ 注入樣式時發生錯誤:', error);
+            return false;
+        }
+    };
+    
+    /**
+     * 切換單個標記類型的顯示/隱藏
+     * @param {string} tagType - 標記類型 (如 'opt-new')
+     * @param {boolean} show - true 顯示, false 隱藏
+     */
+    window.toggleSingleTag = function(tagType, show) {
+        try {
+            if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                console.error('❌ TinyMCE 編輯器未找到');
+                return false;
+            }
+            
+            const editor = tinymce.activeEditor;
+            const iframeDoc = editor.getDoc();
+            const body = iframeDoc.body;
+            
+            // 確保樣式已注入
+            if (!iframeDoc.getElementById('multi-tag-styles')) {
+                window.injectMultiTagStyles();
+            }
+            
+            const hideClass = `hide-${tagType}`;
+            
+            if (show) {
+                body.classList.remove(hideClass);
+                console.log(`🟢 顯示 ${tagType}`);
+            } else {
+                body.classList.add(hideClass);
+                console.log(`🔴 隱藏 ${tagType}`);
+            }
+            
+            // 更新狀態
+            if (window.tagTypes[tagType]) {
+                window.tagTypes[tagType].visible = show;
+            }
+            
+            // 輕量級刷新
+            body.style.opacity = '0.99';
+            setTimeout(() => {
+                body.style.opacity = '1';
+            }, 10);
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ 切換標記時發生錯誤:', error);
+            return false;
+        }
+    };
+    
+    /**
+     * 顯示所有標記
+     */
+    window.showAllTags = function() {
+        Object.keys(window.tagTypes).forEach(tagType => {
+            window.toggleSingleTag(tagType, true);
+        });
+        console.log('✅ 顯示所有標記');
+    };
+    
+    /**
+     * 隱藏所有標記
+     */
+    window.hideAllTags = function() {
+        Object.keys(window.tagTypes).forEach(tagType => {
+            window.toggleSingleTag(tagType, false);
+        });
+        console.log('✅ 隱藏所有標記');
+    };
+    
+    /**
+     * 初始化多標記系統
+     */
+    window.initializeMultiTagSystem = function() {
+        console.log('🚀 初始化多標記控制系統...');
+        
+        const checkInterval = setInterval(function() {
+            if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+                if (window.injectMultiTagStyles()) {
+                    clearInterval(checkInterval);
+                    console.log('✅ 多標記系統初始化完成');
+                }
+            }
+        }, 500);
+        
+        setTimeout(() => clearInterval(checkInterval), 30000);
+    };
+    
+    // 頁面載入時自動初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.initializeMultiTagSystem);
+    } else {
+        window.initializeMultiTagSystem();
+    }
+    
+})();
+</script>
+
+<!-- 系統 3: Placeholder 點擊處理系統 -->
+<script>
+/**
+ * TinyMCE Placeholder 點擊處理系統
+ * 功能：點擊 placeholder 進行編輯
+ */
+
+// 全局變數
+let activeInput = null;
+let placeholderData = null;
+
+// 初始化 Placeholder 處理
+function initBubblePlaceholderHandler() {
+    console.log('[Placeholder-Handler] 開始初始化...');
+    
+    if (typeof tinymce === 'undefined') {
+        setTimeout(initBubblePlaceholderHandler, 100);
+        return;
+    }
+    
+    // 處理編輯器
+    tinymce.on('AddEditor', function(e) {
+        e.editor.on('init', function() {
+            setupPlaceholderHandler(e.editor);
+        });
+    });
+    
+    // 處理已存在的編輯器
+    if (tinymce.get()) {
+        tinymce.get().forEach(editor => {
+            if (editor.initialized) {
+                setupPlaceholderHandler(editor);
+            }
+        });
+    }
+}
+
+// 設置處理器
+function setupPlaceholderHandler(editor) {
+    if (editor.placeholderHandlerSetup) return;
+    editor.placeholderHandlerSetup = true;
+    
+    console.log('[Placeholder-Handler] 設置編輯器:', editor.id);
+    
+    // 添加編輯時的樣式
+    editor.dom.addStyle(`
+        .editing-placeholder {
+            background-color: #fff !important;
+            border: 2px solid #721c24 !important;
+            padding: 6px 10px !important;
+            border-radius: 3px !important;
+            color: #721c24 !important;
+            font-style: normal !important;
+            font-size: inherit !important;
+            min-width: 80px !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            outline: none !important;
+        }
+        .opt-improvement {
+            border-bottom: 2px solid #10B981 !important;  /* 綠色底線 */
+            color: #065F46 !important;                    /* 深綠色文字 */
+            padding-bottom: 1px !important;
+            font-weight: 500 !important;
+            display: inline !important;
+            background-color: transparent !important;
+            border-radius: 0 !important;
+        }
+    `);
+    
+    // 設置點擊處理
+    const editorBody = editor.getBody();
+    if (editorBody) {
+        // 使用 capture phase 捕獲點擊
+        editorBody.addEventListener('mousedown', function(e) {
+            handlePlaceholderClick(e, editor);
+        }, true);
+        
+        console.log('[Placeholder-Handler] 點擊處理器已設置');
+    }
+    
+    // 監聽鍵盤
+    editor.on('keydown', function(e) {
+        if (activeInput) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishEditingPlaceholder(editor);
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelEditingPlaceholder(editor);
+            }
+        }
+    });
+}
+
+// 處理點擊
+function handlePlaceholderClick(e, editor) {
+    const target = e.target;
+    
+    if (target && target.classList && target.classList.contains('opt-placeholder')) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('[Placeholder-Handler] 點擊 placeholder:', target.innerText);
+        
+        // 如果沒有正在編輯的 placeholder
+        if (!activeInput) {
+            startEditingPlaceholder(target, editor);
+        }
+    }
+    // 點擊其他地方
+    else if (activeInput && !target.classList.contains('editing-placeholder')) {
+        finishEditingPlaceholder(editor);
+    }
+}
+
+// 開始編輯
+function startEditingPlaceholder(placeholder, editor) {
+    // 保存資料
+    placeholderData = {
+        text: placeholder.innerText,
+        type: placeholder.innerText.replace(/[\[\]]/g, '')
+    };
+    
+    console.log('[Placeholder-Handler] 開始編輯:', placeholderData.type);
+    
+    // 轉換樣式
+    placeholder.classList.remove('opt-placeholder');
+    placeholder.classList.add('editing-placeholder');
+    placeholder.contentEditable = 'true';
+    
+    // 設置初始值提示（根據類型）
+    const hints = {
+        'PERCENTAGE': '25',
+        'TEAM SIZE': '5-10',
+        'AMOUNT': '1000',
+        'NUMBER': '100',
+        'TIME PERIOD': '3',
+        'USER COUNT': '10000',
+        '35M units': '35',
+        '70%': '70'
+    };
+    
+    placeholder.innerText = hints[placeholderData.type] || '';
+    activeInput = placeholder;
+    
+    // 聚焦並選中全部
+    setTimeout(() => {
+        placeholder.focus();
+        // 選中全部內容
+        const range = editor.getDoc().createRange();
+        range.selectNodeContents(placeholder);
+        const sel = editor.getWin().getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }, 100);
+}
+
+// 完成編輯
+function finishEditingPlaceholder(editor) {
+    if (!activeInput || !placeholderData) return;
+    
+    const value = activeInput.innerText.trim();
+    console.log('[Placeholder-Handler] 完成編輯:', value);
+    
+    if (value) {
+        // 格式化輸入值（根據 placeholder 類型添加單位）
+        let formatted = value;
+        
+        switch(placeholderData.type) {
+            case 'PERCENTAGE':
+            case '70%':
+                // 移除現有的 % 符號，然後添加
+                formatted = value.replace(/%/g, '').trim();
+                if (formatted && !isNaN(formatted)) {
+                    formatted = formatted + '%';
+                }
+                break;
+                
+            case 'AMOUNT':
+                // 檢查是否已有貨幣符號
+                if (!value.match(/[$¥€£]/)) {
+                    // 如果是純數字，添加 $
+                    const numValue = value.replace(/[^0-9.KMB]/gi, '');
+                    if (numValue) {
+                        formatted = '$' + value;
+                    }
+                }
+                break;
+                
+            case 'TEAM SIZE':
+                // 如果輸入的是純數字，加上 "people"
+                if (value.match(/^\d+$/)) {
+                    formatted = value + ' people';
+                } else if (value.match(/^\d+-\d+$/)) {
+                    formatted = value + ' people';
+                }
+                break;
+                
+            case 'TIME PERIOD':
+                // 檢查是否需要添加時間單位
+                if (value.match(/^\d+$/)) {
+                    formatted = value + ' months';
+                }
+                break;
+                
+            case 'USER COUNT':
+                // 處理用戶數量，例如 10K, 1M 等
+                if (value.match(/^\d+$/)) {
+                    const num = parseInt(value);
+                    if (num >= 1000000) {
+                        formatted = (num / 1000000).toFixed(1) + 'M';
+                    } else if (num >= 1000) {
+                        formatted = (num / 1000).toFixed(1) + 'K';
+                    }
+                }
+                break;
+                
+            case '35M units':
+                // 處理單位數量
+                if (value.match(/^\d+$/)) {
+                    formatted = value + 'M units';
+                }
+                break;
+        }
+        
+        console.log('[Placeholder-Handler] 格式化結果:', formatted);
+        
+        // 移除編輯樣式，添加完成樣式
+        activeInput.classList.remove('editing-placeholder');
+        activeInput.classList.add('opt-improvement');
+        activeInput.contentEditable = 'false';
+        activeInput.innerText = formatted;
+    } else {
+        // 恢復原狀
+        activeInput.classList.remove('editing-placeholder');
+        activeInput.classList.add('opt-placeholder');
+        activeInput.contentEditable = 'false';
+        activeInput.innerText = placeholderData.text;
+    }
+    
+    // 觸發內容更新
+    editor.fire('change');
+    editor.save();
+    
+    // 重置
+    activeInput = null;
+    placeholderData = null;
+}
+
+// 取消編輯
+function cancelEditingPlaceholder(editor) {
+    if (!activeInput || !placeholderData) return;
+    
+    console.log('[Placeholder-Handler] 取消編輯');
+    
+    // 恢復原狀
+    activeInput.classList.remove('editing-placeholder');
+    activeInput.classList.add('opt-placeholder');
+    activeInput.contentEditable = 'false';
+    activeInput.innerText = placeholderData.text;
+    
+    // 重置
+    activeInput = null;
+    placeholderData = null;
+}
+
+// 自動初始化
+setTimeout(initBubblePlaceholderHandler, 1000);
+</script>

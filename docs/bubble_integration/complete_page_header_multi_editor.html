@@ -1,0 +1,856 @@
+<!-- 完整的 Page HTML Header - 支援多編輯器版本 -->
+<!-- 此版本修正了 toggle 功能只影響 activeEditor 的問題 -->
+
+<style>
+/* ========== TinyMCE 編輯器內的樣式（基礎）========== */
+/* 注意：這些樣式會在 page loaded 時透過 JavaScript 注入到編輯器內部 */
+
+/* 單一控制系統 - 主要開關 */
+.tinymce-markers-hidden span.opt-keyword-existing,
+.tinymce-markers-hidden span.opt-keyword,
+.tinymce-markers-hidden span.opt-modified,
+.tinymce-markers-hidden .opt-new,
+.tinymce-markers-hidden span.opt-placeholder,
+.tinymce-markers-hidden span.opt-improvement {
+    all: unset !important;
+    color: inherit !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-weight: inherit !important;
+    font-style: inherit !important;
+    text-decoration: none !important;
+    display: inline !important;
+    box-shadow: none !important;
+}
+
+/* ========== 其他頁面元素樣式 ========== */
+/* Toggle 按鈕樣式 */
+.toggle-button {
+    padding: 8px 16px;
+    background-color: #2563EB;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.toggle-button:hover {
+    background-color: #1D4ED8;
+    transform: translateY(-1px);
+}
+
+.toggle-button.active {
+    background-color: #10B981;
+}
+
+/* Toggle 開關樣式 */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #CBD5E1;
+    transition: .3s;
+    border-radius: 24px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: #10B981;
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+}
+
+/* 控制面板樣式 */
+.marker-controls {
+    background: #F3F4F6;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px 0;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-label {
+    font-weight: 500;
+    color: #374151;
+    user-select: none;
+}
+
+/* Tag 類型核取方塊 */
+.tag-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tag-checkbox:hover {
+    border-color: #9CA3AF;
+}
+
+.tag-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.tag-checkbox.checked {
+    background-color: #EBF5FF;
+    border-color: #2563EB;
+}
+
+/* 佔位符樣式（頁面上的版本）*/
+.editable-placeholder {
+    display: inline-block;
+    background-color: #FEE2E2;
+    color: #991B1B;
+    border: 1px dashed #F87171;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-style: italic;
+    font-weight: 500;
+    cursor: text;
+    transition: all 0.2s;
+    margin: 0 4px;
+    min-width: 100px;
+    position: relative;
+}
+
+.editable-placeholder:hover {
+    background-color: #FECACA;
+    border-color: #EF4444;
+    transform: scale(1.02);
+}
+
+.editable-placeholder:focus {
+    outline: none;
+    background-color: #FFFFFF;
+    border: 2px solid #2563EB;
+    color: #1F2937;
+    font-style: normal;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.editable-placeholder.editing {
+    background-color: #FFFFFF;
+    border: 2px solid #2563EB;
+    color: #1F2937;
+    font-style: normal;
+}
+
+/* 編輯提示 */
+.edit-hint {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1F2937;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.editable-placeholder:hover .edit-hint {
+    opacity: 0.9;
+}
+
+/* 為不同的標記類型設定專屬顏色 */
+.marker-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.marker-badge.keyword {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+}
+
+.marker-badge.modified {
+    background-color: #FEF3C7;
+    color: #92400E;
+}
+
+.marker-badge.new {
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+
+.marker-badge.placeholder {
+    background-color: #FEE2E2;
+    color: #991B1B;
+}
+</style>
+
+<script>
+// ========== 全局狀態管理 ==========
+window.markersVisible = true;
+window.markerStylesInjected = false;
+window.tagVisibility = {
+    'opt-keyword': true,
+    'opt-keyword-existing': true,
+    'opt-modified': true,
+    'opt-new': true,
+    'opt-placeholder': true
+};
+
+// ========== 輔助函數：獲取所有編輯器 ==========
+function getAllTinyMCEEditors() {
+    if (typeof tinymce === 'undefined') return [];
+    
+    const editors = tinymce.get();
+    if (!editors) return [];
+    
+    // 確保返回陣列格式
+    return Array.isArray(editors) ? editors : [editors];
+}
+
+// ========== 輔助函數：對所有編輯器執行操作 ==========
+function forEachEditor(callback) {
+    const editors = getAllTinyMCEEditors();
+    editors.forEach((editor, index) => {
+        if (editor && editor.initialized) {
+            try {
+                callback(editor, index);
+            } catch (e) {
+                console.error(`Error processing editor ${editor.id}:`, e);
+            }
+        }
+    });
+}
+
+// ========== 主要功能：注入預設標記樣式（多編輯器版本）==========
+window.injectDefaultMarkerStyles = function() {
+    console.log('[Multi-Editor] Injecting default marker styles to all editors...');
+    
+    const styles = `
+        /* === 原有關鍵字樣式 - 深藍色背景 === */
+        span.opt-keyword-existing {
+            background-color: #2563EB !important;
+            color: #FFFFFF !important;
+            padding: 3px 8px !important;
+            border-radius: 4px !important;
+            font-weight: 600 !important;
+            margin: 0 2px !important;
+            display: inline-block !important;
+            line-height: 1.4 !important;
+            box-shadow: 0 1px 2px rgba(37, 99, 235, 0.3) !important;
+            border: 1px solid #1D4ED8 !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        span.opt-keyword-existing:hover {
+            background-color: #1D4ED8 !important;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.4) !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        /* === 新增關鍵字樣式 - 紫色邊框 === */
+        span.opt-keyword {
+            background-color: transparent !important;
+            color: #6366F1 !important;
+            border: 1px solid #C7D2FE !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            font-weight: 500 !important;
+            margin: 0 2px !important;
+            display: inline-block !important;
+            line-height: 1.4 !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        span.opt-keyword:hover {
+            background-color: #EEF2FF !important;
+            border-color: #A5B4FC !important;
+        }
+        
+        /* === 修改內容樣式 - 淺黃色背景 === */
+        span.opt-modified {
+            background-color: #FFF3CD !important;
+            color: #856404 !important;
+            padding: 2px 6px !important;
+            border-radius: 3px !important;
+            border: 1px solid #FFEAA7 !important;
+            display: inline !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        span.opt-modified:hover {
+            background-color: #FFE9A0 !important;
+            box-shadow: 0 1px 3px rgba(251, 191, 36, 0.3) !important;
+        }
+        
+        /* === 新增內容樣式 - 綠色左邊框 === */
+        .opt-new {
+            border-left: 4px solid #10B981 !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+            padding-top: 8px !important;
+            padding-bottom: 8px !important;
+            margin: 8px 0 !important;
+            background-color: rgba(209, 250, 229, 0.3) !important;
+            display: block !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        .opt-new:hover {
+            background-color: rgba(209, 250, 229, 0.5) !important;
+            border-left-width: 6px !important;
+        }
+        
+        /* === 佔位符樣式 - 紅色虛線框 === */
+        span.opt-placeholder {
+            background-color: #FEE2E2 !important;
+            color: #991B1B !important;
+            border: 1px dashed #F87171 !important;
+            padding: 2px 8px !important;
+            border-radius: 4px !important;
+            font-style: italic !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            margin: 0 2px !important;
+            display: inline-block !important;
+            transition: all 0.2s ease !important;
+            position: relative !important;
+        }
+        
+        span.opt-placeholder:hover {
+            background-color: #FECACA !important;
+            border-color: #EF4444 !important;
+            border-style: solid !important;
+            transform: scale(1.05) !important;
+        }
+        
+        span.opt-placeholder:before {
+            content: "📝 " !important;
+            font-style: normal !important;
+        }
+        
+        /* === 改進內容樣式 - 綠色底線 === */
+        span.opt-improvement {
+            border-bottom: 2px solid #10B981 !important;
+            color: #065F46 !important;
+            padding-bottom: 1px !important;
+            font-weight: 500 !important;
+            text-decoration: none !important;
+            transition: all 0.2s ease !important;
+        }
+        
+        span.opt-improvement:hover {
+            background-color: rgba(209, 250, 229, 0.3) !important;
+            padding: 2px 4px !important;
+            margin: -2px -4px !important;
+            border-radius: 3px !important;
+        }
+        
+        /* === 隱藏標記時的樣式 === */
+        body.markers-hidden span.opt-keyword-existing,
+        body.markers-hidden span.opt-keyword,
+        body.markers-hidden span.opt-modified,
+        body.markers-hidden .opt-new,
+        body.markers-hidden span.opt-placeholder,
+        body.markers-hidden span.opt-improvement {
+            all: unset !important;
+            color: inherit !important;
+            background: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-weight: inherit !important;
+            font-style: inherit !important;
+            text-decoration: none !important;
+            display: inline !important;
+            box-shadow: none !important;
+        }
+        
+        body.markers-hidden .opt-new {
+            display: block !important;
+        }
+    `;
+    
+    let successCount = 0;
+    let totalEditors = 0;
+    
+    forEachEditor(function(editor, index) {
+        totalEditors++;
+        
+        try {
+            // 檢查是否已經注入過預設樣式
+            if (!editor.dom.get('default-marker-styles')) {
+                editor.dom.addStyle(styles);
+                
+                // 創建一個標記元素
+                const styleMarker = editor.dom.create('style', {
+                    id: 'default-marker-styles',
+                    type: 'text/css'
+                });
+                styleMarker.innerHTML = '/* Default marker styles injected */';
+                editor.getDoc().head.appendChild(styleMarker);
+                
+                successCount++;
+                console.log(`[Multi-Editor] ✓ Injected styles to editor ${index + 1} (${editor.id})`);
+            } else {
+                console.log(`[Multi-Editor] ℹ️ Editor ${index + 1} (${editor.id}) already has default styles`);
+            }
+        } catch (e) {
+            console.error(`[Multi-Editor] ✗ Failed to inject styles to editor ${index + 1} (${editor.id}):`, e);
+        }
+    });
+    
+    console.log(`[Multi-Editor] Style injection complete: ${successCount}/${totalEditors} editors`);
+    window.markerStylesInjected = true;
+};
+
+// ========== Toggle 功能（多編輯器版本）==========
+window.toggleMarkers = function() {
+    console.log('[Multi-Editor] Toggling markers for all editors...');
+    window.markersVisible = !window.markersVisible;
+    
+    if (window.markersVisible) {
+        window.showMarkers();
+    } else {
+        window.hideMarkers();
+    }
+    
+    // 更新按鈕狀態
+    const toggleButton = document.querySelector('.toggle-button');
+    if (toggleButton) {
+        toggleButton.classList.toggle('active', window.markersVisible);
+        toggleButton.textContent = window.markersVisible ? '隱藏標記' : '顯示標記';
+    }
+    
+    // 更新開關狀態
+    const toggleInput = document.querySelector('#markerToggle');
+    if (toggleInput) {
+        toggleInput.checked = window.markersVisible;
+    }
+    
+    console.log(`[Multi-Editor] Markers are now ${window.markersVisible ? 'visible' : 'hidden'}`);
+};
+
+window.showMarkers = function() {
+    console.log('[Multi-Editor] Showing markers for all editors...');
+    
+    forEachEditor(function(editor, index) {
+        const body = editor.getBody();
+        if (body) {
+            editor.dom.removeClass(body, 'markers-hidden');
+            console.log(`[Multi-Editor] ✓ Showed markers for editor ${index + 1} (${editor.id})`);
+        }
+    });
+    
+    window.markersVisible = true;
+    applyTagVisibility();
+};
+
+window.hideMarkers = function() {
+    console.log('[Multi-Editor] Hiding markers for all editors...');
+    
+    forEachEditor(function(editor, index) {
+        const body = editor.getBody();
+        if (body) {
+            editor.dom.addClass(body, 'markers-hidden');
+            console.log(`[Multi-Editor] ✓ Hid markers for editor ${index + 1} (${editor.id})`);
+        }
+    });
+    
+    window.markersVisible = false;
+};
+
+// ========== 多標記控制系統（多編輯器版本）==========
+window.injectMultiTagStyles = function() {
+    console.log('[Multi-Editor] Injecting multi-tag styles to all editors...');
+    
+    const multiTagStyles = `
+        /* 個別標記類型的隱藏樣式 */
+        body.hide-opt-new .opt-new {
+            all: unset !important;
+            border-left: none !important;
+            padding-left: 0 !important;
+            background-color: transparent !important;
+            display: block !important;
+        }
+        
+        body.hide-opt-modified span.opt-modified {
+            all: unset !important;
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            color: inherit !important;
+        }
+        
+        body.hide-opt-placeholder span.opt-placeholder {
+            all: unset !important;
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            color: inherit !important;
+            font-style: normal !important;
+        }
+        
+        body.hide-opt-placeholder span.opt-placeholder:before {
+            content: none !important;
+        }
+        
+        body.hide-opt-keyword span.opt-keyword {
+            all: unset !important;
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            color: inherit !important;
+        }
+        
+        body.hide-opt-keyword-existing span.opt-keyword-existing {
+            all: unset !important;
+            background-color: transparent !important;
+            border: none !important;
+            padding: 0 !important;
+            color: inherit !important;
+            font-weight: inherit !important;
+        }
+    `;
+    
+    forEachEditor(function(editor, index) {
+        try {
+            if (!editor.dom.get('multi-tag-styles')) {
+                editor.dom.addStyle(multiTagStyles);
+                
+                const styleMarker = editor.dom.create('style', {
+                    id: 'multi-tag-styles',
+                    type: 'text/css'
+                });
+                styleMarker.innerHTML = '/* Multi-tag control styles injected */';
+                editor.getDoc().head.appendChild(styleMarker);
+                
+                console.log(`[Multi-Editor] ✓ Injected multi-tag styles to editor ${index + 1} (${editor.id})`);
+            }
+        } catch (e) {
+            console.error(`[Multi-Editor] ✗ Failed to inject multi-tag styles to editor ${index + 1}:`, e);
+        }
+    });
+};
+
+window.toggleSingleTag = function(tagType) {
+    console.log(`[Multi-Editor] Toggling tag type: ${tagType}`);
+    
+    window.tagVisibility[tagType] = !window.tagVisibility[tagType];
+    
+    forEachEditor(function(editor, index) {
+        const body = editor.getBody();
+        if (body) {
+            if (window.tagVisibility[tagType]) {
+                editor.dom.removeClass(body, `hide-${tagType}`);
+            } else {
+                editor.dom.addClass(body, `hide-${tagType}`);
+            }
+            console.log(`[Multi-Editor] ✓ Toggled ${tagType} for editor ${index + 1}`);
+        }
+    });
+    
+    updateCheckboxState(tagType);
+};
+
+window.showAllTags = function() {
+    console.log('[Multi-Editor] Showing all tags...');
+    
+    Object.keys(window.tagVisibility).forEach(tag => {
+        window.tagVisibility[tag] = true;
+    });
+    
+    forEachEditor(function(editor) {
+        const body = editor.getBody();
+        if (body) {
+            Object.keys(window.tagVisibility).forEach(tag => {
+                editor.dom.removeClass(body, `hide-${tag}`);
+            });
+        }
+    });
+    
+    updateAllCheckboxes();
+};
+
+window.hideAllTags = function() {
+    console.log('[Multi-Editor] Hiding all tags...');
+    
+    Object.keys(window.tagVisibility).forEach(tag => {
+        window.tagVisibility[tag] = false;
+    });
+    
+    forEachEditor(function(editor) {
+        const body = editor.getBody();
+        if (body) {
+            Object.keys(window.tagVisibility).forEach(tag => {
+                editor.dom.addClass(body, `hide-${tag}`);
+            });
+        }
+    });
+    
+    updateAllCheckboxes();
+};
+
+function applyTagVisibility() {
+    if (!window.markersVisible) return;
+    
+    forEachEditor(function(editor) {
+        const body = editor.getBody();
+        if (body) {
+            Object.keys(window.tagVisibility).forEach(tag => {
+                if (window.tagVisibility[tag]) {
+                    editor.dom.removeClass(body, `hide-${tag}`);
+                } else {
+                    editor.dom.addClass(body, `hide-${tag}`);
+                }
+            });
+        }
+    });
+}
+
+function updateCheckboxState(tagType) {
+    const checkbox = document.querySelector(`input[data-tag="${tagType}"]`);
+    if (checkbox) {
+        checkbox.checked = window.tagVisibility[tagType];
+        const container = checkbox.closest('.tag-checkbox');
+        if (container) {
+            container.classList.toggle('checked', window.tagVisibility[tagType]);
+        }
+    }
+}
+
+function updateAllCheckboxes() {
+    Object.keys(window.tagVisibility).forEach(tag => {
+        updateCheckboxState(tag);
+    });
+}
+
+// ========== 佔位符處理系統 ==========
+window.initBubblePlaceholderHandler = function() {
+    console.log('[Placeholder] Initializing Bubble placeholder handler...');
+    
+    let placeholderIndex = 0;
+    
+    function setupPlaceholder(element) {
+        if (element.dataset.placeholderInit) return;
+        
+        const placeholderId = `placeholder_${Date.now()}_${placeholderIndex++}`;
+        element.dataset.placeholderId = placeholderId;
+        element.dataset.placeholderInit = 'true';
+        
+        const originalText = element.textContent.trim();
+        element.dataset.originalText = originalText;
+        element.contentEditable = 'true';
+        element.spellcheck = false;
+        
+        // 創建提示元素
+        const hint = document.createElement('span');
+        hint.className = 'edit-hint';
+        hint.textContent = '點擊編輯';
+        element.appendChild(hint);
+        
+        // 事件處理
+        element.addEventListener('focus', function() {
+            this.classList.add('editing');
+            if (this.textContent.trim() === this.dataset.originalText) {
+                this.textContent = '';
+            }
+        });
+        
+        element.addEventListener('blur', function() {
+            this.classList.remove('editing');
+            if (this.textContent.trim() === '') {
+                this.textContent = this.dataset.originalText;
+            }
+            updateTinyMCEPlaceholder(this.dataset.placeholderId, this.textContent.trim());
+        });
+        
+        element.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.blur();
+            }
+        });
+        
+        console.log(`[Placeholder] Setup completed for: ${placeholderId}`);
+    }
+    
+    function updateTinyMCEPlaceholder(placeholderId, newText) {
+        console.log(`[Placeholder] Updating in editors: ${placeholderId} -> "${newText}"`);
+        
+        forEachEditor(function(editor) {
+            const placeholders = editor.dom.select(`span.opt-placeholder[data-placeholder-id="${placeholderId}"]`);
+            placeholders.forEach(span => {
+                span.textContent = newText;
+                console.log(`[Placeholder] Updated in editor: ${editor.id}`);
+            });
+        });
+    }
+    
+    // 初始設置
+    document.querySelectorAll('.editable-placeholder').forEach(setupPlaceholder);
+    
+    // 監控新元素
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) {
+                    if (node.classList && node.classList.contains('editable-placeholder')) {
+                        setupPlaceholder(node);
+                    }
+                    const placeholders = node.querySelectorAll ? node.querySelectorAll('.editable-placeholder') : [];
+                    placeholders.forEach(setupPlaceholder);
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+    
+    window.updateBubblePlaceholder = updateTinyMCEPlaceholder;
+};
+
+// ========== 新編輯器監控系統 ==========
+function monitorNewEditors() {
+    console.log('[Multi-Editor] Starting editor monitor...');
+    
+    const processedEditors = new Set();
+    
+    function checkForNewEditors() {
+        const editors = getAllTinyMCEEditors();
+        
+        editors.forEach(editor => {
+            if (!processedEditors.has(editor.id) && editor.initialized) {
+                console.log(`[Multi-Editor] New editor detected: ${editor.id}`);
+                processedEditors.add(editor.id);
+                
+                // 為新編輯器注入樣式
+                setTimeout(() => {
+                    console.log(`[Multi-Editor] Processing new editor: ${editor.id}`);
+                    
+                    // 注入預設樣式
+                    const body = editor.getBody();
+                    if (body && !editor.dom.get('default-marker-styles')) {
+                        window.injectDefaultMarkerStyles();
+                    }
+                    
+                    // 注入多標記樣式
+                    if (body && !editor.dom.get('multi-tag-styles')) {
+                        window.injectMultiTagStyles();
+                    }
+                    
+                    // 應用當前的顯示狀態
+                    if (!window.markersVisible) {
+                        editor.dom.addClass(body, 'markers-hidden');
+                    }
+                    
+                    // 應用標記可見性
+                    applyTagVisibility();
+                    
+                }, 500);
+            }
+        });
+    }
+    
+    // 設置定期檢查
+    setInterval(checkForNewEditors, 1000);
+    
+    // 監聽 TinyMCE 事件
+    if (typeof tinymce !== 'undefined') {
+        tinymce.on('AddEditor', function(e) {
+            console.log(`[Multi-Editor] TinyMCE AddEditor event: ${e.editor.id}`);
+            setTimeout(checkForNewEditors, 500);
+        });
+    }
+}
+
+// ========== 初始化系統 ==========
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[Multi-Editor] DOM loaded, initializing systems...');
+    
+    // 延遲初始化，確保 TinyMCE 已載入
+    setTimeout(function() {
+        if (typeof tinymce !== 'undefined') {
+            console.log('[Multi-Editor] TinyMCE detected, starting initialization...');
+            
+            // 注入樣式到所有現有編輯器
+            window.injectDefaultMarkerStyles();
+            window.injectMultiTagStyles();
+            
+            // 初始化佔位符系統
+            window.initBubblePlaceholderHandler();
+            
+            // 啟動編輯器監控
+            monitorNewEditors();
+            
+            // 綁定全局快捷鍵
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'm') {
+                    e.preventDefault();
+                    window.toggleMarkers();
+                }
+            });
+            
+            console.log('[Multi-Editor] All systems initialized successfully!');
+            console.log('[Multi-Editor] Available functions: toggleMarkers(), showMarkers(), hideMarkers(), toggleSingleTag(tagType)');
+        } else {
+            console.error('[Multi-Editor] TinyMCE not found! Retrying in 2 seconds...');
+            setTimeout(arguments.callee, 2000);
+        }
+    }, 1000);
+});
+</script>

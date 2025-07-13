@@ -1,0 +1,263 @@
+<!-- 多標記獨立控制系統 - 添加到 Page HTML Header -->
+
+<script>
+/**
+ * 多標記獨立控制系統
+ * 可以分別控制5種不同的 opt-tag 顯示/隱藏
+ */
+
+(function() {
+    'use strict';
+    
+    // 定義5種標記類型
+    window.tagTypes = {
+        'opt-new': {
+            name: '新增區段',
+            color: 'green',
+            visible: true
+        },
+        'opt-modified': {
+            name: '修改內容',
+            color: 'yellow',
+            visible: true
+        },
+        'opt-placeholder': {
+            name: '佔位符',
+            color: 'red',
+            visible: true
+        },
+        'opt-keyword': {
+            name: '新關鍵字',
+            color: 'purple',
+            visible: true
+        },
+        'opt-keyword-existing': {
+            name: '現有關鍵字',
+            color: 'blue',
+            visible: true
+        }
+    };
+    
+    // 注入多標記控制樣式
+    window.injectMultiTagStyles = function() {
+        try {
+            if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                console.log('⏳ TinyMCE 尚未準備好');
+                return false;
+            }
+            
+            const editor = tinymce.activeEditor;
+            const iframeDoc = editor.getDoc();
+            
+            // 檢查是否已注入
+            if (iframeDoc.getElementById('multi-tag-styles')) {
+                console.log('✅ 樣式已存在');
+                return true;
+            }
+            
+            const style = iframeDoc.createElement('style');
+            style.id = 'multi-tag-styles';
+            style.textContent = `
+                /* === 預設樣式 - 所有標記可見 === */
+                
+                /* opt-new - 新增區段 (綠色) */
+                .opt-new {
+                    background-color: rgba(16, 185, 129, 0.1) !important;
+                    border-left: 4px solid #10B981 !important;
+                    padding-left: 16px !important;
+                    margin: 4px 0 !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-modified - 修改內容 (黃色) */
+                .opt-modified {
+                    background-color: #fef3c7 !important;
+                    padding: 2px 6px !important;
+                    border-radius: 3px !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-placeholder - 佔位符 (紅色) */
+                .opt-placeholder {
+                    background-color: #fee2e2 !important;
+                    color: #991b1b !important;
+                    border: 1px dashed #f87171 !important;
+                    padding: 2px 8px !important;
+                    border-radius: 4px !important;
+                    font-style: italic !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-keyword - 新關鍵字 (紫色) */
+                .opt-keyword {
+                    background-color: transparent !important;
+                    color: #6366f1 !important;
+                    border: 1px solid #c7d2fe !important;
+                    padding: 2px 6px !important;
+                    border-radius: 3px !important;
+                    font-weight: 500 !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* opt-keyword-existing - 現有關鍵字 (藍色) */
+                .opt-keyword-existing {
+                    background-color: #2563eb !important;
+                    color: white !important;
+                    padding: 3px 8px !important;
+                    border-radius: 4px !important;
+                    font-weight: 600 !important;
+                    transition: all 0.3s ease;
+                }
+                
+                /* === 個別隱藏樣式 === */
+                
+                /* 隱藏 opt-new */
+                body.hide-opt-new .opt-new {
+                    background-color: transparent !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                
+                /* 隱藏 opt-modified */
+                body.hide-opt-modified .opt-modified {
+                    background-color: transparent !important;
+                    padding: 0 !important;
+                    border-radius: 0 !important;
+                }
+                
+                /* 隱藏 opt-placeholder */
+                body.hide-opt-placeholder .opt-placeholder {
+                    background-color: transparent !important;
+                    color: inherit !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    font-style: normal !important;
+                }
+                
+                /* 隱藏 opt-keyword */
+                body.hide-opt-keyword .opt-keyword {
+                    background-color: transparent !important;
+                    color: inherit !important;
+                    border: none !important;
+                    padding: 0 !important;
+                    font-weight: normal !important;
+                }
+                
+                /* 隱藏 opt-keyword-existing */
+                body.hide-opt-keyword-existing .opt-keyword-existing {
+                    background-color: transparent !important;
+                    color: inherit !important;
+                    padding: 0 !important;
+                    font-weight: normal !important;
+                    border-radius: 0 !important;
+                }
+            `;
+            
+            iframeDoc.head.appendChild(style);
+            console.log('✅ 多標記樣式已注入');
+            return true;
+            
+        } catch (error) {
+            console.error('❌ 注入樣式時發生錯誤:', error);
+            return false;
+        }
+    };
+    
+    /**
+     * 切換單個標記類型的顯示/隱藏
+     * @param {string} tagType - 標記類型 (如 'opt-new')
+     * @param {boolean} show - true 顯示, false 隱藏
+     */
+    window.toggleSingleTag = function(tagType, show) {
+        try {
+            if (typeof tinymce === 'undefined' || !tinymce.activeEditor) {
+                console.error('❌ TinyMCE 編輯器未找到');
+                return false;
+            }
+            
+            const editor = tinymce.activeEditor;
+            const iframeDoc = editor.getDoc();
+            const body = iframeDoc.body;
+            
+            // 確保樣式已注入
+            if (!iframeDoc.getElementById('multi-tag-styles')) {
+                window.injectMultiTagStyles();
+            }
+            
+            const hideClass = `hide-${tagType}`;
+            
+            if (show) {
+                body.classList.remove(hideClass);
+                console.log(`🟢 顯示 ${tagType}`);
+            } else {
+                body.classList.add(hideClass);
+                console.log(`🔴 隱藏 ${tagType}`);
+            }
+            
+            // 更新狀態
+            if (window.tagTypes[tagType]) {
+                window.tagTypes[tagType].visible = show;
+            }
+            
+            // 輕量級刷新
+            body.style.opacity = '0.99';
+            setTimeout(() => {
+                body.style.opacity = '1';
+            }, 10);
+            
+            return true;
+            
+        } catch (error) {
+            console.error('❌ 切換標記時發生錯誤:', error);
+            return false;
+        }
+    };
+    
+    /**
+     * 顯示所有標記
+     */
+    window.showAllTags = function() {
+        Object.keys(window.tagTypes).forEach(tagType => {
+            window.toggleSingleTag(tagType, true);
+        });
+        console.log('✅ 顯示所有標記');
+    };
+    
+    /**
+     * 隱藏所有標記
+     */
+    window.hideAllTags = function() {
+        Object.keys(window.tagTypes).forEach(tagType => {
+            window.toggleSingleTag(tagType, false);
+        });
+        console.log('✅ 隱藏所有標記');
+    };
+    
+    /**
+     * 初始化多標記系統
+     */
+    window.initializeMultiTagSystem = function() {
+        console.log('🚀 初始化多標記控制系統...');
+        
+        const checkInterval = setInterval(function() {
+            if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+                if (window.injectMultiTagStyles()) {
+                    clearInterval(checkInterval);
+                    console.log('✅ 多標記系統初始化完成');
+                }
+            }
+        }, 500);
+        
+        setTimeout(() => clearInterval(checkInterval), 30000);
+    };
+    
+    // 頁面載入時自動初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', window.initializeMultiTagSystem);
+    } else {
+        window.initializeMultiTagSystem();
+    }
+    
+})();
+</script>

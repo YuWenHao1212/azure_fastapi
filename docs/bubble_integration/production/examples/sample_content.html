@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE 標記系統 - 示例內容</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .marker-example {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        
+        .marker-example h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .copy-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .copy-button:hover {
+            background: #45a049;
+        }
+        
+        code {
+            background: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .preview {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 3px;
+        }
+        
+        /* 標記樣式預覽 */
+        .opt-keyword-existing {
+            background-color: #2563EB;
+            color: #FFFFFF;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin: 0 2px;
+            display: inline-block;
+        }
+        
+        .opt-keyword {
+            background-color: transparent;
+            color: #6366F1;
+            border: 1px solid #C7D2FE;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+            margin: 0 2px;
+            display: inline-block;
+        }
+        
+        .opt-modified {
+            background-color: #FFF3CD;
+            color: #856404;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #FFEAA7;
+            display: inline;
+        }
+        
+        .opt-new {
+            border-left: 4px solid #10B981;
+            padding-left: 16px;
+            padding-right: 16px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+            margin: 8px 0;
+            background-color: rgba(209, 250, 229, 0.3);
+            display: block;
+        }
+        
+        .opt-placeholder {
+            background-color: #FEE2E2;
+            color: #991B1B;
+            border: 1px dashed #F87171;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-style: italic;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 0 2px;
+            display: inline-block;
+        }
+        
+        .opt-improvement {
+            border-bottom: 2px solid #10B981;
+            color: #065F46;
+            padding-bottom: 1px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 TinyMCE 標記系統 - 示例內容</h1>
+        <p>以下是各種標記類型的示例，可以直接複製到您的 TinyMCE 編輯器中測試。</p>
+        
+        <div class="marker-example">
+            <h3>1. 原有關鍵字 (opt-keyword-existing) <button class="copy-button" onclick="copyToClipboard('existing-keyword')">複製</button></h3>
+            <p><strong>用途</strong>：標記履歷中已存在的重要關鍵字</p>
+            <p><strong>樣式</strong>：深藍色背景，白色文字</p>
+            
+            <code id="existing-keyword">&lt;span class="opt-keyword-existing"&gt;Python&lt;/span&gt;</code>
+            
+            <div class="preview">
+                <p>我有 <span class="opt-keyword-existing">Python</span> 和 <span class="opt-keyword-existing">JavaScript</span> 開發經驗。</p>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>2. 新增關鍵字 (opt-keyword) <button class="copy-button" onclick="copyToClipboard('new-keyword')">複製</button></h3>
+            <p><strong>用途</strong>：標記新添加的關鍵字</p>
+            <p><strong>樣式</strong>：紫色邊框，透明背景</p>
+            
+            <code id="new-keyword">&lt;span class="opt-keyword"&gt;React&lt;/span&gt;</code>
+            
+            <div class="preview">
+                <p>熟悉 <span class="opt-keyword">React</span> 和 <span class="opt-keyword">Vue.js</span> 框架開發。</p>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>3. 修改內容 (opt-modified) <button class="copy-button" onclick="copyToClipboard('modified-content')">複製</button></h3>
+            <p><strong>用途</strong>：標記被修改或優化的內容</p>
+            <p><strong>樣式</strong>：淺黃色背景</p>
+            
+            <code id="modified-content">&lt;span class="opt-modified"&gt;負責系統架構設計和性能優化&lt;/span&gt;</code>
+            
+            <div class="preview">
+                <p>在前一份工作中，<span class="opt-modified">負責系統架構設計和性能優化</span>，提升了系統處理效率。</p>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>4. 新增內容 (opt-new) <button class="copy-button" onclick="copyToClipboard('new-content')">複製</button></h3>
+            <p><strong>用途</strong>：標記全新添加的內容區塊</p>
+            <p><strong>樣式</strong>：綠色左邊框</p>
+            
+            <code id="new-content">&lt;div class="opt-new"&gt;新增的工作經驗或技能描述&lt;/div&gt;</code>
+            
+            <div class="preview">
+                <div class="opt-new">
+                    <strong>雲端架構師 | ABC科技公司 | 2023-2024</strong><br>
+                    負責設計和實施企業級雲端解決方案，包括 AWS、Azure 平台的架構規劃。
+                    成功遷移 15+ 應用程式到雲端，降低營運成本 30%。
+                </div>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>5. 佔位符 (opt-placeholder) <button class="copy-button" onclick="copyToClipboard('placeholder-content')">複製</button></h3>
+            <p><strong>用途</strong>：可編輯的佔位符，點擊後可以輸入具體數值</p>
+            <p><strong>樣式</strong>：紅色虛線框，斜體</p>
+            <p><strong>行為</strong>：點擊可編輯，自動添加單位</p>
+            
+            <code id="placeholder-content">&lt;span class="opt-placeholder"&gt;[PERCENTAGE]&lt;/span&gt;</code>
+            
+            <div class="preview">
+                <p>提升系統性能 <span class="opt-placeholder">[PERCENTAGE]</span>，管理團隊規模 <span class="opt-placeholder">[TEAM SIZE]</span>。</p>
+                <p>處理交易金額 <span class="opt-placeholder">[AMOUNT]</span>，服務用戶數量 <span class="opt-placeholder">[USER COUNT]</span>。</p>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>6. 改進內容 (opt-improvement) <button class="copy-button" onclick="copyToClipboard('improvement-content')">複製</button></h3>
+            <p><strong>用途</strong>：標記已完成編輯的改進內容</p>
+            <p><strong>樣式</strong>：綠色底線</p>
+            
+            <code id="improvement-content">&lt;span class="opt-improvement"&gt;25%&lt;/span&gt;</code>
+            
+            <div class="preview">
+                <p>成功提升系統效能 <span class="opt-improvement">25%</span>，領導 <span class="opt-improvement">8-10 people</span> 的開發團隊。</p>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>7. 完整履歷段落示例 <button class="copy-button" onclick="copyToClipboard('complete-example')">複製</button></h3>
+            <p><strong>包含多種標記類型的完整示例</strong></p>
+            
+            <div style="background: #f4f4f4; padding: 10px; border-radius: 3px; font-size: 12px; max-height: 200px; overflow-y: auto;" id="complete-example">
+&lt;div class="opt-new"&gt;
+    &lt;strong&gt;高級軟體工程師 | XYZ科技 | 2022-2024&lt;/strong&gt;&lt;br&gt;
+    負責&lt;span class="opt-modified"&gt;大型電商平台的後端開發和架構優化&lt;/span&gt;，使用
+    &lt;span class="opt-keyword-existing"&gt;Python&lt;/span&gt;、
+    &lt;span class="opt-keyword-existing"&gt;Django&lt;/span&gt; 和
+    &lt;span class="opt-keyword"&gt;FastAPI&lt;/span&gt; 開發高性能 API。
+    &lt;br&gt;&lt;br&gt;
+    主要成就：&lt;br&gt;
+    • 優化數據庫查詢，提升系統響應速度 &lt;span class="opt-placeholder"&gt;[PERCENTAGE]&lt;/span&gt;&lt;br&gt;
+    • 領導 &lt;span class="opt-placeholder"&gt;[TEAM SIZE]&lt;/span&gt; 完成微服務架構重構&lt;br&gt;
+    • 處理日交易量達 &lt;span class="opt-placeholder"&gt;[USER COUNT]&lt;/span&gt; 筆&lt;br&gt;
+    • 節省服務器成本 &lt;span class="opt-placeholder"&gt;[AMOUNT]&lt;/span&gt;/年
+&lt;/div&gt;
+            </div>
+            
+            <div class="preview">
+                <div class="opt-new">
+                    <strong>高級軟體工程師 | XYZ科技 | 2022-2024</strong><br>
+                    負責<span class="opt-modified">大型電商平台的後端開發和架構優化</span>，使用
+                    <span class="opt-keyword-existing">Python</span>、
+                    <span class="opt-keyword-existing">Django</span> 和
+                    <span class="opt-keyword">FastAPI</span> 開發高性能 API。
+                    <br><br>
+                    主要成就：<br>
+                    • 優化數據庫查詢，提升系統響應速度 <span class="opt-placeholder">[PERCENTAGE]</span><br>
+                    • 領導 <span class="opt-placeholder">[TEAM SIZE]</span> 完成微服務架構重構<br>
+                    • 處理日交易量達 <span class="opt-placeholder">[USER COUNT]</span> 筆<br>
+                    • 節省服務器成本 <span class="opt-placeholder">[AMOUNT]</span>/年
+                </div>
+            </div>
+        </div>
+        
+        <div class="marker-example">
+            <h3>8. Placeholder 類型對應表</h3>
+            <p>以下是系統支援的 placeholder 類型和自動格式化規則：</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin: 10px 0;">
+                <thead>
+                    <tr style="background: #f0f0f0;">
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Placeholder</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">輸入示例</th>
+                        <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">格式化結果</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;"><code>[PERCENTAGE]</code></td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">25</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">25%</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;"><code>[TEAM SIZE]</code></td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">8</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">8 people</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;"><code>[AMOUNT]</code></td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">50000</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">$50000</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;"><code>[TIME PERIOD]</code></td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">6</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">6 months</td>
+                    </tr>
+                    <tr>
+                        <td style="border: 1px solid #ddd; padding: 8px;"><code>[USER COUNT]</code></td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">50000</td>
+                        <td style="border: 1px solid #ddd; padding: 8px;">50.0K</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="marker-example">
+            <h3>9. 使用說明</h3>
+            <ol>
+                <li><strong>複製 HTML 代碼</strong>：點擊各示例的「複製」按鈕</li>
+                <li><strong>貼上到編輯器</strong>：在 TinyMCE 編輯器中貼上 HTML 代碼</li>
+                <li><strong>測試功能</strong>：
+                    <ul>
+                        <li>使用 Toggle 按鈕切換所有標記顯示/隱藏</li>
+                        <li>使用 Checkbox 控制個別標記類型</li>
+                        <li>點擊 placeholder 進行編輯</li>
+                    </ul>
+                </li>
+                <li><strong>確認效果</strong>：標記應該有正確的顏色和樣式</li>
+            </ol>
+        </div>
+        
+        <div class="marker-example">
+            <h3>10. 測試清單</h3>
+            <p>使用以上示例進行以下測試：</p>
+            <ul>
+                <li>[ ] 所有標記類型正確顯示顏色和樣式</li>
+                <li>[ ] Toggle 按鈕能正確切換所有標記</li>
+                <li>[ ] 各個 Checkbox 能正確控制對應標記</li>
+                <li>[ ] Placeholder 點擊編輯功能正常</li>
+                <li>[ ] 自動格式化功能正確</li>
+                <li>[ ] 多編輯器環境下所有功能同步</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent || element.innerText;
+            
+            navigator.clipboard.writeText(text).then(function() {
+                // 顯示複製成功提示
+                const button = element.nextElementSibling || element.previousElementSibling;
+                if (button && button.classList.contains('copy-button')) {
+                    const originalText = button.textContent;
+                    button.textContent = '已複製!';
+                    button.style.background = '#4CAF50';
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.style.background = '#4CAF50';
+                    }, 2000);
+                }
+            }, function(err) {
+                console.error('複製失敗: ', err);
+                alert('複製失敗，請手動選擇並複製文字');
+            });
+        }
+    </script>
+</body>
+</html>

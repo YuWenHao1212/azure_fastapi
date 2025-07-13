@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE 標記控制系統 - 調試控制台</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+        }
+        
+        h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        .button.danger {
+            background: #e53e3e;
+        }
+        
+        .button.danger:hover {
+            background: #c53030;
+        }
+        
+        .button.success {
+            background: #38a169;
+        }
+        
+        .button.success:hover {
+            background: #2f855a;
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .status-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .status-card h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.active {
+            background: #28a745;
+        }
+        
+        .status-indicator.inactive {
+            background: #dc3545;
+        }
+        
+        .console-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border: 1px solid #4a5568;
+        }
+        
+        .editor-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+        
+        .editor-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+        }
+        
+        .editor-card h4 {
+            margin: 0 0 10px 0;
+            color: #495057;
+        }
+        
+        .property {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .property strong {
+            color: #495057;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 TinyMCE 標記控制系統 - 調試控制台</h1>
+            <p>完整的調試和診斷工具</p>
+        </div>
+        
+        <div class="section">
+            <h2>📊 系統狀態監控</h2>
+            <button class="button" onclick="refreshStatus()">🔄 更新狀態</button>
+            <button class="button success" onclick="runFullDiagnostic()">🔍 完整診斷</button>
+            
+            <div class="status-grid" id="statusGrid">
+                <!-- 狀態卡片將在這裡動態生成 -->
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>🎮 快速控制</h2>
+            <div class="controls-grid">
+                <button class="button" onclick="toggleAllMarkers()">🔄 切換所有標記</button>
+                <button class="button success" onclick="showAllMarkers()">👁️ 顯示所有標記</button>
+                <button class="button danger" onclick="hideAllMarkers()">🙈 隱藏所有標記</button>
+                <button class="button" onclick="resetAllStates()">🔄 重置所有狀態</button>
+            </div>
+            
+            <h3>個別標記控制</h3>
+            <div class="controls-grid">
+                <button class="button" onclick="toggleTag('opt-keyword-existing')">🔵 原有關鍵字</button>
+                <button class="button" onclick="toggleTag('opt-keyword')">🟣 新增關鍵字</button>
+                <button class="button" onclick="toggleTag('opt-modified')">🟡 修改內容</button>
+                <button class="button" onclick="toggleTag('opt-new')">🟢 新增內容</button>
+                <button class="button" onclick="toggleTag('opt-placeholder')">🔴 佔位符</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📝 Placeholder 測試</h2>
+            <div class="controls-grid">
+                <button class="button" onclick="testPlaceholderClick()">🖱️ 測試點擊</button>
+                <button class="button" onclick="getPlaceholderStatus()">📊 狀態查詢</button>
+                <button class="button" onclick="resetFirstClick()">🔄 重置第一次點擊</button>
+                <button class="button" onclick="activateCurrentPlaceholder()">⚡ 激活當前 Placeholder</button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 編輯器資訊</h2>
+            <button class="button" onclick="refreshEditorInfo()">🔄 更新編輯器資訊</button>
+            <div class="editor-list" id="editorList">
+                <!-- 編輯器卡片將在這裡動態生成 -->
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📝 控制台輸出</h2>
+            <button class="button" onclick="clearConsole()">🗑️ 清除</button>
+            <button class="button" onclick="exportLog()">💾 匯出日誌</button>
+            <div class="console-output" id="consoleOutput">
+                等待操作...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 控制台輸出管理
+        let logEntries = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = `[${timestamp}] ${message}`;
+            logEntries.push(entry);
+            
+            const consoleOutput = document.getElementById('consoleOutput');
+            const div = document.createElement('div');
+            div.textContent = entry;
+            div.style.color = type === 'error' ? '#f56565' : type === 'success' ? '#48bb78' : '#e2e8f0';
+            consoleOutput.appendChild(div);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        function clearConsole() {
+            document.getElementById('consoleOutput').innerHTML = '';
+            logEntries = [];
+            log('控制台已清除');
+        }
+        
+        function exportLog() {
+            const blob = new Blob([logEntries.join('\n')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tinymce-debug-log-${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('日誌已匯出', 'success');
+        }
+        
+        // 狀態監控
+        function refreshStatus() {
+            log('更新系統狀態...');
+            
+            const statusGrid = document.getElementById('statusGrid');
+            statusGrid.innerHTML = '';
+            
+            // 檢查全局狀態
+            const globalStatus = {
+                'TinyMCE': typeof tinymce !== 'undefined',
+                '主開關': window.markersVisible,
+                '樣式已注入': window.markerStylesInjected,
+                '編輯器數量': getAllTinyMCEEditors ? getAllTinyMCEEditors().length : 0
+            };
+            
+            // 檢查個別標記狀態
+            const tagStatus = {
+                '原有關鍵字': window.existingKeywordsVisible,
+                '新增關鍵字': window.newKeywordsVisible,
+                '修改內容': window.modificationVisible,
+                '新增內容': window.newSectionVisible,
+                '佔位符': window.placeholdersVisible
+            };
+            
+            // 創建狀態卡片
+            createStatusCard('全局狀態', globalStatus);
+            createStatusCard('標記狀態', tagStatus);
+            
+            log('狀態更新完成', 'success');
+        }
+        
+        function createStatusCard(title, statuses) {
+            const statusGrid = document.getElementById('statusGrid');
+            const card = document.createElement('div');
+            card.className = 'status-card';
+            
+            let html = `<h4>${title}</h4>`;
+            for (const [key, value] of Object.entries(statuses)) {
+                const indicator = value ? 'active' : 'inactive';
+                const status = value ? '啟用' : '停用';
+                html += `
+                    <div class="property">
+                        <span class="status-indicator ${indicator}"></span>
+                        <strong>${key}:</strong> ${status}
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = html;
+            statusGrid.appendChild(card);
+        }
+        
+        // 快速控制功能
+        function toggleAllMarkers() {
+            if (typeof window.toggleMarkers === 'function') {
+                window.toggleMarkers();
+                log('切換所有標記', 'success');
+                refreshStatus();
+            } else {
+                log('toggleMarkers 函數不存在', 'error');
+            }
+        }
+        
+        function showAllMarkers() {
+            if (typeof window.showMarkers === 'function') {
+                window.showMarkers();
+                log('顯示所有標記', 'success');
+                refreshStatus();
+            } else {
+                log('showMarkers 函數不存在', 'error');
+            }
+        }
+        
+        function hideAllMarkers() {
+            if (typeof window.hideMarkers === 'function') {
+                window.hideMarkers();
+                log('隱藏所有標記', 'success');
+                refreshStatus();
+            } else {
+                log('hideMarkers 函數不存在', 'error');
+            }
+        }
+        
+        function resetAllStates() {
+            if (typeof window.resetAllMarkerStates === 'function') {
+                window.resetAllMarkerStates();
+                log('重置所有狀態', 'success');
+                refreshStatus();
+            } else {
+                log('resetAllMarkerStates 函數不存在', 'error');
+            }
+        }
+        
+        function toggleTag(tagType) {
+            if (typeof window.toggleSingleTag === 'function') {
+                window.toggleSingleTag(tagType);
+                log(`切換標記: ${tagType}`, 'success');
+                refreshStatus();
+            } else {
+                log('toggleSingleTag 函數不存在', 'error');
+            }
+        }
+        
+        // Placeholder 測試
+        function testPlaceholderClick() {
+            if (typeof window.testPlaceholderClick === 'function') {
+                window.testPlaceholderClick();
+                log('執行 Placeholder 點擊測試', 'success');
+            } else {
+                log('testPlaceholderClick 函數不存在', 'error');
+            }
+        }
+        
+        function getPlaceholderStatus() {
+            if (typeof window.getPlaceholderStatus === 'function') {
+                const status = window.getPlaceholderStatus();
+                log(`Placeholder 狀態: ${JSON.stringify(status)}`, 'success');
+            } else {
+                log('getPlaceholderStatus 函數不存在', 'error');
+            }
+        }
+        
+        function resetFirstClick() {
+            if (typeof window.resetFirstClick === 'function') {
+                window.resetFirstClick();
+                log('重置第一次點擊標記', 'success');
+            } else {
+                log('resetFirstClick 函數不存在', 'error');
+            }
+        }
+        
+        function activateCurrentPlaceholder() {
+            if (typeof window.activateCurrentPlaceholder === 'function') {
+                window.activateCurrentPlaceholder();
+                log('激活當前 Placeholder', 'success');
+            } else {
+                log('activateCurrentPlaceholder 函數不存在', 'error');
+            }
+        }
+        
+        // 編輯器資訊
+        function refreshEditorInfo() {
+            log('更新編輯器資訊...');
+            
+            const editorList = document.getElementById('editorList');
+            editorList.innerHTML = '';
+            
+            if (typeof getAllTinyMCEEditors !== 'function') {
+                log('getAllTinyMCEEditors 函數不存在', 'error');
+                return;
+            }
+            
+            const editors = getAllTinyMCEEditors();
+            
+            if (editors.length === 0) {
+                editorList.innerHTML = '<p>未找到 TinyMCE 編輯器</p>';
+                log('未找到編輯器', 'error');
+                return;
+            }
+            
+            editors.forEach((editor, index) => {
+                const card = document.createElement('div');
+                card.className = 'editor-card';
+                
+                const body = editor.getBody();
+                const hasMarkersHidden = body ? body.classList.contains('markers-hidden') : false;
+                
+                card.innerHTML = `
+                    <h4>編輯器 ${index + 1}</h4>
+                    <div class="property"><strong>ID:</strong> ${editor.id}</div>
+                    <div class="property"><strong>模式:</strong> ${editor.mode.get()}</div>
+                    <div class="property"><strong>已初始化:</strong> ${editor.initialized ? '是' : '否'}</div>
+                    <div class="property"><strong>標記隱藏:</strong> ${hasMarkersHidden ? '是' : '否'}</div>
+                    <div class="property"><strong>Placeholder 處理器:</strong> ${editor.placeholderHandlerSetup ? '已設置' : '未設置'}</div>
+                `;
+                
+                editorList.appendChild(card);
+            });
+            
+            log(`找到 ${editors.length} 個編輯器`, 'success');
+        }
+        
+        // 完整診斷
+        function runFullDiagnostic() {
+            log('開始完整系統診斷...', 'success');
+            
+            if (typeof window.diagnoseMarkerSystem === 'function') {
+                window.diagnoseMarkerSystem();
+                log('執行 diagnoseMarkerSystem 完成', 'success');
+            } else {
+                log('diagnoseMarkerSystem 函數不存在', 'error');
+            }
+            
+            refreshStatus();
+            refreshEditorInfo();
+            
+            log('完整診斷完成', 'success');
+        }
+        
+        // 頁面載入時初始化
+        window.addEventListener('load', function() {
+            log('調試控制台已載入');
+            
+            // 延遲執行以確保其他腳本已載入
+            setTimeout(() => {
+                refreshStatus();
+                refreshEditorInfo();
+            }, 1000);
+        });
+        
+        // 模擬函數（如果在獨立環境中測試）
+        if (typeof getAllTinyMCEEditors === 'undefined') {
+            window.getAllTinyMCEEditors = function() {
+                return [];
+            };
+        }
+    </script>
+</body>
+</html>

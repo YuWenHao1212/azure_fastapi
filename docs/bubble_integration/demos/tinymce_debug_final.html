@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TinyMCE Marker Toggle Debug Tool - Final Fix</title>
+    <style>
+        .debug-panel {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 95%;
+            z-index: 10000;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .debug-header {
+            font-weight: bold;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .debug-section {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f9f9f9;
+        }
+        
+        .debug-info {
+            white-space: pre-wrap;
+            font-family: monospace;
+            margin: 5px 0;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .debug-log {
+            white-space: pre-wrap;
+            font-family: monospace;
+            margin: 5px 0;
+            padding: 8px;
+            background: #000;
+            color: #0f0;
+            border-radius: 3px;
+            height: 150px;
+            overflow-y: auto;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #f0f0f0;
+        }
+        
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+        
+        .copy-btn {
+            float: right;
+            font-size: 10px;
+            padding: 2px 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-panel">
+        <div class="debug-header">
+            🐛 TinyMCE Marker Debug Tool - Final Fix
+            <button class="copy-btn" onclick="copyAllLogs()">Copy All Logs</button>
+        </div>
+        
+        <div class="debug-section">
+            <strong>Quick Actions:</strong><br>
+            <button onclick="testMarkerVisibility()">🔍 Test Marker Visibility</button>
+            <button onclick="forceShowMarkers()">🟢 FORCE SHOW Markers</button>
+            <button onclick="forceHideMarkers()">🔴 FORCE HIDE Markers</button>
+            <button onclick="resetMarkers()">🔄 Reset to Default</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div class="debug-section">
+            <strong>System Info:</strong>
+            <div class="debug-info" id="info"></div>
+        </div>
+        
+        <div class="debug-section">
+            <strong>Debug Log:</strong>
+            <div class="debug-log" id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        window.TinyMCEDebug = {
+            log: function(message) {
+                const logDiv = document.getElementById('log');
+                const timestamp = new Date().toLocaleTimeString();
+                logDiv.textContent += `[${timestamp}] ${message}\n`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            },
+            
+            getActiveEditor: function() {
+                try {
+                    if (typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+                        return tinymce.activeEditor;
+                    }
+                } catch (e) {
+                    this.log('❌ Error getting active editor: ' + e.message);
+                }
+                return null;
+            },
+            
+            updateInfo: function() {
+                const info = [];
+                
+                try {
+                    // TinyMCE status
+                    info.push('TinyMCE: ' + (typeof tinymce !== 'undefined' ? 'Loaded ✅' : 'Not Found ❌'));
+                    
+                    const editor = this.getActiveEditor();
+                    if (editor) {
+                        info.push('Active Editor: ' + editor.id);
+                        info.push('Read-only: ' + (editor.readonly ? 'Yes' : 'No'));
+                        
+                        if (typeof editor.getDoc === 'function') {
+                            const doc = editor.getDoc();
+                            const body = doc.body;
+                            info.push('Body classes: ' + body.className);
+                            
+                            // Count markers
+                            const markers = doc.querySelectorAll('.opt-new, .opt-modified, .opt-placeholder, .opt-keyword, .opt-keyword-existing');
+                            info.push('Total markers: ' + markers.length);
+                            
+                            // Check current visibility state
+                            const hasHideClass = body.classList.contains('hide-all-tags');
+                            info.push('Hide class active: ' + hasHideClass);
+                            
+                            // Sample marker analysis
+                            if (markers.length > 0) {
+                                const samples = Array.from(markers).slice(0, 3);
+                                samples.forEach((marker, i) => {
+                                    const style = doc.defaultView.getComputedStyle(marker);
+                                    info.push(`Marker ${i+1} (${marker.className}):`);
+                                    info.push(`  Background: ${style.backgroundColor}`);
+                                    info.push(`  Border: ${style.borderLeft}`);
+                                    info.push(`  Padding: ${style.padding}`);
+                                });
+                            }
+                        }
+                    } else {
+                        info.push('❌ No active editor found');
+                    }
+                    
+                } catch (e) {
+                    info.push('❌ Error in updateInfo: ' + e.message);
+                }
+                
+                document.getElementById('info').textContent = info.join('\\n');
+            },
+            
+            injectVisibleStyles: function(iframeDoc) {
+                try {
+                    // Remove existing styles first
+                    const existing = iframeDoc.getElementById('marker-styles');
+                    if (existing) existing.remove();
+                    
+                    const style = iframeDoc.createElement('style');
+                    style.id = 'marker-styles';
+                    style.textContent = `
+                        /* Default visible styles for markers */
+                        .opt-new {
+                            background-color: rgba(16, 185, 129, 0.1) !important;
+                            border-left: 4px solid #10B981 !important;
+                            padding-left: 16px !important;
+                            margin: 4px 0 !important;
+                        }
+                        
+                        .opt-modified {
+                            background-color: #fef3c7 !important;
+                            padding: 2px 6px !important;
+                            border-radius: 3px !important;
+                        }
+                        
+                        .opt-placeholder {
+                            background-color: #fee2e2 !important;
+                            color: #991b1b !important;
+                            border: 1px dashed #f87171 !important;
+                            padding: 2px 8px !important;
+                            border-radius: 4px !important;
+                            font-style: italic !important;
+                        }
+                        
+                        .opt-keyword {
+                            background-color: transparent !important;
+                            color: #6366f1 !important;
+                            border: 1px solid #c7d2fe !important;
+                            padding: 2px 6px !important;
+                            border-radius: 3px !important;
+                            font-weight: 500 !important;
+                        }
+                        
+                        .opt-keyword-existing {
+                            background-color: #2563eb !important;
+                            color: white !important;
+                            padding: 3px 8px !important;
+                            border-radius: 4px !important;
+                            font-weight: 600 !important;
+                        }
+                        
+                        /* Hide styles when toggle is active */
+                        .hide-all-tags .opt-new {
+                            background-color: transparent !important;
+                            border-left: none !important;
+                            padding: 0 !important;
+                            margin: 0 !important;
+                        }
+                        
+                        .hide-all-tags .opt-modified {
+                            background-color: transparent !important;
+                            padding: 0 !important;
+                            border-radius: 0 !important;
+                        }
+                        
+                        .hide-all-tags .opt-placeholder {
+                            background-color: transparent !important;
+                            color: inherit !important;
+                            border: none !important;
+                            padding: 0 !important;
+                            font-style: normal !important;
+                        }
+                        
+                        .hide-all-tags .opt-keyword {
+                            background-color: transparent !important;
+                            color: inherit !important;
+                            border: none !important;
+                            padding: 0 !important;
+                            font-weight: normal !important;
+                        }
+                        
+                        .hide-all-tags .opt-keyword-existing {
+                            background-color: transparent !important;
+                            color: inherit !important;
+                            padding: 0 !important;
+                            font-weight: normal !important;
+                        }
+                    `;
+                    iframeDoc.head.appendChild(style);
+                    return 'Visible styles injected successfully';
+                } catch (e) {
+                    return 'Error injecting styles: ' + e.message;
+                }
+            }
+        };
+
+        function testMarkerVisibility() {
+            TinyMCEDebug.log('🔍 Testing marker visibility...');
+            
+            const editor = TinyMCEDebug.getActiveEditor();
+            if (!editor) {
+                TinyMCEDebug.log('❌ No editor found');
+                return;
+            }
+            
+            const doc = editor.getDoc();
+            const body = doc.body;
+            
+            // Inject visible styles first
+            const result = TinyMCEDebug.injectVisibleStyles(doc);
+            TinyMCEDebug.log('📝 ' + result);
+            
+            // Test different states
+            TinyMCEDebug.log('\\n🧪 Testing different visibility states:');
+            
+            // State 1: Show markers
+            body.classList.remove('hide-all-tags');
+            TinyMCEDebug.log('✅ Removed hide-all-tags class');
+            
+            setTimeout(() => {
+                const markers = doc.querySelectorAll('.opt-new, .opt-modified, .opt-placeholder, .opt-keyword, .opt-keyword-existing');
+                if (markers.length > 0) {
+                    const firstMarker = markers[0];
+                    const style = doc.defaultView.getComputedStyle(firstMarker);
+                    TinyMCEDebug.log(`📊 VISIBLE state - Background: ${style.backgroundColor}, Border: ${style.borderLeft}`);
+                }
+                
+                // State 2: Hide markers
+                body.classList.add('hide-all-tags');
+                TinyMCEDebug.log('➕ Added hide-all-tags class');
+                
+                setTimeout(() => {
+                    if (markers.length > 0) {
+                        const firstMarker = markers[0];
+                        const style = doc.defaultView.getComputedStyle(firstMarker);
+                        TinyMCEDebug.log(`📊 HIDDEN state - Background: ${style.backgroundColor}, Border: ${style.borderLeft}`);
+                    }
+                    
+                    TinyMCEDebug.updateInfo();
+                }, 100);
+            }, 100);
+        }
+
+        function forceShowMarkers() {
+            TinyMCEDebug.log('🟢 FORCING markers to show...');
+            
+            const editor = TinyMCEDebug.getActiveEditor();
+            if (!editor) {
+                TinyMCEDebug.log('❌ No editor found');
+                return;
+            }
+            
+            const doc = editor.getDoc();
+            const body = doc.body;
+            
+            // Inject visible styles
+            const result = TinyMCEDebug.injectVisibleStyles(doc);
+            TinyMCEDebug.log('📝 ' + result);
+            
+            // Remove hide class
+            body.classList.remove('hide-all-tags');
+            TinyMCEDebug.log('➖ Removed hide-all-tags class');
+            
+            // Force refresh
+            body.style.display = 'none';
+            body.offsetHeight;
+            body.style.display = '';
+            TinyMCEDebug.log('🔄 Forced refresh');
+            
+            // Update content to trigger TinyMCE refresh
+            try {
+                const content = editor.getContent();
+                editor.setContent(content);
+                TinyMCEDebug.log('📄 Reset content');
+            } catch (e) {
+                TinyMCEDebug.log('⚠️ Content reset failed: ' + e.message);
+            }
+            
+            TinyMCEDebug.updateInfo();
+        }
+
+        function forceHideMarkers() {
+            TinyMCEDebug.log('🔴 FORCING markers to hide...');
+            
+            const editor = TinyMCEDebug.getActiveEditor();
+            if (!editor) {
+                TinyMCEDebug.log('❌ No editor found');
+                return;
+            }
+            
+            const doc = editor.getDoc();
+            const body = doc.body;
+            
+            // Inject visible styles (needed for hide styles to work)
+            const result = TinyMCEDebug.injectVisibleStyles(doc);
+            TinyMCEDebug.log('📝 ' + result);
+            
+            // Add hide class
+            body.classList.add('hide-all-tags');
+            TinyMCEDebug.log('➕ Added hide-all-tags class');
+            
+            // Force refresh
+            body.style.display = 'none';
+            body.offsetHeight;
+            body.style.display = '';
+            TinyMCEDebug.log('🔄 Forced refresh');
+            
+            // Update content to trigger TinyMCE refresh
+            try {
+                const content = editor.getContent();
+                editor.setContent(content);
+                TinyMCEDebug.log('📄 Reset content');
+            } catch (e) {
+                TinyMCEDebug.log('⚠️ Content reset failed: ' + e.message);
+            }
+            
+            TinyMCEDebug.updateInfo();
+        }
+
+        function resetMarkers() {
+            TinyMCEDebug.log('🔄 Resetting markers to default...');
+            
+            const editor = TinyMCEDebug.getActiveEditor();
+            if (!editor) {
+                TinyMCEDebug.log('❌ No editor found');
+                return;
+            }
+            
+            const doc = editor.getDoc();
+            const body = doc.body;
+            
+            // Remove our styles
+            const existing = doc.getElementById('marker-styles');
+            if (existing) {
+                existing.remove();
+                TinyMCEDebug.log('🗑️ Removed custom styles');
+            }
+            
+            // Remove hide class
+            body.classList.remove('hide-all-tags');
+            TinyMCEDebug.log('➖ Removed hide-all-tags class');
+            
+            TinyMCEDebug.updateInfo();
+        }
+
+        // Create the main toggle function for Bubble.io
+        window.toggleTinyMCEMarkers = function(hideMarkers) {
+            TinyMCEDebug.log(`🎯 Toggle called: ${hideMarkers ? 'HIDE' : 'SHOW'} markers`);
+            
+            if (hideMarkers) {
+                forceHideMarkers();
+            } else {
+                forceShowMarkers();
+            }
+        };
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        function copyAllLogs() {
+            const info = document.getElementById('info').textContent;
+            const log = document.getElementById('log').textContent;
+            const allLogs = 'SYSTEM INFO:\\n' + info + '\\n\\nDEBUG LOG:\\n' + log;
+            
+            navigator.clipboard.writeText(allLogs).then(() => {
+                alert('All logs copied to clipboard!');
+            });
+        }
+
+        // Initialize
+        window.addEventListener('load', function() {
+            TinyMCEDebug.log('🚀 Final debug tool initialized');
+            TinyMCEDebug.updateInfo();
+            
+            // Set up periodic checks
+            setInterval(() => {
+                TinyMCEDebug.updateInfo();
+            }, 3000);
+        });
+    </script>
+</body>
+</html>
