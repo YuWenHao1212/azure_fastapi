@@ -178,12 +178,57 @@ class HTMLProcessor:
     def _is_summary_section(self, section_name: str) -> bool:
         """Check if section name indicates a summary section"""
         summary_keywords = [
-            'summary', 'objective', 'profile', 'about',
-            '摘要', '簡介', '個人簡介', '自我介紹'
+            'summary', 'professional summary', 'executive summary', 'career summary',
+            'objective', 'profile', 'about', 'about me', 'introduction',
+            '摘要', '簡介', '個人簡介', '自我介紹', '專業摘要', '職涯簡介'
         ]
         
-        section_lower = section_name.lower()
+        section_lower = section_name.lower().strip()
+        
+        # Exact match check
+        if section_lower in summary_keywords:
+            return True
+            
+        # Partial match check
         return any(keyword in section_lower for keyword in summary_keywords)
+    
+    def standardize_section_titles(self, html: str) -> str:
+        """Standardize section titles to avoid duplication"""
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        # Map of variations to standard titles
+        title_mapping = {
+            # Summary variations
+            'summary': 'Professional Summary',
+            'professional summary': 'Professional Summary',
+            'executive summary': 'Professional Summary',
+            'career summary': 'Professional Summary',
+            'profile': 'Professional Summary',
+            'about me': 'Professional Summary',
+            'about': 'Professional Summary',
+            'introduction': 'Professional Summary',
+            # Chinese variations
+            '摘要': 'Professional Summary',
+            '簡介': 'Professional Summary',
+            '個人簡介': 'Professional Summary',
+            '自我介紹': 'Professional Summary',
+            '專業摘要': 'Professional Summary',
+            '職涯簡介': 'Professional Summary',
+        }
+        
+        # Find all section headers
+        headers = soup.find_all(self.SECTION_HEADERS)
+        
+        for header in headers:
+            original_title = header.get_text(strip=True)
+            title_lower = original_title.lower().strip()
+            
+            # Check if this title should be standardized
+            if title_lower in title_mapping:
+                # Preserve the original tag structure but update the text
+                header.string = title_mapping[title_lower]
+        
+        return str(soup)
     
     def validate_html_structure(self, html: str) -> tuple[bool, str | None]:
         """Validate HTML structure"""

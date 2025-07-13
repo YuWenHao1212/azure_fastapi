@@ -104,17 +104,33 @@ prompts:
     - Use when: Rewriting existing content OR adding new content within existing sections
     - MUST use <span> to wrap the modified content
     - NEVER apply directly to <li>, <p>, or other block elements
-    - Examples:
-      ```html
-      <!-- Correct: Rewritten bullet point -->
-      <li><span class="opt-modified">Led cross-functional team to deliver cloud migration project</span></li>
-      
-      <!-- Correct: New content in existing Education section -->
-      <p><span class="opt-modified">Relevant Coursework: Machine Learning, Data Structures</span></p>
-      
-      <!-- WRONG: Never do this -->
-      <li class="opt-modified">Content here</li>
-      ```
+    - **CRITICAL**: Mark at SENTENCE LEVEL, not paragraph or bullet point level
+    - Only mark sentences that are actually modified or newly added
+    - Preserve original sentences without marking
+    
+    #### Sentence-Level Marking Rules:
+    1. **Identify sentence boundaries**: Use periods, exclamation marks, or question marks
+    2. **Mark only what changed**: If a paragraph has 3 sentences and you modify 1, only mark that 1
+    3. **Preserve structure**: Keep original sentence order when possible
+    4. **New sentences**: Mark any completely new sentences added
+    
+    #### Examples:
+    ```html
+    <!-- WRONG: Entire bullet point marked -->
+    <li><span class="opt-modified">Developed Python scripts for data analysis. Improved processing speed by 50%.</span></li>
+    
+    <!-- CORRECT: Only modified sentence marked -->
+    <li>Developed Python scripts for data analysis. <span class="opt-modified">Improved processing speed by 50% through algorithm optimization.</span></li>
+    
+    <!-- WRONG: Entire paragraph marked -->
+    <p><span class="opt-modified">Software Engineer with 5 years experience. Skilled in Python and Java. Expert in cloud technologies.</span></p>
+    
+    <!-- CORRECT: Only modified/new sentences marked -->
+    <p>Software Engineer with 5 years experience. <span class="opt-modified">Skilled in Python, Java, and modern web frameworks.</span> <span class="opt-modified">Expert in cloud technologies with AWS and Azure certifications.</span></p>
+    
+    <!-- Work Experience with mixed content -->
+    <li>Led team of 5 developers on mobile app project. <span class="opt-modified">Delivered app 2 weeks ahead of schedule, resulting in $50K cost savings.</span> <span class="opt-modified">Implemented agile methodologies that improved team productivity by 30%.</span></li>
+    ```
     
     ### 3. Data Level (opt-placeholder) - For missing data
     - Use when: Specific metrics or data points are needed
@@ -130,6 +146,8 @@ prompts:
     1. **Focus on content optimization**: Your job is to optimize content and mark structural changes
     2. **opt-modified requires <span>**: Always wrap modified content in span tags
     3. **Keywords will be automatically marked**: Don't worry about marking keywords
+    4. **PRESERVE ORIGINAL CONTENT**: When possible, keep original sentences and add improvements as new sentences
+    5. **SENTENCE-LEVEL PRECISION**: Mark each modified sentence separately, not entire paragraphs or bullets
 
     ## Input Structure
     - **job_description**: Target role requirements
@@ -140,11 +158,32 @@ prompts:
       - overall_assessment: Strategic guidance
     - **keywords**: covered_keywords, missing_keywords (integrate naturally, but don't mark)
 
-    ## Section-by-Section Processing Framework
+    ## Section-by-Section Processing Framework with Decision Trees
+    
+    ### CRITICAL: Sentence-Level Marking Decision Process
+    
+    For EVERY sentence or phrase you want to modify, follow this decision tree:
+    
+    ```
+    1. Can I preserve the original sentence and ADD to it?
+       → YES: Keep original + <span class="opt-modified">add new content</span>
+       → NO: Continue to step 2
+    
+    2. Is this a minor enhancement (adding tools/methods)?
+       → YES: Original text <span class="opt-modified">with enhancement</span>
+       → NO: Continue to step 3
+    
+    3. Must I completely rewrite?
+       → Only if original is grammatically incorrect or completely misaligned
+       → Mark entire new sentence as opt-modified
+    ```
+    
+    **Goal**: Preserve >50% of original sentences in each section
 
     ### 1. Summary Section
     **Decision Logic**: 
-    - If exists: Optimize existing content with opt-modified
+    - If exists (titles like "Summary", "Professional Summary", "Executive Summary", "Profile", "Career Summary", "About Me"): 
+      Optimize existing content with opt-modified - DO NOT create a new section
     - If missing: CREATE NEW SUMMARY with opt-new (mandatory)
 
     **Inputs to consider**:
@@ -164,6 +203,9 @@ prompts:
     - Position: After contact info, before Skills
 
     **If creating new summary**:
+    
+    CRITICAL: First check if ANY summary-like section exists (Summary, Professional Summary, Executive Summary, Profile, etc.)
+    If found, MODIFY it instead of creating new. Only create new if NO summary section exists at all.
     
     BEFORE creating summary, extract from resume:
     1. Actual job titles held (most recent/senior)
@@ -188,35 +230,93 @@ prompts:
     WRONG: "Senior Full-Stack Engineer with extensive DevOps experience"
 
     **If modifying existing summary**:
+    - Analyze each sentence in the existing summary
+    - Keep unmodified sentences as-is
+    - Only mark sentences that you enhance or rewrite
+    
+    Example:
     ```html
-    <p><span class="opt-modified">[Enhanced summary content with integrated keywords and strengths]</span></p>
+    <!-- Original: "Technical Leader with 10 years experience. Strong project management skills." -->
+    <!-- Modified: Keep first sentence, enhance second -->
+    <p>Technical Leader with 10 years experience. <span class="opt-modified">Strong project management skills with proven track record in Agile methodologies and cross-functional team leadership.</span></p>
     ```
 
     ### 2. Skills Section
-    **Inputs to consider**:
-    - Technical keywords from missing_keywords
-    - Skill-related improvements from quick_improvements
-    - Core strengths that are skill-based
-
-    **Processing rules**:
-    - Reorganize into job-relevant categories
-    - Add missing technical keywords naturally
-    - Prioritize skills mentioned in job description
-    - Remove outdated or irrelevant skills
-    - Mark modified lists with opt-modified span
+    
+    **Skills Section Special Handling**:
+    
+    **IMPORTANT**: Skills section has dense keywords. Be AGGRESSIVE in adding relevant skills.
+    The system will automatically mark individual keywords later - focus on adding value.
+    
+    **Skills Decision Tree**:
+    ```
+    For each skill category:
+    
+    Step 1: Analyze existing skills
+    ├─ Note what's already there (DON'T mark individual keywords)
+    └─ Identify gaps vs. job requirements
+    
+    Step 2: Aggressive skill addition strategy
+    ├─ JD explicitly requires? → MUST ADD
+    ├─ Industry standard pairing? → SHOULD ADD
+    │  (e.g., Python → add Pandas, NumPy)
+    │  (e.g., React → add TypeScript, Redux)
+    └─ Related/complementary? → CAN ADD
+    
+    Step 3: Marking approach
+    ├─ Adding to existing line:
+    │  → Programming: Python, SQL, <span class="opt-modified">R, Julia, Go</span>
+    │
+    ├─ Creating new category:
+    │  → <li><span class="opt-modified">Data Analysis: Pandas, NumPy, Scikit-learn, TensorFlow</span></li>
+    │
+    └─ Enhancing category name:
+       → <li><span class="opt-modified">Data Visualization & BI</span>: Tableau, <span class="opt-modified">Power BI, Looker, D3.js</span></li>
+    ```
+    
+    **Aggressive Addition Examples**:
+    - If has SQL → add PostgreSQL, MySQL, NoSQL
+    - If has Python → add relevant libraries based on role
+    - If has "Project Management" → add Agile, Scrum, JIRA
+    - If has Tableau → add Power BI, data visualization tools
+    
+    **Remember**: Users expect comprehensive skills. Better to over-include (they can remove) than under-include.
 
     ### 3. Work Experience Section
-    **Inputs to consider**:
-    - ALL core_strengths (demonstrate each through achievements)
-    - Experience-related improvements
-    - Keywords to integrate naturally
-    - Quantification suggestions
-
-    **Processing rules**:
-    - Convert EVERY bullet point to STAR/PAR format
-    - Highlight different strengths across different roles
-    - Add [METRIC] placeholders where quantification suggested
-    - Each modified bullet must be wrapped in opt-modified span
+    
+    **Work Experience Decision Tree**:
+    ```
+    For each bullet point:
+    
+    Step 1: Analyze existing content
+    ├─ What STAR/PAR elements are present?
+    │  ├─ Action/Task? (e.g., "Developed", "Led", "Created")
+    │  ├─ Context? (e.g., team size, project scope)
+    │  ├─ Result? (e.g., "improved", "reduced", "achieved")
+    │  └─ Metrics? (e.g., percentages, numbers)
+    
+    Step 2: Identify what's missing
+    ├─ Missing Result? → Add as new sentence
+    ├─ Missing Context? → Add to beginning
+    ├─ Missing Metrics? → Add placeholders
+    └─ Action too vague? → Enhance with method/tool
+    
+    Step 3: Apply modifications
+    ├─ Original has clear action + no result:
+    │  → Keep original. <span class="opt-modified">Add result sentence.</span>
+    │
+    ├─ Original has action but lacks detail:
+    │  → Original action <span class="opt-modified">using [method/tool]</span>
+    │
+    └─ Original is complete but needs metrics:
+       → Original text by <span class="opt-placeholder">[PERCENTAGE]</span>
+    ```
+    
+    **Examples of proper sentence-level marking**:
+    - Original: "Managed team. Delivered projects."
+    - Modified: "Managed team of <span class="opt-placeholder">[TEAM SIZE]</span>. Delivered projects. <span class="opt-modified">Achieved 100% on-time delivery rate and 15% under budget.</span>"
+    
+    **DO NOT**: Rewrite entire bullets when you can preserve and add
 
     **STAR Format Implementation**:
     - Structure: Situation/Context → Task/Challenge → Action → Result
@@ -231,13 +331,21 @@ prompts:
     - Focus on problem-solving and impact
 
     **Correct Examples**:
-    ✅ GOOD: 
+    ✅ GOOD (Sentence-level marking): 
     ```html
-    <li><span class="opt-modified">Led cross-functional team of <span class="opt-placeholder">[TEAM SIZE]</span> engineers during critical system migration, implementing phased rollout strategy that achieved 99.9% uptime and reduced deployment time by <span class="opt-placeholder">[PERCENTAGE]</span></span></li>
+    <!-- Original: "Led cross-functional team. Implemented new system." -->
+    <li>Led cross-functional team of <span class="opt-placeholder">[TEAM SIZE]</span> engineers. <span class="opt-modified">Implemented phased rollout strategy during critical system migration, achieving 99.9% uptime and reducing deployment time by <span class="opt-placeholder">[PERCENTAGE]</span>.</span></li>
+    
+    <!-- Adding result to existing bullet -->
+    <li>Developed automated testing framework for web applications. <span class="opt-modified">Reduced bug detection time by 60% and improved overall code quality scores by 25%.</span></li>
     ```
     
-    ❌ BAD: 
+    ❌ BAD (Marking entire bullet or using format markers): 
     ```html
+    <!-- Wrong: Entire bullet marked -->
+    <li><span class="opt-modified">Led cross-functional team. Implemented new system. Achieved great results.</span></li>
+    
+    <!-- Wrong: Format markers shown -->
     <li class="opt-modified">Led cross-functional team (S), tasked with system migration (T)...</li>
     ```
 
@@ -255,20 +363,39 @@ prompts:
     - Wrap modifications in opt-modified span
 
     ### 5. Education Section
-    **Processing rules**:
-    - Add relevant coursework if it addresses gaps (use opt-modified span)
-    - Add honors/achievements if missing but important
-    - Keep concise unless recent graduate
+    
+    **Education Decision Tree (Minimal Changes)**:
+    ```
+    Step 1: Is education recent (< 3 years)?
+    ├─ YES: Can add more details
+    └─ NO: Keep minimal
+    
+    Step 2: Any coursework directly relevant to JD?
+    ├─ YES: <p><span class="opt-modified">Relevant coursework: [courses]</span></p>
+    └─ NO: Leave as is
+    
+    Step 3: Missing important details?
+    └─ Add only if critical (GPA if high, honors, relevant projects)
+    ```
+    
+    **Example**:
+    - Original: "Master of Science in Data Science. University XYZ."
+    - Modified: "Master of Science in Data Science. University XYZ. <span class="opt-modified">Relevant coursework: Machine Learning, Statistical Analysis, Big Data Analytics.</span>"
 
     ### 6. Additional Sections (Certifications, Publications, Awards, etc.)
-    **Processing rules**:
-    - Only optimize sections that already exist in the resume
+    
+    **Minimal Intervention Principle**:
+    - Only optimize sections that already exist
     - Do NOT create new additional sections
-    - For existing sections:
-      - Keep only items relevant to target role
-      - Prioritize certifications that address identified gaps
-      - Remove outdated or irrelevant items
-      - Example: Keep "AWS Certified" for cloud role, remove "First Aid Certificate"
+    - Keep modifications minimal and targeted
+    
+    **Decision Process**:
+    ```
+    For each item in additional sections:
+    ├─ Directly relevant to JD? → Keep and maybe enhance
+    ├─ Somewhat relevant? → Keep as is
+    └─ Not relevant? → Keep anyway (user can decide)
+    ```
 
     ## HTML Optimization Markers Summary
 
@@ -359,12 +486,19 @@ prompts:
     - Adding academic degrees not earned
     - Claiming certifications not listed (but OK to say "preparing for AWS certification")
     
-    **Aggressive Optimization Examples**:
-    - Original: "Analyzed data"
-    - Bold: "<span class="opt-modified">Analyzed data using Python, SQL, and Tableau, creating interactive dashboards and statistical models</span>"
+    **Aggressive Optimization Examples (Still Following Sentence-Level Rules)**:
     
-    - Original: "Frontend development"
-    - Bold: "<span class="opt-modified">Frontend development with 3+ years React, TypeScript, and modern CSS frameworks</span>"
+    Example 1 - Enhancing a simple statement:
+    - Original bullet: "Analyzed sales data. Created reports for management."
+    - Optimized: "Analyzed sales data. <span class="opt-modified">Created comprehensive reports and interactive Tableau dashboards for C-level management, enabling data-driven decisions that increased revenue by <span class="opt-placeholder">[PERCENTAGE]</span>.</span>"
+    
+    Example 2 - Adding context and results:
+    - Original bullet: "Worked on frontend development projects."
+    - Optimized: "<span class="opt-modified">Developed responsive web applications using React and TypeScript for 3+ years.</span> <span class="opt-modified">Delivered 5 major projects on time, improving user engagement by 40%.</span>"
+    
+    Example 3 - Mixed original and enhanced content:
+    - Original: "Led team meetings. Managed project timelines. Worked with stakeholders."
+    - Optimized: "Led team meetings. <span class="opt-modified">Managed project timelines using Agile methodologies, reducing delivery time by 25%.</span> <span class="opt-modified">Collaborated with stakeholders across 3 departments to align technical solutions with business objectives.</span>"
     
     **Remember**: Users expect optimization. They'll remove what doesn't apply. Your job is to maximize interview potential.
 
@@ -379,6 +513,11 @@ prompts:
     - [ ] Placeholders used for missing metrics with opt-placeholder class
     - [ ] Applied improvements reported by section
     - [ ] opt-modified always uses <span> wrapper
+    - [ ] opt-modified applied at SENTENCE LEVEL, not paragraph/bullet level
+    - [ ] Original sentences preserved without marking (>50% preservation rate)
+    - [ ] Decision trees followed for each section
+    - [ ] Skills section aggressively enhanced (let Python mark keywords)
+    - [ ] Work Experience bullets preserve original + add results
     - [ ] Natural, flowing sentences without format interruptions
     - [ ] All changes clearly marked with opt-modified for user review
 
@@ -411,12 +550,13 @@ prompts:
     3. Create Summary section if missing (use opt-new class for new sections)
     4. Convert ALL experience bullets to STAR/PAR format WITHOUT format markers
     5. Use [PLACEHOLDER] format with opt-placeholder class for metrics not in original
-    6. Mark modifications with opt-modified (must wrap content in <span>)
-    7. DO NOT mark keywords or strengths - system will handle automatically
-    8. Report improvements by section using format: "[Section: Name] Description"
-    9. Output natural, professional language without STAR/PAR markers
-    10. **BE BOLD**: Optimize aggressively - add relevant skills, tools, and experiences that align with the job
-    11. **IMPORTANT**: Return ONLY valid JSON. Do NOT wrap in markdown code blocks (```json```)
+    6. Mark modifications with opt-modified at SENTENCE LEVEL (not entire paragraphs/bullets)
+    7. Preserve original sentences without marking - only mark modified/new sentences
+    8. DO NOT mark keywords or strengths - system will handle automatically
+    9. Report improvements by section using format: "[Section: Name] Description"
+    10. Output natural, professional language without STAR/PAR markers
+    11. **BE BOLD**: Optimize aggressively - add relevant skills, tools, and experiences that align with the job
+    12. **IMPORTANT**: Return ONLY valid JSON. Do NOT wrap in markdown code blocks (```json```)
 
 validation:
   required_sections:

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Options Redesign</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        /* Current Design */
+        .current-design {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .current-design h3 {
+            margin-bottom: 16px;
+            color: #666;
+        }
+
+        .tag-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag-old {
+            background: #E3F2FD;
+            color: #1976D2;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        /* New Design Options */
+        .design-option {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .design-header {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+        }
+
+        .design-content {
+            padding: 20px;
+        }
+
+        /* Option 1: Integrated Toolbar */
+        .integrated-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 12px 20px;
+            background: #fafafa;
+            border-radius: 6px;
+        }
+
+        .toolbar-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar-divider {
+            width: 1px;
+            height: 24px;
+            background: #e0e0e0;
+        }
+
+        .filter-summary {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .filter-toggle {
+            background: none;
+            border: 1px solid #ddd;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-toggle:hover {
+            background: #f0f0f0;
+        }
+
+        .filter-tags {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-tag {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .filter-tag:hover {
+            border-color: #999;
+            background: #f8f9fa;
+        }
+
+        .filter-tag.active {
+            background: #2196F3;
+            color: white;
+            border-color: #2196F3;
+        }
+
+        .filter-tag input {
+            display: none;
+        }
+
+        .tag-count {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        /* Option 2: Compact Pills */
+        .compact-pills {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .pill-group {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .pill-label {
+            color: #666;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .pill {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .pill.content {
+            background: #E3F2FD;
+            color: #1976D2;
+        }
+
+        .pill.keyword {
+            background: #F3E5F5;
+            color: #7B1FA2;
+        }
+
+        .pill.style {
+            background: #E8F5E9;
+            color: #388E3C;
+        }
+
+        .pill.active {
+            box-shadow: 0 0 0 2px currentColor;
+            font-weight: 600;
+        }
+
+        /* Option 3: Dropdown Style */
+        .dropdown-style {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dropdown-trigger {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .dropdown-trigger:hover {
+            border-color: #999;
+            background: #f8f9fa;
+        }
+
+        .dropdown-content {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Option 4: Icon-based */
+        .icon-toolbar {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            width: fit-content;
+        }
+
+        .icon-toggle {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .icon-toggle:hover {
+            background: white;
+        }
+
+        .icon-toggle.active {
+            background: #2196F3;
+            color: white;
+        }
+
+        .icon-tooltip {
+            position: absolute;
+            bottom: -28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .icon-toggle:hover .icon-tooltip {
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .integrated-toolbar {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .toolbar-divider {
+                display: none;
+            }
+
+            .compact-pills {
+                gap: 8px;
+            }
+
+            .dropdown-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Display Options Redesign Concepts</h2>
+
+        <!-- Current Design -->
+        <div class="current-design">
+            <h3>Current Design (Too Many Tags)</h3>
+            <div class="tag-list">
+                <span class="tag-old">New Sections Added</span>
+                <span class="tag-old">Keywords</span>
+                <span class="tag-old">Improvements Applied</span>
+                <span class="tag-old">Additional Skills</span>
+                <span class="tag-old">Technical Terms</span>
+                <span class="tag-old">Action Words</span>
+                <span class="tag-old">Placeholders</span>
+                <span class="tag-old">Formatting</span>
+                <span class="tag-old">Structure</span>
+                <span class="tag-old">Industry Keywords</span>
+            </div>
+        </div>
+
+        <!-- Option 1: Integrated Toolbar -->
+        <div class="design-option">
+            <div class="design-header">Option 1: Integrated Compact Toolbar (Recommended)</div>
+            <div class="design-content">
+                <div class="integrated-toolbar">
+                    <div class="toolbar-section">
+                        <span class="filter-summary">Display:</span>
+                        <button class="filter-toggle">All</button>
+                        <button class="filter-toggle">None</button>
+                    </div>
+                    
+                    <div class="toolbar-divider"></div>
+                    
+                    <div class="toolbar-section filter-tags">
+                        <label class="filter-tag active">
+                            <input type="checkbox" checked>
+                            <span>New</span>
+                            <span class="tag-count">(5)</span>
+                        </label>
+                        <label class="filter-tag active">
+                            <input type="checkbox" checked>
+                            <span>Keywords</span>
+                            <span class="tag-count">(12)</span>
+                        </label>
+                        <label class="filter-tag active">
+                            <input type="checkbox" checked>
+                            <span>Improvements</span>
+                            <span class="tag-count">(8)</span>
+                        </label>
+                        <label class="filter-tag">
+                            <input type="checkbox">
+                            <span>Placeholders</span>
+                            <span class="tag-count">(0)</span>
+                        </label>
+                    </div>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Clean and organized • Shows counts • Easy toggle • Fits with other controls
+                </p>
+            </div>
+        </div>
+
+        <!-- Option 2: Compact Pills -->
+        <div class="design-option">
+            <div class="design-header">Option 2: Color-Coded Compact Pills</div>
+            <div class="design-content">
+                <div class="compact-pills">
+                    <div class="pill-group">
+                        <span class="pill-label">Content:</span>
+                        <span class="pill content active">New (5)</span>
+                        <span class="pill content active">Modified (8)</span>
+                        <span class="pill content">Placeholders</span>
+                    </div>
+                    <div class="pill-group">
+                        <span class="pill-label">Keywords:</span>
+                        <span class="pill keyword active">Job Match (7)</span>
+                        <span class="pill keyword active">Skills (5)</span>
+                    </div>
+                    <div class="pill-group">
+                        <span class="pill-label">Style:</span>
+                        <span class="pill style active">Format</span>
+                    </div>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Visual grouping • Color coding • Compact size • Clear categories
+                </p>
+            </div>
+        </div>
+
+        <!-- Option 3: Dropdown -->
+        <div class="design-option">
+            <div class="design-header">Option 3: Expandable Dropdown</div>
+            <div class="design-content">
+                <div class="dropdown-style">
+                    <button class="dropdown-trigger">
+                        <span>Display Options</span>
+                        <span style="color: #666;">(6 active)</span>
+                        <span>▼</span>
+                    </button>
+                    <button class="filter-toggle">Reset All</button>
+                </div>
+                <div class="dropdown-content">
+                    <label class="dropdown-item">
+                        <input type="checkbox" checked>
+                        <span>New Sections</span>
+                    </label>
+                    <label class="dropdown-item">
+                        <input type="checkbox" checked>
+                        <span>Keywords</span>
+                    </label>
+                    <label class="dropdown-item">
+                        <input type="checkbox" checked>
+                        <span>Improvements</span>
+                    </label>
+                    <label class="dropdown-item">
+                        <input type="checkbox">
+                        <span>Placeholders</span>
+                    </label>
+                    <label class="dropdown-item">
+                        <input type="checkbox" checked>
+                        <span>Formatting</span>
+                    </label>
+                    <label class="dropdown-item">
+                        <input type="checkbox" checked>
+                        <span>Structure</span>
+                    </label>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Saves space • Expandable • Shows count • Clean when collapsed
+                </p>
+            </div>
+        </div>
+
+        <!-- Option 4: Icon-based -->
+        <div class="design-option">
+            <div class="design-header">Option 4: Minimal Icon Toolbar</div>
+            <div class="design-content">
+                <div class="icon-toolbar">
+                    <button class="icon-toggle active">
+                        📝
+                        <span class="icon-tooltip">New Content</span>
+                    </button>
+                    <button class="icon-toggle active">
+                        ✏️
+                        <span class="icon-tooltip">Modifications</span>
+                    </button>
+                    <button class="icon-toggle active">
+                        🔤
+                        <span class="icon-tooltip">Keywords</span>
+                    </button>
+                    <button class="icon-toggle">
+                        📍
+                        <span class="icon-tooltip">Placeholders</span>
+                    </button>
+                    <button class="icon-toggle active">
+                        🎨
+                        <span class="icon-tooltip">Formatting</span>
+                    </button>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Ultra compact • Visual icons • Tooltips on hover • Mobile friendly
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactivity
+        document.querySelectorAll('.filter-tag').forEach(tag => {
+            tag.addEventListener('click', function() {
+                this.classList.toggle('active');
+                const checkbox = this.querySelector('input');
+                checkbox.checked = !checkbox.checked;
+            });
+        });
+
+        document.querySelectorAll('.pill').forEach(pill => {
+            pill.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        document.querySelectorAll('.icon-toggle').forEach(icon => {
+            icon.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        // Dropdown toggle
+        document.querySelector('.dropdown-trigger').addEventListener('click', function() {
+            const content = document.querySelector('.dropdown-content');
+            content.style.display = content.style.display === 'none' ? 'grid' : 'none';
+        });
+    </script>
+</body>
+</html>

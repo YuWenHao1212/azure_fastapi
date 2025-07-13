@@ -84,25 +84,31 @@ class EnhancedMarker:
         # Log for debugging
         logger.info(f"Marking keywords - Original: {len(original_keywords)}, New: {len(new_keywords)}")
         
-        # Process all text nodes
-        text_nodes = []
+        # First pass: Process text nodes NOT inside opt-modified spans
+        regular_text_nodes = []
         for element in soup.find_all(text=True):
-            # Skip if parent is script, style, or already marked
+            # Skip if parent is script, style
             if element.parent.name in ['script', 'style']:
                 continue
                 
-            # Skip if already in a marked span
+            # Skip if already in a keyword or placeholder span
             if (element.parent.name == 'span' and 
                 element.parent.get('class') and
                 any(cls in element.parent.get('class', []) 
                     for cls in ['opt-keyword', 'opt-keyword-existing', 
-                               'opt-placeholder', 'opt-modified'])):
+                               'opt-placeholder'])):
+                continue
+            
+            # Skip if inside opt-modified (we'll handle these in second pass)
+            if (element.parent.name == 'span' and 
+                element.parent.get('class') and
+                'opt-modified' in element.parent.get('class', [])):
                 continue
                 
-            text_nodes.append(element)
+            regular_text_nodes.append(element)
         
-        # Mark keywords in each text node
-        for text_node in text_nodes:
+        # Process regular text nodes
+        for text_node in regular_text_nodes:
             new_html = self._mark_keywords_in_text(
                 str(text_node),
                 original_keywords,
@@ -112,16 +118,39 @@ class EnhancedMarker:
             if new_html != str(text_node):
                 # Replace the text node with marked HTML
                 new_soup = BeautifulSoup(new_html, 'html.parser')
-                # Extract just the content (not the wrapper tags BeautifulSoup adds)
                 if new_soup.body:
-                    # BeautifulSoup wraps in html/body, extract contents
                     for child in list(new_soup.body.children):
                         text_node.insert_before(child)
                 else:
-                    # Simple case - direct content
                     for child in list(new_soup.children):
                         text_node.insert_before(child)
                 text_node.extract()
+        
+        # Second pass: Process opt-modified spans
+        opt_modified_spans = soup.find_all('span', class_='opt-modified')
+        logger.info(f"Found {len(opt_modified_spans)} opt-modified spans to process")
+        
+        for span in opt_modified_spans:
+            # Get the inner HTML content
+            inner_html = ''.join(str(child) for child in span.children)
+            
+            # Mark keywords in the inner content
+            marked_inner = self._mark_keywords_in_html_content(
+                inner_html,
+                original_keywords,
+                new_keywords
+            )
+            
+            if marked_inner != inner_html:
+                # Replace span's content with marked version
+                span.clear()
+                # Parse and add the marked content
+                inner_soup = BeautifulSoup(marked_inner, 'html.parser')
+                for element in list(inner_soup):
+                    if hasattr(element, 'name'):  # It's a tag
+                        span.append(element)
+                    else:  # It's a text node
+                        span.append(element)
         
         return str(soup)
     
@@ -203,6 +232,78 @@ class EnhancedMarker:
             )
         
         return result
+    
+    def _mark_keywords_in_html_content(
+        self,
+        html_content: str,
+        original_keywords: list[str],
+        new_keywords: list[str]
+    ) -> str:
+        """
+        Mark keywords in HTML content (used for processing inside opt-modified spans).
+        This method handles mixed HTML and text content.
+        
+        Args:
+            html_content: HTML content that may contain tags and text
+            original_keywords: Original keywords to mark as opt-keyword-existing
+            new_keywords: New keywords to mark as opt-keyword
+            
+        Returns:
+            HTML content with keywords marked
+        """
+        if not html_content.strip():
+            return html_content
+            
+        # Parse the content
+        content_soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Process all text nodes within this content
+        text_nodes = []
+        for element in content_soup.find_all(text=True):
+            # Skip if already in a keyword span
+            if (element.parent.name == 'span' and 
+                element.parent.get('class') and
+                any(cls in element.parent.get('class', []) 
+                    for cls in ['opt-keyword', 'opt-keyword-existing', 'opt-placeholder'])):
+                continue
+            text_nodes.append(element)
+        
+        # Mark keywords in each text node
+        for text_node in text_nodes:
+            new_html = self._mark_keywords_in_text(
+                str(text_node),
+                original_keywords,
+                new_keywords
+            )
+            
+            if new_html != str(text_node):
+                # Replace with marked version
+                new_soup = BeautifulSoup(new_html, 'html.parser')
+                # Extract the actual content without html/body wrappers
+                if new_soup.body:
+                    for child in list(new_soup.body.children):
+                        text_node.insert_before(child)
+                elif new_soup.html:
+                    for child in list(new_soup.html.children):
+                        if child.name != 'head':
+                            text_node.insert_before(child)
+                else:
+                    for child in list(new_soup.children):
+                        text_node.insert_before(child)
+                text_node.extract()
+        
+        # Return the inner HTML without the wrapper tags BeautifulSoup adds
+        if content_soup.body:
+            return ''.join(str(child) for child in content_soup.body.children)
+        elif content_soup.html:
+            body_content = content_soup.find('body')
+            if body_content:
+                return ''.join(str(child) for child in body_content.children)
+            else:
+                # No body tag, return everything except head
+                return ''.join(str(child) for child in content_soup.html.children if child.name != 'head')
+        else:
+            return str(content_soup)
     
     def _create_keyword_pattern(self, keyword: str) -> str:
         """

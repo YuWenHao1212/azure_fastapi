@@ -166,6 +166,10 @@ class ResumeTailoringService:
         job_description_html = self.html_processor.normalize_to_html(job_description)
         original_resume_html = self.html_processor.normalize_to_html(original_resume)
         
+        # Standardize section titles to avoid duplication
+        original_resume_html = self.html_processor.standardize_section_titles(original_resume_html)
+        logger.info("Standardized section titles in original resume to avoid duplication")
+        
         # Standardize keywords based on language
         standardizer = self.en_standardizer if language == "en" else self.zh_tw_standardizer
         

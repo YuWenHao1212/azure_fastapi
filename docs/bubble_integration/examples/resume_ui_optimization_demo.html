@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume UI Optimization Demo</title>
+    <script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .evaluate-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .evaluate-btn:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+        }
+
+        /* Dashboard Container */
+        .dashboard {
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* Performance Indicators */
+        .performance-bar {
+            background: #fafafa;
+            padding: 20px 24px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .performance-metrics {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .metric {
+            flex: 1;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .metric-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.5s ease;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            min-width: 45px;
+        }
+
+        /* Improvements Section */
+        .improvements-section {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .improvements-header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .improvements-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .improvements-toggle {
+            background: none;
+            border: none;
+            color: #666;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .improvements-toggle:hover {
+            background: #e0e0e0;
+        }
+
+        .improvements-content {
+            padding: 0 24px 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .improvements-content.expanded {
+            max-height: 300px;
+        }
+
+        .improvement-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .stat-pill {
+            background: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .stat-pill strong {
+            color: #2196F3;
+        }
+
+        .improvement-list {
+            list-style: none;
+        }
+
+        .improvement-item {
+            padding: 8px 0;
+            font-size: 14px;
+            color: #555;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .improvement-item::before {
+            content: "✅";
+            flex-shrink: 0;
+        }
+
+        /* Control Bar */
+        .control-bar {
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: white;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .control-group.highlights {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .view-original-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .view-original-btn:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+
+        .highlights-label {
+            color: #666;
+            font-size: 14px;
+            margin-right: 8px;
+        }
+
+        .highlight-presets {
+            display: flex;
+            gap: 4px;
+            margin-right: 16px;
+        }
+
+        .preset-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .preset-btn.active {
+            background: #2196F3;
+            color: white;
+            border-color: #2196F3;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .edit-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .edit-btn:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+        }
+
+        .edit-btn.save-mode {
+            background: #4CAF50;
+        }
+
+        .edit-btn.save-mode:hover {
+            background: #45A049;
+        }
+
+        /* Editor Container */
+        .editor-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .editor-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .editor-panel.main {
+            flex: 2;
+        }
+
+        .editor-panel.original {
+            flex: 1;
+            max-height: 0;
+            opacity: 0;
+            margin-right: -20px;
+        }
+
+        .editor-panel.original.visible {
+            max-height: 800px;
+            opacity: 1;
+            margin-right: 0;
+        }
+
+        .panel-header {
+            background: #f8f9fa;
+            padding: 12px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #666;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .editor-content {
+            padding: 20px;
+            min-height: 400px;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .performance-metrics {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .improvement-stats {
+                flex-wrap: wrap;
+            }
+
+            .control-bar {
+                flex-wrap: wrap;
+            }
+
+            .checkbox-group {
+                font-size: 13px;
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 12px 16px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            .control-bar {
+                padding: 12px 16px;
+                gap: 12px;
+            }
+
+            .control-group {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .checkbox-group {
+                display: none;
+            }
+
+            .highlights-dropdown {
+                display: block;
+                background: white;
+                border: 1px solid #ddd;
+                padding: 6px 12px;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+
+            .editor-container {
+                flex-direction: column;
+            }
+
+            .editor-panel.original.visible {
+                margin-right: 0;
+                margin-top: 20px;
+            }
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from {
+                transform: translateX(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .editor-panel.original.visible {
+            animation: slideIn 0.3s ease;
+        }
+
+        /* TinyMCE Styles */
+        .tox-tinymce {
+            border: 1px solid #e0e0e0 !important;
+            border-radius: 0 !important;
+        }
+
+        /* Mobile Dropdown (hidden by default) */
+        .highlights-dropdown {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Resume Studio</h1>
+            <button class="evaluate-btn">Evaluate Report</button>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard">
+            <!-- Performance Indicators -->
+            <div class="performance-bar">
+                <div class="performance-metrics">
+                    <div class="metric">
+                        <div class="metric-label">Content Match Rate</div>
+                        <div class="metric-bar">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 85%"></div>
+                            </div>
+                            <div class="metric-value">85%</div>
+                        </div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Keywords Coverage Rate</div>
+                        <div class="metric-bar">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 92%"></div>
+                            </div>
+                            <div class="metric-value">92%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Improvements Applied Section -->
+            <div class="improvements-section">
+                <div class="improvements-header" onclick="toggleImprovements()">
+                    <div class="improvements-title">
+                        <span>📝</span>
+                        <span>AI Improvements Applied</span>
+                        <span style="color: #666; font-weight: normal;">(12 changes)</span>
+                    </div>
+                    <button class="improvements-toggle" id="improvementsToggle">▼ Collapse</button>
+                </div>
+                <div class="improvements-content expanded" id="improvementsContent">
+                    <div class="improvement-stats">
+                        <div class="stat-pill">Keywords <strong>+5</strong></div>
+                        <div class="stat-pill">Content <strong>+3</strong></div>
+                        <div class="stat-pill">Writing <strong>+4</strong></div>
+                    </div>
+                    <ul class="improvement-list">
+                        <li class="improvement-item">Added keywords: Python, SQL, data analysis, stakeholder management, agile</li>
+                        <li class="improvement-item">Enhanced technical skills section with specific tools and versions</li>
+                        <li class="improvement-item">Improved action verbs: "managed" → "orchestrated", "worked" → "collaborated"</li>
+                        <li class="improvement-item">Quantified achievements with metrics and business impact</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Control Bar -->
+            <div class="control-bar">
+                <div class="control-group">
+                    <button class="view-original-btn" onclick="toggleOriginal()">
+                        <span>👁️</span>
+                        <span id="originalBtnText">View Original</span>
+                    </button>
+                </div>
+
+                <div class="control-group highlights">
+                    <span class="highlights-label">Highlights:</span>
+                    <div class="highlight-presets">
+                        <button class="preset-btn active" onclick="selectPreset('all')">All</button>
+                        <button class="preset-btn" onclick="selectPreset('none')">None</button>
+                    </div>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="updateHighlights()">
+                            <span>New</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="updateHighlights()">
+                            <span>Modified</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="updateHighlights()">
+                            <span>Keywords</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" checked onchange="updateHighlights()">
+                            <span>Existing</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" onchange="updateHighlights()">
+                            <span>Placeholders</span>
+                        </label>
+                    </div>
+                    <!-- Mobile dropdown -->
+                    <select class="highlights-dropdown" onchange="updateMobileHighlights()">
+                        <option value="all">Show All (5/5)</option>
+                        <option value="custom">Custom (4/5)</option>
+                        <option value="none">Hide All</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <button class="edit-btn" id="editBtn" onclick="toggleEditMode()">
+                        <span id="editIcon">✏️</span>
+                        <span id="editText">Edit Resume</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor Container -->
+        <div class="editor-container">
+            <!-- Main Editor -->
+            <div class="editor-panel main">
+                <div class="panel-header">
+                    <span>📄 Tailored Resume</span>
+                </div>
+                <div class="editor-content">
+                    <textarea id="mainEditor"></textarea>
+                </div>
+            </div>
+
+            <!-- Original Resume Panel -->
+            <div class="editor-panel original" id="originalPanel">
+                <div class="panel-header">
+                    <span>📄 Original Resume</span>
+                    <button class="close-btn" onclick="toggleOriginal()">×</button>
+                </div>
+                <div class="editor-content">
+                    <div id="originalContent" style="padding: 20px; color: #666;">
+                        <h3>John Doe</h3>
+                        <p>Email: john.doe@email.com | Phone: (555) 123-4567</p>
+                        <hr style="margin: 20px 0;">
+                        <h4>Experience</h4>
+                        <p><strong>Data Analyst</strong> - Tech Company (2020-2023)</p>
+                        <ul>
+                            <li>Worked with data analysis tools</li>
+                            <li>Created reports for management</li>
+                            <li>Managed database systems</li>
+                        </ul>
+                        <h4>Education</h4>
+                        <p>Bachelor of Science in Computer Science - University (2016-2020)</p>
+                        <h4>Skills</h4>
+                        <p>Programming, Data Analysis, Communication</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize TinyMCE
+        tinymce.init({
+            selector: '#mainEditor',
+            height: 500,
+            menubar: false,
+            plugins: 'lists link image table code',
+            toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
+            content_style: `
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+                    font-size: 14px; 
+                    line-height: 1.6;
+                    color: #333;
+                    padding: 20px;
+                }
+                .opt-new {
+                    border-left: 4px solid #4CAF50;
+                    padding-left: 12px;
+                    margin: 8px 0;
+                    background: rgba(76, 175, 80, 0.1);
+                }
+                .opt-modified {
+                    background: #FFF3CD;
+                    padding: 2px 4px;
+                    border-radius: 2px;
+                }
+                .opt-keyword {
+                    background: #E3F2FD;
+                    color: #1976D2;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    font-weight: 500;
+                }
+            `,
+            setup: function(editor) {
+                editor.on('init', function() {
+                    editor.setContent(`
+                        <h3>John Doe</h3>
+                        <p>Email: john.doe@email.com | Phone: (555) 123-4567</p>
+                        <hr>
+                        <h4>Professional Summary</h4>
+                        <p class="opt-new">Results-driven Data Analyst with 3+ years of experience in <span class="opt-keyword">Python</span>, <span class="opt-keyword">SQL</span>, and <span class="opt-keyword">data analysis</span>. Proven track record of delivering actionable insights that drive business growth.</p>
+                        
+                        <h4>Experience</h4>
+                        <p><strong>Data Analyst</strong> - Tech Company (2020-2023)</p>
+                        <ul>
+                            <li><span class="opt-modified">Orchestrated</span> comprehensive data analysis projects using <span class="opt-keyword">Python</span> and <span class="opt-keyword">SQL</span>, improving reporting efficiency by 40%</li>
+                            <li>Created interactive dashboards for <span class="opt-keyword">stakeholder</span> presentations, resulting in 25% faster decision-making</li>
+                            <li><span class="opt-modified">Spearheaded</span> database optimization initiatives, reducing query time by 60%</li>
+                        </ul>
+                        
+                        <h4>Education</h4>
+                        <p>Bachelor of Science in Computer Science - University (2016-2020)</p>
+                        
+                        <h4>Technical Skills</h4>
+                        <p class="opt-new"><strong>Programming:</strong> <span class="opt-keyword">Python</span> (pandas, NumPy, scikit-learn), <span class="opt-keyword">SQL</span> (PostgreSQL, MySQL), R<br>
+                        <strong>Tools:</strong> Tableau, Power BI, Excel (Advanced), Jupyter Notebooks<br>
+                        <strong>Methods:</strong> Statistical Analysis, Machine Learning, <span class="opt-keyword">Agile</span> Methodology</p>
+                    `);
+                });
+            }
+        });
+
+        // State management
+        let isEditing = false;
+        let showOriginal = false;
+        let improvementsExpanded = true;
+
+        // Toggle improvements section
+        function toggleImprovements() {
+            improvementsExpanded = !improvementsExpanded;
+            const content = document.getElementById('improvementsContent');
+            const toggle = document.getElementById('improvementsToggle');
+            
+            if (improvementsExpanded) {
+                content.classList.add('expanded');
+                toggle.textContent = '▼ Collapse';
+            } else {
+                content.classList.remove('expanded');
+                toggle.textContent = '▶ Expand';
+            }
+        }
+
+        // Toggle original resume view
+        function toggleOriginal() {
+            showOriginal = !showOriginal;
+            const panel = document.getElementById('originalPanel');
+            const btnText = document.getElementById('originalBtnText');
+            
+            if (showOriginal) {
+                panel.classList.add('visible');
+                btnText.textContent = 'Hide Original';
+            } else {
+                panel.classList.remove('visible');
+                btnText.textContent = 'View Original';
+            }
+        }
+
+        // Toggle edit mode
+        function toggleEditMode() {
+            isEditing = !isEditing;
+            const btn = document.getElementById('editBtn');
+            const icon = document.getElementById('editIcon');
+            const text = document.getElementById('editText');
+            
+            if (isEditing) {
+                btn.classList.add('save-mode');
+                icon.textContent = '💾';
+                text.textContent = 'Save Changes';
+                tinymce.get('mainEditor').mode.set('design');
+            } else {
+                btn.classList.remove('save-mode');
+                icon.textContent = '✏️';
+                text.textContent = 'Edit Resume';
+                tinymce.get('mainEditor').mode.set('readonly');
+                
+                // Simulate save
+                showNotification('Changes saved successfully!');
+            }
+        }
+
+        // Select highlight preset
+        function selectPreset(preset) {
+            const checkboxes = document.querySelectorAll('.checkbox-item input');
+            const presetBtns = document.querySelectorAll('.preset-btn');
+            
+            // Update buttons
+            presetBtns.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update checkboxes
+            if (preset === 'all') {
+                checkboxes.forEach(cb => cb.checked = true);
+            } else if (preset === 'none') {
+                checkboxes.forEach(cb => cb.checked = false);
+            }
+            
+            updateHighlights();
+        }
+
+        // Update highlights
+        function updateHighlights() {
+            const checkboxes = document.querySelectorAll('.checkbox-item input');
+            const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+            const noneChecked = Array.from(checkboxes).every(cb => !cb.checked);
+            const presetBtns = document.querySelectorAll('.preset-btn');
+            
+            // Update preset buttons
+            presetBtns.forEach(btn => btn.classList.remove('active'));
+            if (allChecked) {
+                presetBtns[0].classList.add('active');
+            } else if (noneChecked) {
+                presetBtns[1].classList.add('active');
+            }
+            
+            // Here you would update the actual TinyMCE content visibility
+            console.log('Highlights updated');
+        }
+
+        // Show notification
+        function showNotification(message) {
+            // Simple notification (in real app, use a proper toast library)
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 4px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize in readonly mode
+        window.addEventListener('load', function() {
+            setTimeout(() => {
+                if (tinymce.get('mainEditor')) {
+                    tinymce.get('mainEditor').mode.set('readonly');
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

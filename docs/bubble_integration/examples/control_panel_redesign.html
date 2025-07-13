@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel Redesign</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+            padding: 40px 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h2 {
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .design-section {
+            margin-bottom: 40px;
+        }
+
+        /* Current Design */
+        .current-design {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 40px;
+        }
+
+        .current-display-options {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .old-button {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .old-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .old-switch {
+            width: 50px;
+            height: 26px;
+            background: #2196F3;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .old-switch::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            right: 2px;
+            transition: 0.3s;
+        }
+
+        .old-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* New Design Options */
+        .design-option {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .design-header {
+            background: #f8f9fa;
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .design-content {
+            padding: 20px;
+        }
+
+        /* Option 1: Elegant Horizontal */
+        .elegant-control {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            background: #fafafa;
+            border-radius: 8px;
+            gap: 24px;
+        }
+
+        .control-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-divider {
+            width: 1px;
+            height: 24px;
+            background: #e0e0e0;
+        }
+
+        .original-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .original-btn:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+
+        .original-btn.active {
+            background: #E3F2FD;
+            border-color: #2196F3;
+            color: #1976D2;
+        }
+
+        .markers-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 20px;
+            background: #ccc;
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .toggle-switch.active::after {
+            left: 22px;
+        }
+
+        .marker-options {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .marker-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .marker-chip:hover {
+            border-color: #999;
+            background: #f8f9fa;
+        }
+
+        .marker-chip.active {
+            background: #E3F2FD;
+            border-color: #2196F3;
+            color: #1976D2;
+        }
+
+        .marker-chip input {
+            display: none;
+        }
+
+        .edit-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .edit-btn:hover {
+            background: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(33,150,243,0.3);
+        }
+
+        .edit-btn.save-mode {
+            background: #4CAF50;
+        }
+
+        .edit-btn.save-mode:hover {
+            background: #45A049;
+        }
+
+        /* Option 2: Compact Card */
+        .compact-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .card-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .card-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+        }
+
+        .mini-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .mini-switch {
+            width: 32px;
+            height: 16px;
+            background: #ccc;
+            border-radius: 8px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .mini-switch.active {
+            background: #4CAF50;
+        }
+
+        .mini-switch::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: 0.3s;
+        }
+
+        .mini-switch.active::after {
+            left: 18px;
+        }
+
+        .chip-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .mini-chip {
+            padding: 4px 10px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mini-chip.active {
+            background: #2196F3;
+            color: white;
+            border-color: #2196F3;
+        }
+
+        /* Option 3: Tab Style */
+        .tab-control {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .tab-header {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            text-align: center;
+            cursor: pointer;
+            border-right: 1px solid #e0e0e0;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .tab:last-child {
+            border-right: none;
+        }
+
+        .tab:hover {
+            background: #f0f0f0;
+        }
+
+        .tab.active {
+            background: white;
+            border-bottom: 2px solid #2196F3;
+            color: #1976D2;
+            font-weight: 500;
+        }
+
+        .tab-content {
+            padding: 16px 20px;
+            background: white;
+        }
+
+        .tab-options {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Option 4: Floating Toolbar */
+        .floating-toolbar {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 8px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .float-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .float-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .float-btn.active {
+            background: #E3F2FD;
+            color: #2196F3;
+        }
+
+        .float-divider {
+            width: 1px;
+            height: 24px;
+            background: #e0e0e0;
+            margin: 0 4px;
+        }
+
+        .float-edit {
+            background: #2196F3;
+            color: white;
+            padding: 0 20px;
+            border-radius: 20px;
+            margin-left: 8px;
+        }
+
+        .float-edit:hover {
+            background: #1976D2;
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .float-btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .elegant-control {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .section-divider {
+                display: none;
+            }
+
+            .marker-options {
+                flex-wrap: wrap;
+            }
+
+            .card-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .floating-toolbar {
+                width: calc(100% - 40px);
+                max-width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Control Panel Redesign Options</h2>
+
+        <!-- Current Design -->
+        <div class="current-design">
+            <h3 style="margin-bottom: 16px; color: #666;">Current Design</h3>
+            <div class="current-display-options">
+                <button class="old-button">View Original Resume</button>
+                <div class="old-toggle">
+                    <span>Show All Markers</span>
+                    <div class="old-switch"></div>
+                </div>
+                <label class="old-checkbox">
+                    <input type="checkbox" checked>
+                    <span>New Sections</span>
+                </label>
+                <label class="old-checkbox">
+                    <input type="checkbox" checked>
+                    <span>New Keywords Added</span>
+                </label>
+                <label class="old-checkbox">
+                    <input type="checkbox" checked>
+                    <span>Modification</span>
+                </label>
+                <label class="old-checkbox">
+                    <input type="checkbox" checked>
+                    <span>Existing Keywords</span>
+                </label>
+                <label class="old-checkbox">
+                    <input type="checkbox">
+                    <span>PlaceHolders</span>
+                </label>
+                <button class="old-button">Edit</button>
+            </div>
+        </div>
+
+        <!-- Option 1: Elegant Horizontal Layout -->
+        <div class="design-option">
+            <div class="design-header">Option 1: Elegant Horizontal Layout (Recommended)</div>
+            <div class="design-content">
+                <div class="elegant-control">
+                    <div class="control-section">
+                        <button class="original-btn" onclick="toggleOriginal(this)">
+                            <span>👁️</span>
+                            <span>View Original</span>
+                        </button>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    <div class="control-section">
+                        <div class="markers-toggle">
+                            <span>Show Markers</span>
+                            <div class="toggle-switch active" onclick="toggleMarkers(this)"></div>
+                        </div>
+                        <div class="marker-options">
+                            <label class="marker-chip active">
+                                <input type="checkbox" checked>
+                                <span>New</span>
+                            </label>
+                            <label class="marker-chip active">
+                                <input type="checkbox" checked>
+                                <span>Keywords</span>
+                            </label>
+                            <label class="marker-chip active">
+                                <input type="checkbox" checked>
+                                <span>Modified</span>
+                            </label>
+                            <label class="marker-chip active">
+                                <input type="checkbox" checked>
+                                <span>Existing</span>
+                            </label>
+                            <label class="marker-chip">
+                                <input type="checkbox">
+                                <span>Placeholders</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="section-divider"></div>
+
+                    <div class="control-section">
+                        <button class="edit-btn" onclick="toggleEdit(this)">
+                            <span>✏️</span>
+                            <span>Edit Resume</span>
+                        </button>
+                    </div>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Clear visual hierarchy • Logical grouping • Easy to scan • Professional look
+                </p>
+            </div>
+        </div>
+
+        <!-- Option 2: Compact Card Style -->
+        <div class="design-option">
+            <div class="design-header">Option 2: Compact Card Style</div>
+            <div class="design-content">
+                <div class="compact-card">
+                    <div class="card-row">
+                        <div class="card-left">
+                            <button class="original-btn">
+                                <span>👁️</span>
+                                <span>Original</span>
+                            </button>
+                            <div class="mini-toggle">
+                                <span style="font-size: 13px;">Markers</span>
+                                <div class="mini-switch active"></div>
+                            </div>
+                            <div class="chip-group">
+                                <span class="mini-chip active">New</span>
+                                <span class="mini-chip active">Keys</span>
+                                <span class="mini-chip active">Mod</span>
+                                <span class="mini-chip active">Exist</span>
+                                <span class="mini-chip">Place</span>
+                            </div>
+                        </div>
+                        <button class="edit-btn">
+                            <span>✏️</span>
+                            <span>Edit</span>
+                        </button>
+                    </div>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Space efficient • Clean design • Mobile friendly • Quick access
+                </p>
+            </div>
+        </div>
+
+        <!-- Option 3: Tab Style -->
+        <div class="design-option">
+            <div class="design-header">Option 3: Tab Style Interface</div>
+            <div class="design-content">
+                <div class="tab-control">
+                    <div class="tab-header">
+                        <div class="tab active">Resume View</div>
+                        <div class="tab">Display Options</div>
+                        <div class="tab">Edit Mode</div>
+                    </div>
+                    <div class="tab-content">
+                        <div class="tab-options">
+                            <button class="original-btn active">
+                                <span>👁️</span>
+                                <span>Viewing: Tailored Resume</span>
+                            </button>
+                            <span style="color: #666; font-size: 14px;">Click to toggle between Original and Tailored views</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Organized by function • Expandable • Clear categorization • Future-proof
+                </p>
+            </div>
+        </div>
+
+        <!-- Option 4: Floating Toolbar -->
+        <div class="design-option">
+            <div class="design-header">Option 4: Floating Toolbar (Modern)</div>
+            <div class="design-content" style="height: 200px; position: relative;">
+                <p style="color: #666; margin-bottom: 80px;">
+                    Scroll down to see the floating toolbar at the bottom of the screen...
+                </p>
+                <div class="floating-toolbar">
+                    <button class="float-btn">
+                        <span>👁️</span>
+                        <span class="tooltip">View Original</span>
+                    </button>
+                    <div class="float-divider"></div>
+                    <button class="float-btn active">
+                        <span>🎨</span>
+                        <span class="tooltip">Toggle All</span>
+                    </button>
+                    <button class="float-btn active">
+                        <span>📝</span>
+                        <span class="tooltip">New</span>
+                    </button>
+                    <button class="float-btn active">
+                        <span>🔤</span>
+                        <span class="tooltip">Keywords</span>
+                    </button>
+                    <button class="float-btn active">
+                        <span>✏️</span>
+                        <span class="tooltip">Modified</span>
+                    </button>
+                    <button class="float-btn active">
+                        <span>📌</span>
+                        <span class="tooltip">Existing</span>
+                    </button>
+                    <button class="float-btn">
+                        <span>📍</span>
+                        <span class="tooltip">Placeholders</span>
+                    </button>
+                    <div class="float-divider"></div>
+                    <button class="float-btn float-edit">
+                        <span>Edit Resume</span>
+                    </button>
+                </div>
+                <p style="margin-top: 12px; color: #666; font-size: 14px;">
+                    ✅ Always accessible • Modern design • Doesn't take content space • Mobile optimized
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Toggle functions
+        function toggleOriginal(btn) {
+            btn.classList.toggle('active');
+            const text = btn.querySelector('span:last-child');
+            text.textContent = btn.classList.contains('active') ? 'Hide Original' : 'View Original';
+        }
+
+        function toggleMarkers(toggle) {
+            toggle.classList.toggle('active');
+            // Also toggle all chips
+            const chips = toggle.closest('.control-section').querySelectorAll('.marker-chip');
+            const isActive = toggle.classList.contains('active');
+            chips.forEach(chip => {
+                if (isActive) {
+                    chip.classList.add('active');
+                    chip.querySelector('input').checked = true;
+                } else {
+                    chip.classList.remove('active');
+                    chip.querySelector('input').checked = false;
+                }
+            });
+        }
+
+        function toggleEdit(btn) {
+            const isEditing = btn.classList.contains('save-mode');
+            if (isEditing) {
+                btn.classList.remove('save-mode');
+                btn.innerHTML = '<span>✏️</span><span>Edit Resume</span>';
+            } else {
+                btn.classList.add('save-mode');
+                btn.innerHTML = '<span>💾</span><span>Save Changes</span>';
+            }
+        }
+
+        // Chip toggles
+        document.querySelectorAll('.marker-chip').forEach(chip => {
+            chip.addEventListener('click', function(e) {
+                if (e.target.tagName !== 'INPUT') {
+                    const input = this.querySelector('input');
+                    input.checked = !input.checked;
+                    this.classList.toggle('active');
+                    
+                    // Check if all are unchecked to update main toggle
+                    const section = this.closest('.control-section');
+                    const allChips = section.querySelectorAll('.marker-chip');
+                    const activeChips = section.querySelectorAll('.marker-chip.active');
+                    const toggle = section.querySelector('.toggle-switch');
+                    
+                    if (activeChips.length === 0) {
+                        toggle.classList.remove('active');
+                    } else if (activeChips.length === allChips.length) {
+                        toggle.classList.add('active');
+                    }
+                }
+            });
+        });
+
+        // Mini chip toggles
+        document.querySelectorAll('.mini-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+
+        // Float button toggles
+        document.querySelectorAll('.float-btn:not(.float-edit)').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>
