@@ -198,8 +198,8 @@ class ResumeTailoringService:
         # Get prompt template - we use the same prompt for all languages
         # The prompt itself contains language output instructions
         try:
-            # First try to load language-specific prompt
-            prompt_config = self.prompt_service.get_prompt_config(context.language, "1.0.0")
+            # First try to load language-specific prompt with v1.1.0
+            prompt_config = self.prompt_service.get_prompt_config(context.language, "1.1.0")
         except FileNotFoundError:
             # Fall back to language-agnostic prompt
             # Load the v1.1.0.yaml file directly

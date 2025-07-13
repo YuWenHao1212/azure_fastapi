@@ -183,8 +183,14 @@ prompts:
     ### 1. Summary Section
     **Decision Logic**: 
     - If exists (titles like "Summary", "Professional Summary", "Executive Summary", "Profile", "Career Summary", "About Me"): 
-      Optimize existing content with opt-modified - DO NOT create a new section
+      Optimize existing content with opt-modified - DO NOT create a new section - DO NOT change the section title
     - If missing: CREATE NEW SUMMARY with opt-new (mandatory)
+    
+    **CRITICAL RULE: PRESERVE STANDARDIZED TITLES**
+    - The input resume may have already been standardized with opt-modified markers
+    - If you see `<h2><span class="opt-modified">Professional Summary</span></h2>`, preserve this marking
+    - DO NOT remove or change existing opt-modified markers on section titles
+    - Only modify the content within sections, not the section headers themselves
 
     **Inputs to consider**:
     - Overall_assessment from gap analysis
@@ -230,6 +236,7 @@ prompts:
     WRONG: "Senior Full-Stack Engineer with extensive DevOps experience"
 
     **If modifying existing summary**:
+    - **PRESERVE THE ORIGINAL SECTION TITLE** (e.g., if original is "Summary", keep "Summary", do NOT change to "Professional Summary")
     - Analyze each sentence in the existing summary
     - Keep unmodified sentences as-is
     - Only mark sentences that you enhance or rewrite

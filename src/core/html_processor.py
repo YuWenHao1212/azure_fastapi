@@ -2,10 +2,13 @@
 HTML processor for parsing and rebuilding resume HTML.
 """
 
+import logging
 
 from bs4 import BeautifulSoup, Tag
 
 from ..models.domain.tailoring import OptimizationType, ResumeSection, ResumeStructure
+
+logger = logging.getLogger(__name__)
 
 
 class HTMLProcessor:
@@ -225,8 +228,20 @@ class HTMLProcessor:
             
             # Check if this title should be standardized
             if title_lower in title_mapping:
-                # Preserve the original tag structure but update the text
-                header.string = title_mapping[title_lower]
+                new_title = title_mapping[title_lower]
+                
+                # Only standardize if the title is actually different
+                if original_title != new_title:
+                    logger.info(f"Standardizing section title: '{original_title}' → '{new_title}' (will be marked as opt-modified)")
+                    
+                    # Clear the header and add new content with opt-modified
+                    header.clear()
+                    new_span = soup.new_tag('span', **{'class': 'opt-modified'})
+                    new_span.string = new_title
+                    header.append(new_span)
+                else:
+                    # Title is already standardized, no change needed
+                    pass
         
         return str(soup)
     

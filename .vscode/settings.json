@@ -12,7 +12,10 @@
     "**/.svn": true,
     "**/.hg": true,
     "**/CVS": true,
-    "**/.DS_Store": true
+    "**/.DS_Store": true,
+    "**/docs/bubble_integration/legacy/**": true,
+    "**/docs/bubble_integration/demos/**": true,
+    "**/docs/bubble_integration/workflows/**": true
   },
   "search.exclude": {
     "../*": true,
@@ -49,5 +52,22 @@
   
   // 問題面板設定
   "problems.decorations.enabled": true,
-  "problems.autoReveal": true
+  "problems.autoReveal": true,
+  
+  // 忽略 Bubble.io 相關檔案的錯誤檢查
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.associations": {
+    "**/docs/bubble_integration/**/*.js": "plaintext",
+    "**/docs/bubble_integration/**/*.html": "html"
+  },
+  
+  // 排除這些目錄的驗證
+  "typescript.validate.enable": true,
+  "javascript.validate.enable": true,
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ],
+  
 }

@@ -1,0 +1,24 @@
+# Ignore Bubble.io integration files
+docs/bubble_integration/legacy/**
+docs/bubble_integration/demos/**
+docs/bubble_integration/workflows/**
+docs/bubble_integration/**/*.js
+docs/bubble_integration/**/*.html
+
+# Legacy and test files
+legacy/**
+temp_tests/**
+test_*.py
+test_*.html
+test_*.json
+
+# Build and dependency directories
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Azure Functions
+local.settings.json
+.python_packages/
