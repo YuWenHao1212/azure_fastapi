@@ -11,6 +11,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from src.core.config import get_settings
 from src.core.monitoring_service import monitoring_service
+from src.core.utils import stable_percentage_round
 from src.services.embedding_client import get_azure_embedding_client
 from src.services.text_processing import clean_html_text
 
@@ -119,7 +120,8 @@ def analyze_keyword_coverage(
     # Calculate statistics
     total = len([k for k in keywords if k.strip()])
     covered_count = len(covered)
-    percentage = round(covered_count / total * 100) if total else 0
+    # Use stable rounding for percentage calculation
+    percentage = stable_percentage_round(covered_count / total) if total else 0
     
     return {
         "total_keywords": total,
@@ -185,12 +187,41 @@ async def compute_similarity(
         
         raw_similarity = float(cosine_similarity(resume_embedding, job_embedding)[0][0])
         
+        # Debug logging for consistency issue
+        monitoring_service.track_event(
+            "IndexCalculationDebug",
+            {
+                "resume_length": len(resume_text),
+                "job_desc_length": len(job_description),
+                "raw_similarity": raw_similarity,
+                "embedding_time_ms": round(embedding_time * 1000, 2),
+                "resume_embedding_sample": str(resume_embedding[0][:5].tolist()),  # First 5 values
+                "job_embedding_sample": str(job_embedding[0][:5].tolist())
+            }
+        )
+        
         # Apply sigmoid transformation
         transformed_similarity = sigmoid_transform(raw_similarity)
         
-        # Convert to percentages
-        raw_percentage = round(raw_similarity * 100)
-        transformed_percentage = round(transformed_similarity * 100)
+        # Convert to percentages with detailed logging
+        raw_similarity_percent = raw_similarity * 100
+        transformed_similarity_percent = transformed_similarity * 100
+        
+        # Log exact values before rounding
+        monitoring_service.track_event(
+            "SimilarityRoundingDebug",
+            {
+                "raw_similarity_exact": raw_similarity,
+                "raw_similarity_percent_exact": raw_similarity_percent,
+                "transformed_similarity_exact": transformed_similarity,
+                "transformed_similarity_percent_exact": transformed_similarity_percent,
+                "will_round_raw_to": round(raw_similarity_percent),
+                "will_round_transformed_to": round(transformed_similarity_percent)
+            }
+        )
+        
+        raw_percentage = stable_percentage_round(raw_similarity)
+        transformed_percentage = stable_percentage_round(transformed_similarity)
         
         return raw_percentage, transformed_percentage
         
