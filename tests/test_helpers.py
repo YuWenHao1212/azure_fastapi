@@ -10,7 +10,8 @@ def get_test_headers():
     return {
         "Origin": "http://localhost:3000",  # Allowed origin
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",  # Browser UA
-        "Referer": "http://localhost:3000/test"
+        "Referer": "http://localhost:3000/test",
+        "X-Test-Bypass-Security": "true"  # Bypass security for testing
     }
 
 

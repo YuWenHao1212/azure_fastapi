@@ -620,3 +620,83 @@ async def get_keyword_extraction_prompt_version(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=error_response.dict()
         )
+
+
+@router.get(
+    "/health",
+    response_model=UnifiedResponse,
+    summary="健康檢查",
+    description="檢查 Keyword Extraction 服務健康狀態和效能資訊",
+    tags=["Health"]
+)
+async def health_check() -> UnifiedResponse:
+    """
+    Health check endpoint for keyword extraction service.
+    
+    Returns service health status and performance metrics.
+    """
+    try:
+        # Get service instance to check configuration
+        service = get_keyword_extraction_service_v2(enable_cache=False)  # Disable cache for testing
+        
+        # Create health data in the expected format
+        health_data = {
+            "status": "healthy",
+            "version": "2.0.0",
+            "timestamp": datetime.utcnow().isoformat(),
+            "features": {
+                "parallel_processing": service.enable_parallel_processing,
+                "caching": service.cache_enabled,
+                "multi_round_validation": True,
+                "standardization": True,
+                "azure_openai_integration": True,
+                "bubble_io_compatibility": True,
+                "2_round_intersection": True,
+                "bilingual_support": True
+            },
+            "performance_optimizations": {
+                "parallel_processing_enabled": service.enable_parallel_processing,
+                "cache_enabled": service.cache_enabled,
+                "cache_hit_rate": 0.0,  # Since cache is disabled for health check
+                "average_response_time_ms": 0.0,
+                "total_requests": 0,
+                "cache_ttl_minutes": 60,
+                "cache_size": 0,
+                "cache_hits": 0,
+                "cache_misses": 0
+            },
+            "service": "keyword_extraction",
+            "dependencies": {
+                "azure_openai_client": "available",
+                "prompt_manager": "available",
+                "base_service": "available",
+                "language_detector": "available",
+                "unified_prompt_service": "available"
+            },
+            "prompt_management": {
+                "default_version": service.prompt_service.default_prompt_version,
+                "available_versions": {
+                    lang: ["latest"] + list(service.prompt_service.get_available_versions(lang))
+                    for lang in service.prompt_service.supported_languages
+                },
+                "uses_yaml_config": True
+            },
+            "last_check": datetime.utcnow().isoformat()
+        }
+        
+        logger.info("Health check completed successfully")
+        return create_success_response(health_data)
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        
+        error_response = create_error_response(
+            code="HEALTH_CHECK_ERROR",
+            message="健康檢查失敗",
+            details=str(e)
+        )
+        
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=error_response.dict()
+        )

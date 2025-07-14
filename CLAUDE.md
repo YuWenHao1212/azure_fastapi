@@ -27,7 +27,7 @@
 - **Python 版本**: 3.10+ (建議使用 3.11)
 - **部署平台**: Azure Function App
 - **版本控制**: GitHub (主要) + Azure DevOps Repos (鏡像)
-- **CI/CD**: GitHub Actions → Azure Functions（MVP 完成後設置）
+- **CI/CD**: ✅ GitHub Actions → Azure Functions（已完成設置，push to main 自動部署）
 - **協作工具**: Claude Code + Cursor + Azure DevOps + Serena MCP
 
 ### Azure DevOps 專案資訊
@@ -62,7 +62,10 @@ api_project/
 ├── .cursor/                     # Cursor IDE 配置
 ├── .serena/                     # Serena MCP 記憶系統
 ├── legacy/                      # 舊版參考資料
-│   └── temp_tests/             # 臨時測試文件
+├── temp/                        # 臨時檔案統一管理
+│   ├── tests/                  # 測試相關臨時檔案
+│   ├── demos/                  # 展示檔案
+│   └── dev/                    # 開發暫存檔案
 ├── docs/                        # 文檔管理
 │   ├── drafts/                 # 草稿文檔
 │   ├── published/              # 已發布文檔
@@ -199,12 +202,12 @@ graph LR
 - [ ] 整合測試
 - [ ] 準備自動化
 
-### Phase 4: 自動化與優化（Week 7+）
-**目標**: 建立 CI/CD 流程
-- [ ] 設置 GitHub Actions
-- [ ] 自動化測試
-- [ ] 自動化部署
-- [ ] 監控優化
+### Phase 4: 自動化與優化（已完成）
+**狀態**: ✅ 已完成
+- [x] 設置 GitHub Actions
+- [x] 自動化測試
+- [x] 自動化部署（push to main → Azure）
+- [x] 監控優化
 
 ### 階段檢查點
 
@@ -333,8 +336,10 @@ How: [怎麼做的]
 
 ### 測試層級
 - **單元測試**: 覆蓋率 > 80%
-- **整合測試**: 涵蓋關鍵路徑
-- **KPI 測試**: 一致性和效能測試
+- **整合測試**: 涵蓋關鍵路徑  
+- **Security Tests**: 使用安全標記，順序執行（避免 LLM API 速率限制）
+- **API 文檔測試**: 驗證 OpenAPI schema 正確性
+- **效能測試**: 一致性和回應時間驗證
 
 ### KPI 測試標準
 ```yaml
@@ -344,6 +349,382 @@ How: [怎麼做的]
     短文本: ≥70% 一致率
     長文本: ≥50% 一致率
     兩次相同: ≥35%
+```
+
+### 測試資料規範
+```yaml
+測試文本要求:
+  job_description:
+    最小長度: 200字元
+    最大長度: 5000字元  # Bubble.io 前端限制
+    保證: 前端已確保非空值
+  
+  resume:
+    最小長度: 200字元  
+    最大長度: 5000字元  # Bubble.io 前端限制
+    保證: 前端已確保非空值
+  
+  測試重點:
+    - 正常案例 (200-1000字)
+    - 邊界案例 (接近5000字)
+    - 特殊字元 (emoji、多語言)
+    - 不需測試: None、空字串、超長文本
+  
+範例:
+  # 正常測試案例
+```
+
+### 邊界測試設計原則
+
+在設計邊界測試（Boundary Testing）時，必須先與 WenHao 討論以收斂程式碼複雜度：
+
+1. **了解業務約束**
+   ```yaml
+   # 範例：前端已實施的約束
+   job_description:
+     min_length: 200      # Bubble.io 前端保證
+     max_length: 5000     # Bubble.io 前端限制
+     nullable: false      # 前端確保非空
+   
+   # 測試設計應反映這些約束
+   boundary_tests:
+     - 199 chars         # 低於最小值
+     - 200 chars         # 剛好最小值
+     - 5000 chars        # 剛好最大值
+     - 5001 chars        # 略超最大值
+     # 不需要測試 None/空字串（前端已防止）
+   ```
+
+2. **避免不必要的測試組合**
+   ```python
+   # ❌ 錯誤：測試所有理論上可能的情況
+   test_cases = [
+       None, "", " ", "a", "ab", "abc", ... "a"*10000
+   ]
+   
+   # ✅ 正確：只測試實際業務場景
+   test_cases = [
+       "a" * 199,    # 接近最小邊界
+       "a" * 200,    # 最小邊界
+       "a" * 5000,   # 最大邊界
+       "a" * 5001,   # 超出邊界
+   ]
+   ```
+
+3. **討論時機**
+   - 設計新的邊界測試前
+   - 發現測試案例過多時
+   - 不確定業務規則時
+
+### 安全測試設計原則
+
+1. **驗證防護而非攻擊**
+   ```python
+   # ❌ 錯誤：使用真實惡意程式碼
+   payload = "'; DROP TABLE users; --"  # 可能觸發 IP 封鎖
+   
+   # ✅ 正確：使用安全測試標記
+   payload = "SAFE_SQL_TEST_DROP_KEYWORD"  # 不會觸發封鎖
+   ```
+
+2. **測試數據管理**
+   ```yaml
+   安全測試標記:
+     SQL注入: SAFE_SQL_TEST_[類型]
+     XSS攻擊: SAFE_XSS_TEST_[類型]
+     路徑遍歷: SAFE_PATH_TEST_[類型]
+   ```
+
+3. **測試環境隔離**
+   - 使用測試專用 headers（X-Test-Bypass-Security）
+   - 每個測試前清理安全封鎖狀態
+   - 避免測試間相互影響
+
+### 避免測試相互影響的實作方法
+
+1. **使用 Fixture 自動清理**
+   ```python
+   # conftest.py
+   @pytest.fixture(autouse=True)
+   def clean_test_environment():
+       """每個測試前後自動清理"""
+       # 測試前：清理任何殘留狀態
+       from src.core.monitoring.security_monitor import security_monitor
+       security_monitor.clear_all_blocks()
+       
+       yield  # 執行測試
+       
+       # 測試後：再次清理
+       security_monitor.clear_all_blocks()
+   ```
+
+2. **獨立的測試數據**
+   ```python
+   # ❌ 錯誤：共用測試數據
+   TEST_USER = {"id": 1, "name": "test"}
+   
+   def test_1():
+       TEST_USER["status"] = "active"  # 修改共用數據！
+   
+   def test_2():
+       # TEST_USER 已被 test_1 修改！
+       assert TEST_USER.get("status") is None  # 失敗！
+   
+   # ✅ 正確：每個測試用獨立數據
+   def test_1():
+       user = {"id": 1, "name": "test"}
+       user["status"] = "active"
+   
+   def test_2():
+       user = {"id": 1, "name": "test"}  # 全新的數據
+       assert user.get("status") is None  # 成功！
+   ```
+
+3. **測試隔離檢查清單**
+   - [ ] 不修改全域變數
+   - [ ] 不依賴測試執行順序
+   - [ ] 清理所有建立的資源
+   - [ ] 重置所有修改的設定
+   - [ ] 使用獨立的測試數據
+
+### 測試設計的額外最佳實踐
+
+1. **明確的錯誤訊息**
+   ```python
+   # ❌ 錯誤：不明確的斷言
+   assert response.status_code == 200
+   
+   # ✅ 正確：提供上下文資訊
+   assert response.status_code == 200, \
+       f"Expected 200 but got {response.status_code}. " \
+       f"Response: {response.text[:500]}"
+   ```
+
+2. **測試資料的可讀性**
+   ```python
+   # ❌ 錯誤：無意義的測試資料
+   test_jd = "a" * 200
+   
+   # ✅ 正確：接近真實但明確是測試
+   test_jd = """
+   [TEST DATA] Software Engineer Position
+   We are looking for a talented engineer with experience in:
+   - Python development (3+ years)
+   - FastAPI framework
+   - Cloud deployment (Azure preferred)
+   This is test data for boundary validation.
+   """ + " Additional requirements." * 10  # 補充到需要的長度
+   ```
+
+3. **測試失敗時的除錯資訊**
+   ```python
+   # 在測試失敗時自動輸出有用資訊
+   @pytest.fixture
+   def client_with_logging():
+       client = TestClient(app)
+       
+       # 攔截所有請求
+       original_request = client.request
+       def logged_request(method, url, **kwargs):
+           response = original_request(method, url, **kwargs)
+           
+           # 失敗時輸出詳細資訊
+           if response.status_code >= 400:
+               print(f"\n=== Request Failed ===")
+               print(f"Method: {method} {url}")
+               print(f"Headers: {kwargs.get('headers', {})}")
+               print(f"Body: {kwargs.get('json', kwargs.get('data'))}")
+               print(f"Response: {response.status_code}")
+               print(f"Content: {response.text[:1000]}")
+               
+           return response
+       
+       client.request = logged_request
+       return client
+   ```
+
+4. **效能考量的平衡**
+   ```python
+   # ❌ 錯誤：過度測試
+   @pytest.mark.parametrize("size", range(1, 10000))  # 10000個測試！
+   def test_all_sizes(size):
+       pass
+   
+   # ✅ 正確：選擇關鍵測試點
+   @pytest.mark.parametrize("size,expected", [
+       (199, 422),      # 低於最小值
+       (200, 200),      # 最小邊界
+       (1000, 200),     # 正常值
+       (5000, 200),     # 最大邊界
+       (5001, 422),     # 超過最大值
+   ])
+   def test_key_boundaries(size, expected):
+       pass
+   ```
+
+5. **測試的可維護性**
+   ```python
+   # 將測試常數集中管理
+   class TestConstants:
+       # API 限制
+       MIN_TEXT_LENGTH = 200
+       MAX_TEXT_LENGTH = 5000
+       
+       # 測試資料模板
+       JD_TEMPLATE = """
+       [TEST] {role} Position at {company}
+       Requirements: {requirements}
+       """
+       
+       # 預期錯誤訊息
+       ERROR_TOO_SHORT = "Text must be at least 200 characters"
+       ERROR_TOO_LONG = "Text exceeds 5000 character limit"
+   ```
+
+6. **非同步測試的陷阱**
+   ```python
+   # ❌ 錯誤：忘記 await
+   @pytest.mark.asyncio
+   async def test_async_endpoint():
+       response = client.post("/async-endpoint")  # 忘記 await！
+   
+   # ✅ 正確：正確處理非同步
+   @pytest.mark.asyncio
+   async def test_async_endpoint():
+       async with httpx.AsyncClient() as client:
+           response = await client.post("/async-endpoint")
+   ```
+
+7. **測試覆蓋率的智慧**
+   ```yaml
+   覆蓋率目標:
+     核心業務邏輯: 90%+
+     API 端點: 100%
+     錯誤處理: 80%+
+     工具函數: 70%+
+     
+   不需要測試:
+     - 第三方庫的功能
+     - 簡單的 getter/setter
+     - 框架自動生成的代碼
+   ```
+
+8. **測試命名規範**
+   ```python
+   # 測試命名：test_[被測功能]_[測試場景]_[預期結果]
+   
+   def test_keyword_extraction_valid_input_returns_keywords():
+       """測試關鍵字提取在有效輸入時返回關鍵字"""
+       pass
+   
+   def test_keyword_extraction_empty_jd_returns_422():
+       """測試關鍵字提取在空JD時返回422錯誤"""
+       pass
+   ```
+
+9. **測試文檔化**
+   ```python
+   class TestKeywordExtraction:
+       """
+       關鍵字提取 API 測試套件
+       
+       測試範圍：
+       - 正常輸入處理
+       - 邊界值驗證
+       - 錯誤處理
+       - 安全防護
+       
+       前置條件：
+       - API 服務運行在 localhost:8000
+       - 測試數據符合業務規則（200-5000字元）
+       
+       已知限制：
+       - 不測試 None 值（前端保證非空）
+       - 不測試超長文本（前端限制5000）
+       """
+   ```
+
+10. **回歸測試的重要性**
+    ```python
+    # 當修復bug時，立即加入回歸測試
+    def test_regression_empty_keywords_array():
+        """
+        回歸測試：確保空關鍵字陣列不會導致崩潰
+        Issue: #123 - API返回空陣列時前端崩潰
+        Fixed: 2024-07-14
+        """
+        response = client.post("/api/v1/extract-jd-keywords", 
+                             json={"job_description": "Short text"})
+        
+        # 確保即使沒有關鍵字也有正確結構
+        assert response.json()["data"]["keywords"] == []
+        assert isinstance(response.json()["data"]["keywords"], list)
+    ```
+
+### API 文檔測試設計原則
+
+1. **區分端點類型**
+   ```python
+   # 業務端點 vs 資訊端點
+   BUSINESS_ENDPOINTS = ["/extract-jd-keywords", "/tailor-resume"]
+   INFO_ENDPOINTS = ["/health", "/version", "/status"]
+   
+   # 不同類型有不同的測試要求
+   if endpoint in BUSINESS_ENDPOINTS:
+       assert has_error_responses(endpoint)
+       assert has_request_validation(endpoint)
+   ```
+
+2. **漸進式品質標準**
+   ```yaml
+   文檔品質階段:
+     MVP:
+       example_coverage: 10%
+       error_responses: 僅業務端點
+       descriptions: 基本描述
+     
+     v1.0:
+       example_coverage: 30%
+       error_responses: 所有端點
+       descriptions: 詳細描述
+     
+     v2.0:
+       example_coverage: 50%
+       error_responses: 詳細錯誤碼
+       descriptions: 多語言支援
+   ```
+
+3. **實用的測試工具**
+   ```bash
+   # 檢查 API 文檔完整性
+   make check-api-docs
+   
+   # 生成缺失的文檔報告
+   python tools/api_doc_analyzer.py --report missing
+   
+   # 驗證實際響應符合文檔
+   python tools/contract_test.py
+   ```
+
+4. **Async 測試最佳實踐**
+   ```python
+   # 使用 httpx.AsyncClient 而非混用 sync/async
+   async with httpx.AsyncClient() as client:
+       response = await client.get("/openapi.json")
+   
+   # 避免不必要的 async fixture
+   # 簡單的數據獲取用同步即可
+   ```
+  job_description: |
+    We are looking for an experienced Software Engineer to join our dynamic team.
+    The ideal candidate will have strong programming skills in Python and JavaScript,
+    extensive experience with cloud technologies including AWS and Azure,
+    and excellent problem-solving abilities. You will be working on cutting-edge
+    projects in a collaborative environment with opportunities for growth.
+    Minimum 5 years of experience required.
+    
+  # 邊界測試案例  
+  job_description: "合理的長文本" * 100  # 約 500 字，不需要測試 5000+ 字
 ```
 
 ### 測試修復流程
@@ -509,10 +890,10 @@ class DataModel(BaseModel):
 1. 敏感資訊絕不提交到版本控制
 2. 使用 Azure CLI 存取 DevOps（無需 PAT token）
 3. 建立 Work Item 時指定正確的 Owner
-4. MVP 優先，手動部署成功後再考慮 CI/CD
+4. ✅ CI/CD 已完成設置，push to main 自動部署到 Azure
 5. 確保 Python 3.10+ 避免相容性問題
 6. 注意 Azure 成本監控
-7. **Git 提交規則**：由於專案已設置 CI/CD pipeline，Claude Code **絕對不可以**自行執行 `git commit`。任何提交前必須：
+7. **Git 提交規則**：專案已完成 CI/CD 設置（push to main 自動部署到 Azure），Claude Code **絕對不可以**自行執行 `git commit`。任何提交前必須：
    - 執行預提交測試：`./run_precommit_tests.sh`
    - 向用戶展示完整測試結果
    - 確保所有測試通過（包括代碼風格檢查）
@@ -524,6 +905,14 @@ class DataModel(BaseModel):
    - 文檔命名使用格式：`[TYPE]_[MODULE]_YYYYMMDD.md`（例：`TEST_GAP_ANALYSIS_20250711.md`）
    - 日誌記錄使用格式：`YYYY-MM-DD HH:MM:SS CST`
    - 絕不使用 <env> 中的日期或憑空推測日期
+9. **LLM Prompt 修改規則**：
+   - **僅修改 Prompt 檔案**：可使用 `--no-api` 快速測試
+   - **Prompt 位置**：`src/prompts/[task]/v[X.Y.Z]-[language].yaml`
+   - **程式碼修改情況**：
+     - 新版本建立 → 無需修改程式碼
+     - 改變默認版本 → 修改 `default_prompt_version`
+     - 新增 prompt 參數 → 修改服務層
+     - 回應格式變更 → 修改 response model
 
 ### 環境變數問題解決方案
 
@@ -617,443 +1006,101 @@ ruff check src/ tests/ --exclude=legacy,archive
 
 ### 預提交測試流程
 
-#### 測試策略規則
+#### 快速決策規則
 
-**使用 `./run_precommit_tests.sh --no-api` 的情況：**
+**使用 `--no-api` 快速測試**：
+- 文檔檔案 (`*.md`, `docs/*`)  
+- 配置檔案 (`.gitignore`, `*.json` 配置)
+- 測試檔案修改 (`tests/*`)
+- 工具腳本 (`tools/*`, `*.sh`)
+- **LLM Prompt 檔案** (`src/prompts/**/*.yaml`) - prompt 調整不影響程式邏輯
 
-1. **文檔類修改**：
-   - `*.md` 檔案（README, CLAUDE.md, 文檔）
-   - `docs/` 目錄下的任何檔案
-   - `.txt`, `.json` 配置檔（不影響代碼邏輯）
+**使用完整測試**：
+- 任何 `src/` 目錄的 `.py` 檔案（除了 `src/prompts/`）
+- 關鍵配置 (`config.py`, `requirements.txt`)  
+- 部署相關 (`main.py`, `azure-functions/`)
+- 最終提交前（無論修改什麼）
 
-2. **配置檔修改**：
-   - `.gitignore`, `.env.example`
-   - `azure/monitoring/*.json` (workbook 配置)
-   - 不影響程式執行的 YAML/JSON 檔案
+#### 執行命令
 
-3. **測試檔案修改**：
-   - 只修改 `tests/` 目錄下的測試檔案
-   - 添加新的測試案例（不修改主程式碼）
-
-4. **工具腳本修改**：
-   - `tools/` 目錄下的獨立腳本
-   - Shell 腳本（`.sh` 檔案）
-
-**必須使用完整測試 `./run_precommit_tests.sh` 的情況：**
-
-1. **核心程式碼修改**：
-   - `src/` 目錄下的任何 `.py` 檔案
-   - API 端點修改 (`src/api/`)
-   - 服務層修改 (`src/services/`)
-   - 模型修改 (`src/models/`)
-
-2. **關鍵配置修改**：
-   - `src/core/config.py`
-   - `local.settings.json`
-   - `requirements.txt` 或依賴相關檔案
-
-3. **部署相關修改**：
-   - `azure-functions/` 目錄
-   - `main.py` 或 `function_app.py`
-   - Azure 部署配置
-
-4. **整合相關修改**：
-   - 中介軟體 (`src/middleware/`)
-   - 監控服務 (`monitoring_service.py`)
-   - 錯誤處理邏輯
-
-5. **最終提交前**：
-   - 無論修改什麼，最終 push 前必須執行完整測試
-   - 確保所有功能正常運作
-
-#### 執行測試命令
 ```bash
-# 完整測試（修改程式碼後必須執行）- 使用並行執行避免超時
+# 完整測試（修改程式碼）
 ./run_precommit_tests.sh --parallel
 
-# 快速測試（僅修改文檔/配置時可用）
+# 快速測試（文檔/配置）  
 ./run_precommit_tests.sh --no-api
-
-# 傳統單線程測試（僅在並行測試出現問題時使用）
-./run_precommit_tests.sh
 ```
 
-#### 測試決策流程圖
-```
-修改了檔案？
-├─ 是 src/*.py 檔案？ → 完整測試
-├─ 是 requirements.txt？ → 完整測試  
-├─ 是 main.py？ → 完整測試
-├─ 是 middleware/*.py？ → 完整測試
-├─ 只是 *.md 檔案？ → --no-api
-├─ 只是 docs/* 檔案？ → --no-api
-├─ 只是 tests/* 檔案？ → --no-api
-├─ 只是 .json 配置？ → --no-api
-└─ 準備 push？ → 完整測試（無論之前如何）
-```
+#### 測試要求
 
-#### 實際範例
-```bash
-# 情境 1: 修改了 monitoring_service.py
-git status  # modified: src/core/monitoring_service.py
-./run_precommit_tests.sh --parallel  # 必須完整測試（並行執行）
+**涵蓋範圍**: 單元測試、整合測試、性能測試、Bubble.io 相容性、代碼風格 (ruff)
 
-# 情境 2: 只更新了文檔
-git status  # modified: docs/monitoring-summary.md
-./run_precommit_tests.sh --no-api  # 快速測試即可
-
-# 情境 3: 修改了多個檔案
-git status  # modified: CLAUDE.md, src/api/endpoints.py
-./run_precommit_tests.sh --parallel  # 因為有 src/ 檔案，必須完整測試（並行執行）
-
-# 情境 4: 準備最終提交
-git status  # 任何檔案
-./run_precommit_tests.sh --parallel  # 最終提交前，一律完整測試（並行執行）
-```
-
-#### 測試涵蓋範圍
-- ✅ 單元測試（Core Models, API Handlers, Services）
-- ✅ 整合測試（Azure Deployment, Performance）
-- ✅ 性能測試（並行處理、緩存機制）
-- ✅ Bubble.io API 相容性測試
-- ✅ 代碼風格檢查（ruff）
-
-#### 測試結果要求
-提交前必須確保：
-- 所有測試通過（Passed）
-- 無失敗測試（Failed: 0）
-- 代碼風格檢查通過
-- 測試結果範例：
-```
-📊 TEST SUMMARY
-═══════════════════════════════════════
-Total tests: 8
-Passed: 8
-Failed: 0
-Skipped: 0
-
-✅ All tests passed! Ready to commit.
-```
+**通過標準**: 所有測試 Passed、Failed: 0、代碼風格檢查通過
 
 ### 代碼風格規範（ruff）
 
-Claude Code 在編寫程式碼時必須遵循 ruff 的代碼風格規範，避免在提交前才發現問題：
+**核心規則**: SIM (簡化)、F (未使用變數)、E (行長度88字元)、I (import排序)、UP (現代語法)
 
-#### 常見規則
-1. **SIM (simplify) 規則**
-   - 使用 `for key in dict:` 而非 `for key in dict.keys()`
-   - 使用 `if condition:` 而非 `if condition == True:`
-   - 避免不必要的 `else` 區塊
+**編碼實踐**: 使用現代 Python 語法、保持 import 整潔、適當換行
 
-2. **F (Pyflakes) 規則**
-   - 移除未使用的 import
-   - 移除未使用的變數
+### 檔案管理
 
-3. **E (pycodestyle) 規則**
-   - 保持行長度在 88 字元以內
-   - 適當的縮排和空格
+#### 臨時檔案建立規則 (重要！)
 
-4. **I (isort) 規則**
-   - import 順序：標準庫 → 第三方庫 → 本地模組
-   - 每組之間空一行
+**Claude Code 建立臨時檔案時必須遵循以下規則：**
 
-5. **UP (pyupgrade) 規則**
-   - 使用現代 Python 語法
-   - 使用 `dict[str, Any]` 而非 `Dict[str, Any]`
-   - 使用 f-strings 而非 `.format()`
-
-#### 編碼時注意事項
-- 在編寫程式碼時就遵循這些規範
-- 使用簡潔的語法和現代 Python 特性
-- 保持 import 整潔有序
-- 避免過長的行，適當換行
-
-### 臨時文件管理
-- 臨時測試文件放在 `legacy/temp_tests/`
-- 正式測試放在 `tests/`
-- 工具腳本放在 `tools/`
-
-### Serena 記憶系統
 ```yaml
-.serena/memories/:
-  api_analysis/: 原始 API 分析
-  daily_notes/: 每日開發進度
-  decisions/: 架構決策記錄
+測試腳本:     temp/tests/scripts/test_[功能]_[日期].py
+測試日誌:     temp/tests/logs/[功能]_test_[日期].log  
+測試結果:     temp/tests/results/[功能]_results_[日期].json
+Demo檔案:     temp/demos/html/[功能]_demo_[日期].html
+Shell腳本:    temp/dev/scripts/[功能]_[用途].sh
+實驗代碼:     temp/dev/experiments/[實驗名稱].py
+草稿文檔:     temp/dev/drafts/[主題]_draft.md
 ```
 
-### LLM 呼叫最佳實踐 (重要教訓 - 2025/07/09)
+**命名約定**:
+- 日期格式: YYYYMMDD (例：20250714)
+- 功能描述: 使用底線分隔 (gap_analysis, api_performance)  
+- 包含用途說明: test, debug, demo, experiment
 
-#### 完整保護機制
-
-由於 LLM 的不確定性，所有 LLM 呼叫都必須實作以下保護機制：
-
-1. **空白內容檢測**
-   ```python
-   def check_for_empty_fields(response: dict) -> list[str]:
-       """檢查是否有空白或預設訊息的欄位"""
-       empty_fields = []
-       
-       # 定義每個欄位的預設/空白值
-       field_checks = {
-           "CoreStrengths": ["<ol></ol>", "<ol><li>Unable to...</li></ol>"],
-           "KeyGaps": ["<ol></ol>", "<ol><li>Unable to...</li></ol>"],
-           "OverallAssessment": ["<p></p>", "<p>Unable to generate...</p>"]
-       }
-       
-       for field, empty_values in field_checks.items():
-           if response.get(field) in empty_values:
-               empty_fields.append(field)
-       
-       return empty_fields
-   ```
-
-2. **重試機制 (Retry Mechanism)**
-   ```python
-   async def call_llm_with_retry(prompt: str, max_attempts: int = 3):
-       """帶有重試機制的 LLM 呼叫"""
-       retry_delays = [2.0, 4.0, 8.0]  # 指數退避
-       
-       for attempt in range(max_attempts):
-           try:
-               result = await llm_call(prompt)
-               
-               # 檢查是否有空白欄位
-               empty_fields = check_for_empty_fields(result)
-               if empty_fields and attempt < max_attempts - 1:
-                   logger.warning(f"Empty fields on attempt {attempt + 1}: {empty_fields}")
-                   await asyncio.sleep(retry_delays[attempt])
-                   continue
-                   
-               return result
-               
-           except Exception as e:
-               if attempt == max_attempts - 1:
-                   raise
-               await asyncio.sleep(retry_delays[attempt])
-   ```
-
-3. **預設訊息 (Fallback Messages)**
-   ```python
-   def format_with_fallback(items: list[str], field_name: str) -> str:
-       """格式化內容，空白時提供預設訊息"""
-       if items:
-           return '<ol>' + ''.join(f'<li>{item}</li>' for item in items) + '</ol>'
-       else:
-           return f'<ol><li>Unable to analyze {field_name}. Please try again.</li></ol>'
-   ```
-
-4. **完整日誌記錄**
-   ```python
-   # 記錄 LLM 原始回應
-   logger.info(f"[LLM_RESPONSE] Full raw response ({len(response)} chars): {repr(response)}")
-   
-   # 記錄空白欄位檢測
-   if empty_fields:
-       logger.error(f"[LLM_EMPTY] Empty fields detected: {empty_fields}")
-       monitoring_service.track_event("LLMEmptyFields", {
-           "empty_fields": ",".join(empty_fields),
-           "attempt": attempt + 1
-       })
-   ```
-
-5. **監控與追蹤**
-   ```python
-   # 追蹤 LLM 呼叫指標
-   monitoring_service.track_event("LLMCallCompleted", {
-       "duration_ms": duration * 1000,
-       "retry_count": attempt,
-       "had_empty_fields": len(empty_fields) > 0,
-       "success": not empty_fields
-   })
-   ```
-
-#### 實作範例 - Gap Analysis Service
-
-參考 `src/services/gap_analysis.py` 的完整實作：
-- 3 次重試機制
-- 指數退避 (2s, 4s, 8s)
-- 空白欄位檢測
-- 預設訊息回傳
-- 完整錯誤處理
-
-#### 測試驗證
-
-使用 `test_gap_analysis_with_detailed_logging.py` 進行驗證：
-- 76 次測試，100% 成功率
-- 0 個空白欄位
-- 平均回應時間 19.64 秒
-- 完整日誌記錄
-
-**標準測試程序**：
-```bash
-# 背景執行 100 次測試
-nohup python test_gap_analysis_with_detailed_logging.py 100 > test_100_output.log 2>&1 &
-
-# 監控進度
-tail -f gap_analysis_test_results_*/gap_analysis_test_*.log | grep -E "Test #|Summary"
-```
-
-詳細指南請參考：[TEST_LLM_VALIDATION_GUIDE_20250709.md](docs/published/TEST_LLM_VALIDATION_GUIDE_20250709.md)
-
-### API 測試最佳實踐 (重要教訓 - 2025/07/09)
-
-#### 基本原則
-**任何 API 測試都必須記錄完整的請求和回應內容**。這是 debug 的基本需求，沒有詳細日誌，失敗時完全無法分析。
-
-#### 測試腳本必須包含
-
-1. **完整請求記錄**
-   ```python
-   print(f"[{datetime.now()}] Test #{iteration}", flush=True)
-   print(f"Request URL: {url}", flush=True)
-   print(f"Request payload: {json.dumps(payload, indent=2)}", flush=True)
-   print(f"Request headers: {headers}", flush=True)
-   ```
-
-2. **完整回應記錄**
-   ```python
-   print(f"Response status: {response.status_code}", flush=True)
-   print(f"Response time: {duration:.2f}s", flush=True)
-   print(f"Response headers: {dict(response.headers)}", flush=True)
-   print(f"Response body: {json.dumps(response.json(), indent=2)}", flush=True)
-   ```
-
-3. **每個欄位的實際值**
-   ```python
-   # 不只記錄「空/非空」，要記錄實際內容和統計
-   core_strengths = gap.get('CoreStrengths', 'MISSING')
-   items_count = len(re.findall(r'<li>', core_strengths))
-   print(f"CoreStrengths: {items_count} items - {core_strengths[:100]}...")
-   ```
-
-4. **失敗時的詳細資訊**
-   ```python
-   except Exception as e:
-       print(f"ERROR Details:", flush=True)
-       print(f"  - Type: {type(e).__name__}", flush=True)
-       print(f"  - Message: {str(e)}", flush=True)
-       print(f"  - Traceback: {traceback.format_exc()}", flush=True)
-       print(f"  - Request data: {json.dumps(payload)}", flush=True)
-   ```
-
-5. **保存個別回應檔案**
-   ```python
-   # 每個測試保存獨立檔案，方便後續分析
-   with open(f"response_{test_id:03d}.json", "w") as f:
-       json.dump({
-           "request": payload,
-           "response": response_data,
-           "metadata": {
-               "timestamp": datetime.now().isoformat(),
-               "duration": duration,
-               "status": response.status_code
-           }
-       }, f, indent=2, ensure_ascii=False)
-   ```
-
-6. **使用無緩衝輸出**
-   ```bash
-   # Python 預設會緩衝輸出，測試時必須使用 -u 參數
-   python -u test_script.py > test_log.txt 2>&1 &
-   
-   # 或在程式中強制 flush
-   print("Important log", flush=True)
-   ```
-
-#### 錯誤思維避免
-- ❌ 只關注「統計」而非「內容」
-- ❌ 假設只要知道成功/失敗就夠了
-- ❌ 認為摘要資訊足以 debug
-- ❌ 忽略 Python 輸出緩衝問題
-- ✅ 記錄所有可能需要的資訊
-- ✅ 寧可資訊過多，不要資訊不足
-- ✅ 考慮未來 debug 的需求
-- ✅ 確保即時看到測試進度
-
-#### 完整測試腳本範例
+**範例**:
 ```python
-async def test_api_with_full_logging(url, payload, test_id):
-    """正確的 API 測試方式，包含完整日誌"""
-    print(f"\n{'='*60}", flush=True)
-    print(f"[{datetime.now()}] Starting Test #{test_id}", flush=True)
-    print(f"URL: {url}", flush=True)
-    print(f"Payload: {json.dumps(payload, indent=2)}", flush=True)
-    
-    start_time = time.time()
-    
-    try:
-        response = await client.post(url, json=payload, timeout=60)
-        duration = time.time() - start_time
-        
-        # 記錄完整回應
-        print(f"Status: {response.status_code} in {duration:.2f}s", flush=True)
-        response_data = response.json()
-        
-        # 分析並記錄關鍵欄位
-        if "data" in response_data:
-            for key, value in response_data["data"].items():
-                value_type = type(value).__name__
-                value_preview = str(value)[:200] if not isinstance(value, (dict, list)) else f"{len(value)} items"
-                print(f"  {key}: {value_type} = {value_preview}", flush=True)
-        
-        # 檢查特定欄位
-        if "gap_analysis" in response_data.get("data", {}):
-            gap = response_data["data"]["gap_analysis"]
-            for field in ["CoreStrengths", "KeyGaps", "QuickImprovements", "OverallAssessment"]:
-                content = gap.get(field, "MISSING")
-                if content in ["<ol></ol>", "<p></p>", ""]:
-                    print(f"  ⚠️  {field}: EMPTY!", flush=True)
-                else:
-                    text_len = len(re.sub(r'<[^>]+>', '', content))
-                    print(f"  ✅ {field}: {text_len} chars", flush=True)
-        
-        # 保存完整回應
-        filename = f"response_{test_id:03d}_{response.status_code}.json"
-        with open(filename, "w") as f:
-            json.dump({
-                "test_id": test_id,
-                "timestamp": datetime.now().isoformat(),
-                "duration_seconds": duration,
-                "request": {
-                    "url": url,
-                    "payload": payload
-                },
-                "response": {
-                    "status": response.status_code,
-                    "headers": dict(response.headers),
-                    "body": response_data
-                }
-            }, f, indent=2, ensure_ascii=False)
-        print(f"  💾 Saved to {filename}", flush=True)
-            
-    except Exception as e:
-        print(f"❌ ERROR in test #{test_id}:", flush=True)
-        print(f"  Type: {type(e).__name__}", flush=True)
-        print(f"  Message: {str(e)}", flush=True)
-        print(f"  Duration: {time.time() - start_time:.2f}s", flush=True)
-        
-        # 保存錯誤資訊
-        with open(f"error_{test_id:03d}.json", "w") as f:
-            json.dump({
-                "test_id": test_id,
-                "timestamp": datetime.now().isoformat(),
-                "error": {
-                    "type": type(e).__name__,
-                    "message": str(e),
-                    "traceback": traceback.format_exc()
-                },
-                "request": payload
-            }, f, indent=2)
+# temp/tests/scripts/test_gap_analysis_retry_20250714.py
+"""
+測試 Gap Analysis 重試機制
+建立: 2025-07-14, 用途: 驗證重試邏輯
+"""
 ```
 
-#### 監控測試進度
-```python
-# 每 N 個測試顯示統計
-if test_id % 10 == 0:
-    success_rate = (success_count / test_id) * 100
-    avg_time = sum(durations[-10:]) / len(durations[-10:])
-    print(f"\n📊 Progress: {test_id}/100 ({success_rate:.1f}% success, avg {avg_time:.2f}s)", flush=True)
-```
+#### 正式檔案結構
+- **正式測試**: `tests/unit/`, `tests/integration/`
+- **專案文檔**: `docs/published/`, `docs/drafts/`  
+- **記憶系統**: `.serena/memories/` (API分析、開發進度、架構決策)
+
+### LLM 呼叫最佳實踐
+
+**核心保護機制**:
+- **空白內容檢測** + **重試機制** (3次，指數退避)  
+- **預設訊息回傳** + **完整日誌記錄**
+- **監控與追蹤** (duration, retry_count, success率)
+
+**實作範例**: `src/services/gap_analysis.py`
+
+**詳細指南**: `docs/published/TEST_BEST_PRACTICES_20250714.md`
+
+### API 測試最佳實踐
+
+**基本原則**: 記錄完整請求/回應內容便於 debug
+
+**必須包含**:
+- 完整請求/回應記錄
+- 每個欄位實際值統計  
+- 失敗時詳細資訊
+- 個別回應檔案保存
+- 無緩衝輸出 (`flush=True`)
+
+**詳細範例與完整腳本**: `docs/published/TEST_BEST_PRACTICES_20250714.md`
 
 ---
 

@@ -71,21 +71,28 @@ COLLABORATION_LOG.md
 # CLAUDE.md  # 協作指南需要納入版本控制
 README_*.md
 
-# 臨時測試檔案
-test_*.py
-tests/temp/*.py
+# 臨時檔案統一管理
+temp/
 
-# 測試結果檔案
+# 根目錄臨時檔案 (應移到 temp/ 目錄)
+test_*.py
+test_*.log
+test_*.json
+*.test.json
+api_test_response_*.json
+azure_api_test_response_*.json
+
+# 測試結果檔案 (應移到 temp/tests/results/)
 TC416_consistency_report_*.json
 consistency_test_results_*.json
 prompt_version_comparison_*.json
 v1.*_*.json
 round*.json
+response_*.json
+error_*.json
 !tests/**/test_*.py
-test_*.json
-*.test.json
 
-# Logs
+# 日誌檔案 (應移到 temp/tests/logs/)
 logs/
 *.log
 npm-debug.log*

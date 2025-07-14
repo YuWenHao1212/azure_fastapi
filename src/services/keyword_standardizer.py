@@ -197,6 +197,19 @@ class KeywordStandardizer:
         
         return standardized_keywords, standardization_details
     
+    def standardize(self, keyword: str) -> str:
+        """
+        Standardize a single keyword (compatibility method for tests).
+        
+        Args:
+            keyword: Keyword to standardize
+            
+        Returns:
+            Standardized keyword
+        """
+        standardized, _, _ = self._standardize_single(keyword)
+        return standardized
+    
     def _standardize_single(self, keyword: str) -> tuple[str, str, str]:
         """
         Standardize a single keyword.
