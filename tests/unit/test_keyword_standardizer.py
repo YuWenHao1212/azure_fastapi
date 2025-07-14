@@ -254,7 +254,7 @@ class TestKeywordStandardizer:
             result = standardizer.standardize(keyword)
             # Should apply title case but not change the term
             expected = keyword.title()
-            assert result == expected or result == keyword
+            assert result in (expected, keyword)
 
 
 if __name__ == "__main__":

@@ -4,15 +4,13 @@ Cache performance and verification tests.
 Ensures caching mechanism works correctly and improves performance.
 """
 
-import asyncio
 import time
-from typing import Dict, Any
 
 import pytest
 
+from src.models.keyword_extraction import KeywordExtractionRequest
 from src.services.keyword_extraction import KeywordExtractionService
 from src.services.openai_client import get_azure_openai_client
-from src.models.keyword_extraction import KeywordExtractionRequest
 
 
 class TestCachePerformance:

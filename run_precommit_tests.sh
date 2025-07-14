@@ -8,6 +8,7 @@
 #   --full-perf: Run all performance tests including flaky ones (default: skip flaky tests)
 #   --parallel: Run tests in parallel using multiple CPU cores
 #   --timeout <seconds>: Set custom timeout (default: 300 seconds)
+#   --no-coverage: Skip coverage report generation to save time
 
 set -e  # Exit on error
 
@@ -32,6 +33,7 @@ SKIPPED_TESTS=0
 SKIP_API_STARTUP=false
 RUN_FULL_PERF_TESTS=false
 PARALLEL_EXECUTION=false
+SKIP_COVERAGE=false
 TIMEOUT_SECONDS=300  # 5 minutes default
 for arg in "$@"; do
     case $arg in
@@ -45,6 +47,10 @@ for arg in "$@"; do
             ;;
         --parallel)
             PARALLEL_EXECUTION=true
+            shift
+            ;;
+        --no-coverage)
+            SKIP_COVERAGE=true
             shift
             ;;
         --timeout)
@@ -364,12 +370,14 @@ else
 fi
 
 # 6. Test Coverage Report (if all tests passed)
-if [ $FAILED_TESTS -eq 0 ] && [ "$SKIP_API_STARTUP" = false ]; then
+SKIP_COVERAGE=${SKIP_COVERAGE:-false}
+if [ $FAILED_TESTS -eq 0 ] && [ "$SKIP_API_STARTUP" = false ] && [ "$SKIP_COVERAGE" = false ]; then
     echo ""
     echo "═══════════════════════════════════════"
     echo "📊 TEST COVERAGE REPORT"
     echo "═══════════════════════════════════════"
     echo -e "${YELLOW}Generating test coverage report...${NC}"
+    echo -e "${YELLOW}(Skip with --no-coverage to save time)${NC}"
     
     # Run coverage with pytest
     if pytest --cov=src --cov-report=html --cov-report=term-missing tests/unit/ tests/integration/ -q; then
@@ -388,6 +396,10 @@ if [ $FAILED_TESTS -eq 0 ] && [ "$SKIP_API_STARTUP" = false ]; then
         fi
     else
         echo -e "${YELLOW}⚠️  Failed to generate coverage report${NC}"
+    fi
+else
+    if [ "$SKIP_COVERAGE" = true ]; then
+        echo -e "${YELLOW}📊 Skipping coverage report (--no-coverage flag)${NC}"
     fi
 fi
 
@@ -410,11 +422,12 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "   git add -A && git commit -m 'feat: your commit message'"
     echo ""
     echo "📝 Usage tips:"
-    echo "   ./run_precommit_tests.sh              # Run with auto API startup (default)"
-    echo "   ./run_precommit_tests.sh --no-api     # Skip API tests for quick check"
-    echo "   ./run_precommit_tests.sh --parallel   # Run tests in parallel (faster)"
-    echo "   ./run_precommit_tests.sh --full-perf  # Include flaky performance tests"
-    echo "   ./run_precommit_tests.sh --timeout 600 # Set 10 minute timeout"
+    echo "   ./run_precommit_tests.sh                    # Run with auto API startup (default)"
+    echo "   ./run_precommit_tests.sh --no-api           # Skip API tests for quick check"
+    echo "   ./run_precommit_tests.sh --parallel         # Run tests in parallel (faster)"
+    echo "   ./run_precommit_tests.sh --no-coverage      # Skip coverage report (saves ~30s)"
+    echo "   ./run_precommit_tests.sh --parallel --no-coverage  # Fastest full test"
+    echo "   ./run_precommit_tests_quick.sh              # Ultra-fast essential tests only"
     exit 0
 else
     echo -e "${RED}❌ Some tests failed. Please fix before committing.${NC}"
