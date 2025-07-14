@@ -262,6 +262,14 @@ run_test_category "Resume Tailoring API Test" \
 run_test_category "Resume Tailoring with Index Test" \
     "pytest tests/integration/test_resume_tailoring_with_index.py -v --tb=short"
 
+# NEW: Add Security Test
+run_test_category "Security Test" \
+    "pytest tests/integration/test_security.py -v --tb=short"
+
+# NEW: Add API Documentation Test
+run_test_category "API Documentation Test" \
+    "pytest tests/integration/test_api_documentation.py -v --tb=short"
+
 # Run performance tests based on API availability
 if check_api_server; then
     echo -e "${GREEN}🌐 API server is available - running all tests${NC}"
@@ -355,7 +363,35 @@ else
     echo -e "${RED}⚠️  Missing $missing_prompts prompt files${NC}"
 fi
 
-# 6. Final Summary
+# 6. Test Coverage Report (if all tests passed)
+if [ $FAILED_TESTS -eq 0 ] && [ "$SKIP_API_STARTUP" = false ]; then
+    echo ""
+    echo "═══════════════════════════════════════"
+    echo "📊 TEST COVERAGE REPORT"
+    echo "═══════════════════════════════════════"
+    echo -e "${YELLOW}Generating test coverage report...${NC}"
+    
+    # Run coverage with pytest
+    if pytest --cov=src --cov-report=html --cov-report=term-missing tests/unit/ tests/integration/ -q; then
+        echo -e "${GREEN}✅ Coverage report generated in htmlcov/${NC}"
+        
+        # Extract coverage percentage
+        coverage_percent=$(coverage report | grep "TOTAL" | awk '{print $4}')
+        echo -e "${GREEN}Total coverage: $coverage_percent${NC}"
+        
+        # Check if coverage meets threshold
+        coverage_value=$(echo $coverage_percent | sed 's/%//')
+        if (( $(echo "$coverage_value >= 80" | bc -l) )); then
+            echo -e "${GREEN}✓ Coverage meets 80% threshold${NC}"
+        else
+            echo -e "${YELLOW}⚠️  Coverage below 80% threshold${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  Failed to generate coverage report${NC}"
+    fi
+fi
+
+# 7. Final Summary
 echo ""
 echo "═══════════════════════════════════════"
 echo "📊 TEST SUMMARY"
