@@ -9,6 +9,8 @@ from typing import Any
 import httpx
 import pytest
 
+from tests.test_helpers import get_test_headers
+
 
 class TestAPIDocumentation:
     """Test suite for API documentation and OpenAPI spec validation"""
@@ -16,14 +18,17 @@ class TestAPIDocumentation:
     @pytest.fixture
     def client(self):
         """Create HTTP client for testing"""
-        return httpx.AsyncClient(base_url="http://localhost:8000", timeout=30.0)
+        headers = get_test_headers()
+        return httpx.AsyncClient(base_url="http://localhost:8000", timeout=30.0, headers=headers)
     
     @pytest.fixture
-    async def openapi_spec(self, client) -> dict[str, Any]:
+    async def openapi_spec(self) -> dict[str, Any]:
         """Fetch and cache OpenAPI specification"""
-        response = await client.get("/openapi.json")
-        assert response.status_code == 200, "Failed to fetch OpenAPI spec"
-        return response.json()
+        headers = get_test_headers()
+        async with httpx.AsyncClient(base_url="http://localhost:8000", timeout=30.0, headers=headers) as client:
+            response = await client.get("/openapi.json")
+            assert response.status_code == 200, "Failed to fetch OpenAPI spec"
+            return response.json()
     
     @pytest.mark.asyncio
     async def test_openapi_spec_available(self, client):

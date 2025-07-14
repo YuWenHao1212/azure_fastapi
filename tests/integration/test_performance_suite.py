@@ -12,6 +12,7 @@ import aiohttp
 import pytest
 
 from src.services.keyword_extraction_v2 import KeywordExtractionServiceV2
+from tests.test_helpers import get_test_headers
 
 
 @pytest.mark.integration
@@ -179,7 +180,8 @@ class TestAPIPerformance:
     @pytest.mark.asyncio
     async def test_api_health_check(self, api_base_url):
         """Test API health endpoint reports performance features."""
-        async with aiohttp.ClientSession() as session, session.get(f"{api_base_url}/health") as response:
+        headers = get_test_headers()
+        async with aiohttp.ClientSession(headers=headers) as session, session.get(f"{api_base_url}/health") as response:
             assert response.status == 200
             
             data = await response.json()
@@ -207,7 +209,8 @@ class TestAPIPerformance:
         2. Only checks performance when cache is actually used
         3. Uses multiple attempts with averages for stability
         """
-        async with aiohttp.ClientSession() as session:
+        headers = get_test_headers()
+        async with aiohttp.ClientSession(headers=headers) as session:
             # First, check if cache is enabled by making two requests
             async with session.post(
                 f"{api_base_url}/extract-jd-keywords",
@@ -304,7 +307,8 @@ class TestAPIPerformance:
         if skip_cors_tests:
             pytest.skip("Skipping CORS-dependent test")
         
-        async with aiohttp.ClientSession() as session:
+        headers = get_test_headers()
+        async with aiohttp.ClientSession(headers=headers) as session:
             # Create slightly different payloads to avoid cache
             payloads = []
             for i in range(5):
