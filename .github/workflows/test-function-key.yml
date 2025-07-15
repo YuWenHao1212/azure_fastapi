@@ -12,7 +12,7 @@ jobs:
         echo "🔑 Testing Function Key..."
         
         # Test health endpoint with function key
-        RESPONSE=$(curl -s -w "\n%{http_code}" "https://airesumeadvisor-fastapi.azurewebsites.net/health?code=${{ secrets.FUNCTION_KEY }}")
+        RESPONSE=$(curl -s -w "\n%{http_code}" "https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/health?code=${{ secrets.FUNCTION_KEY }}")
         HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
         BODY=$(echo "$RESPONSE" | head -n-1)
         

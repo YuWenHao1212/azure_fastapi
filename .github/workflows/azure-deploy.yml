@@ -126,7 +126,7 @@ jobs:
         # Then try with function key
         if [ -n "${{ secrets.FUNCTION_KEY }}" ]; then
           echo "Testing health endpoint with function key..."
-          HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/health?code=${{ secrets.FUNCTION_KEY }}")
+          HEALTH_CHECK=$(curl -s -o /dev/null -w "%{http_code}" "https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/v1/health?code=${{ secrets.FUNCTION_KEY }}")
           echo "Health endpoint returned: $HEALTH_CHECK"
           
           if [ $HEALTH_CHECK -eq 200 ]; then
