@@ -17,10 +17,9 @@ openai>=1.0.0
 azure-identity>=1.14.1
 azure-keyvault-secrets>=4.7.0
 
-# Database (Optional - for future use)
-# sqlalchemy==2.0.23
-# asyncpg==0.29.0
-# alembic==1.12.1
+# Database - Required for Find Course API
+asyncpg==0.29.0
+pgvector==0.3.0
 
 # Security
 python-jose[cryptography]==3.3.0
