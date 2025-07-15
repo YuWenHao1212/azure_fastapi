@@ -96,22 +96,22 @@ prompts:
     [Each skill on a separate line]
     [Format per line: SKILL_N::SkillName::CATEGORY::DetailedDescription]
     [Use double colon :: to separate the 4 fields within each skill]
-    [CATEGORY: Use TECHNICAL or NON_TECHNICAL only]
-    [TECHNICAL: Software, tools, programming, platforms, data analysis, technical methodologies]
-    [NON_TECHNICAL: Business strategy, communication, leadership, industry knowledge, soft skills]
+    [CATEGORY: Use Tech or Non-Tech only]
+    [Tech: Software, tools, programming, platforms, data analysis, technical methodologies]
+    [Non-Tech: Business strategy, communication, leadership, industry knowledge, soft skills]
     [SkillName: MUST BE IN ENGLISH (e.g., Python, Docker, Project Management)]
     [Description: 10-20 words explaining specific job application context - MUST BE IN ENGLISH]
     [Order by learning priority (most important skill first)]
-    [Example format only: SKILL_1::Python Advanced Programming::TECHNICAL::Master advanced Python features for scalable backend development]
+    [Example format only: SKILL_1::Python Advanced Programming::Tech::Master advanced Python features for scalable backend development]
     </skill_development_priorities>
     </gap_analysis>
 
     CRITICAL FORMATTING REQUIREMENTS:
     - skill_development_priorities: Base ALL skills on gaps YOU identified above
     - Use format "SKILL_N::SkillName::CATEGORY::DetailedDescription" 
-    - Categories: TECHNICAL or NON_TECHNICAL only
-    - TECHNICAL: Tools, software, programming, platforms, technical methods
-    - NON_TECHNICAL: Business, communication, leadership, strategy, industry knowledge
+    - Categories: Tech or Non-Tech only
+    - Tech: Tools, software, programming, platforms, technical methods
+    - Non-Tech: Business, communication, leadership, strategy, industry knowledge
     - DO NOT use generic examples - analyze THIS specific case
     - Order by learning impact for THIS role
     - Include 3-6 skills maximum
