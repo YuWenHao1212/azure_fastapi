@@ -1,3 +1,25 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "azure-fastapi"
+version = "0.1.0"
+description = "FHS + FastAPI API restructuring project"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.0.0",
+    "asyncpg>=0.29.0",
+    "pgvector>=0.3.0",
+    "azure-functions>=1.18.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
 [tool.ruff]
 # 基本設置
 line-length = 88
