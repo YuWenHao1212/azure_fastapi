@@ -35,29 +35,38 @@ class TestFailureStorage:
     
     def test_get_recent_failures(self):
         """Test retrieving recent failures."""
-        storage = FailureStorage(max_storage_size=10)
+        # Use a unique path for this test to avoid conflicts
+        import shutil
+        import tempfile
         
-        # Add multiple failures
-        asyncio.run(storage.store_failure(
-            "keyword_extraction",
-            "Short JD",
-            "Too few keywords extracted"
-        ))
-        asyncio.run(storage.store_failure(
-            "language_detection",
-            "Mixed language content",
-            "Multiple languages detected"
-        ))
-        
-        # Get all recent failures
-        recent = storage.get_recent_failures(limit=5)
-        assert len(recent) == 2
-        assert recent[0]["category"] == "language_detection"  # Most recent first
-        
-        # Get by category
-        keyword_failures = storage.get_recent_failures(category="keyword_extraction", limit=5)
-        assert len(keyword_failures) == 1
-        assert keyword_failures[0]["failure_reason"] == "Too few keywords extracted"
+        temp_dir = tempfile.mkdtemp()
+        try:
+            storage = FailureStorage(storage_path=temp_dir, max_storage_size=10)
+            
+            # Add multiple failures
+            asyncio.run(storage.store_failure(
+                "keyword_extraction",
+                "Short JD",
+                "Too few keywords extracted"
+            ))
+            asyncio.run(storage.store_failure(
+                "language_detection",
+                "Mixed language content",
+                "Multiple languages detected"
+            ))
+            
+            # Get all recent failures
+            recent = storage.get_recent_failures(limit=5)
+            assert len(recent) == 2
+            assert recent[0]["category"] == "language_detection"  # Most recent first
+            
+            # Get by category
+            keyword_failures = storage.get_recent_failures(category="keyword_extraction", limit=5)
+            assert len(keyword_failures) == 1
+            assert keyword_failures[0]["failure_reason"] == "Too few keywords extracted"
+        finally:
+            # Clean up temp directory
+            shutil.rmtree(temp_dir)
     
     def test_failure_patterns(self):
         """Test pattern analysis."""

@@ -30,10 +30,15 @@ class Settings(BaseSettings):
     llm_seed_round1: int = 42
     llm_seed_round2: int = 43
     
-    # Embedding settings
+    # Embedding settings (for general embeddings)
     embedding_endpoint: str = "https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2023-05-15"
     embedding_api_key: str = ""
     embedding_model: str = "text-embedding-3-large"
+    
+    # Course embedding settings (for course search)
+    course_embedding_endpoint: str = "https://ai-azureai700705952086.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15"
+    course_embedding_api_key: str = ""
+    course_embedding_model: str = "text-embedding-3-small"
     
     # Similarity calculation settings
     sigmoid_x0: float = 0.373

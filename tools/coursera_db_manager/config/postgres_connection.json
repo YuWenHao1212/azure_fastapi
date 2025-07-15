@@ -1,0 +1,10 @@
+{
+  "host": "airesumeadvisor-courses-db-eastasia.postgres.database.azure.com",
+  "database": "coursesdb",
+  "user": "coursesadmin",
+  "password": "CourseDB@2025#Secure",
+  "connection_string": "postgresql://coursesadmin:CourseDB@2025#Secure@airesumeadvisor-courses-db-eastasia.postgres.database.azure.com/coursesdb?sslmode=require",
+  "sku": "Standard_B1ms",
+  "tier": "Burstable",
+  "location": "eastasia"
+}

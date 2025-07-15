@@ -25,9 +25,35 @@ local.settings.json
 
 # IDE
 .idea/
-
+.vscode/
 .cursor/
 *.swp
+
+# Logs
+*.log
+uvicorn.log
+logs/
+
+# Data files
+data/
+src/Coursera_Catalog/
+*.csv
+*.xml
+courseraproducts_*.txt
+*.pdf
+
+# Process files
+*.pid
+rebuild.pid
+
+# Test data
+sample_*.txt
+*_test_data.txt
+
+# Legacy and temp files
+legacy/temp_tests/
+legacy/temp_tests/2025-07-15_performance_tests/
+CLEANUP_SUMMARY.md
 *.swo
 *.code-workspace
 
@@ -57,6 +83,7 @@ htmlcov/
 tests/temp/
 tests/functional/test_jds*/
 tools/
+!tools/coursera_db_manager/config/postgres_connection.json
 archive/
 
 # 開發腳本 (不需要部署)

@@ -4,6 +4,8 @@ Aggregates all v1 endpoints for Work Item #347 integration.
 """
 from fastapi import APIRouter
 
+# from .course_matching import router as course_router
+from ..endpoints.find_course import router as find_course_router
 from .index_cal_and_gap_analysis import router as index_gap_router
 from .index_calculation import router as index_calculation_router
 
@@ -12,8 +14,6 @@ from .keyword_extraction import router as keyword_router
 from .prompts import router as prompts_router
 from .resume_format import router as format_router
 from .resume_tailoring import router as tailoring_router
-
-# from .course_matching import router as course_router
 
 # Create main v1 router
 router = APIRouter()
@@ -34,6 +34,9 @@ router.include_router(index_gap_router, tags=["Gap Analysis"])
 router.include_router(format_router, tags=["Resume Format"])
 router.include_router(tailoring_router, tags=["Resume Tailoring"])
 # router.include_router(course_router, tags=["Course Matching"])
+
+# Include find course router
+router.include_router(find_course_router, prefix="/courses", tags=["Course Search"])
 
 # V1 API root endpoint
 @router.get("/")
@@ -120,6 +123,24 @@ async def v1_root():
                     "path": "/api/v1/tailor-resume/supported-languages",
                     "method": "GET",
                     "description": "Get supported languages for resume tailoring",
+                    "status": "implemented"
+                },
+                "find_courses": {
+                    "path": "/api/v1/courses/search",
+                    "method": "POST",
+                    "description": "Search for courses using vector similarity",
+                    "status": "implemented"
+                },
+                "find_similar_courses": {
+                    "path": "/api/v1/courses/similar",
+                    "method": "POST",
+                    "description": "Find courses similar to a given course",
+                    "status": "implemented"
+                },
+                "course_categories": {
+                    "path": "/api/v1/courses/categories",
+                    "method": "GET",
+                    "description": "Get popular course categories",
                     "status": "implemented"
                 }
             },

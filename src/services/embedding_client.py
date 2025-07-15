@@ -155,3 +155,30 @@ def get_azure_embedding_client() -> AzureEmbeddingClient:
         endpoint=settings.embedding_endpoint,
         api_key=settings.embedding_api_key
     )
+
+
+def get_course_embedding_client() -> AzureEmbeddingClient:
+    """
+    Factory function: Create course embedding client instance
+    Uses text-embedding-3-small for course search (1536 dimensions)
+    
+    Returns:
+        AzureEmbeddingClient: Configured client instance for course embeddings
+        
+    Raises:
+        ValueError: Missing required configuration
+    """
+    from src.core.config import get_settings
+    
+    settings = get_settings()
+    
+    if not settings.course_embedding_endpoint:
+        raise ValueError("COURSE_EMBEDDING_ENDPOINT configuration is required")
+    
+    if not settings.course_embedding_api_key:
+        raise ValueError("COURSE_EMBEDDING_API_KEY configuration is required")
+    
+    return AzureEmbeddingClient(
+        endpoint=settings.course_embedding_endpoint,
+        api_key=settings.course_embedding_api_key
+    )
