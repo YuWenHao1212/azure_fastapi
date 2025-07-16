@@ -355,14 +355,15 @@ def get_azure_openai_client() -> AzureOpenAIClient:
     """
     import os
     
-    endpoint = os.getenv("LLM2_ENDPOINT")
-    api_key = os.getenv("LLM2_API_KEY")
+    # Support both old (LLM2_*) and new (AZURE_OPENAI_*) environment variables
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("LLM2_ENDPOINT")
+    api_key = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("LLM2_API_KEY")
     
     if not endpoint:
-        raise ValueError("LLM2_ENDPOINT environment variable is required")
+        raise ValueError("AZURE_OPENAI_ENDPOINT or LLM2_ENDPOINT environment variable is required")
     
     if not api_key:
-        raise ValueError("LLM2_API_KEY environment variable is required")
+        raise ValueError("AZURE_OPENAI_API_KEY or LLM2_API_KEY environment variable is required")
     
     return AzureOpenAIClient(
         endpoint=endpoint,
