@@ -19,12 +19,6 @@ class Settings(BaseSettings):
     # API settings
     api_v1_prefix: str = "/api/v1"
     
-    # Azure OpenAI settings
-    openai_api_key: str = ""
-    openai_api_base: str = "https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com"
-    openai_api_version: str = "2023-05-15"
-    openai_deployment_name: str = "gpt-4o-2"
-    
     # LLM settings for keyword extraction
     llm_temperature: float = 0.0
     llm_max_tokens: int = 1000
@@ -112,15 +106,6 @@ class Settings(BaseSettings):
         if isinstance(self.cors_allow_headers, str):
             return [header.strip() for header in self.cors_allow_headers.split(",")]
         return ["*"]
-    
-    def get_openai_config(self) -> dict[str, Any]:
-        """Get OpenAI configuration dictionary."""
-        return {
-            "api_key": self.openai_api_key,
-            "api_base": self.openai_api_base,
-            "api_version": self.openai_api_version,
-            "deployment": self.openai_deployment_name,
-        }
 
 
 # Create global settings instance

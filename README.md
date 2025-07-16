@@ -150,52 +150,42 @@ az functionapp config appsettings set \
   "FUNCTIONS_WORKER_RUNTIME=python" \
   "AzureWebJobsFeatureFlags=EnableWorkerIndexing"
 
-# Azure OpenAI 設定
+# Azure OpenAI 設定 (主要 LLM)
 az functionapp config appsettings set \
   --name $FUNCTION_APP \
   --resource-group $RESOURCE_GROUP \
   --settings \
-  "OPENAI_API_KEY=<您的-Azure-OpenAI-API-Key>" \
-  "OPENAI_API_BASE=<您的-Azure-OpenAI-Endpoint>" \
-  "OPENAI_API_VERSION=2023-05-15" \
-  "OPENAI_DEPLOYMENT_NAME=<您的-GPT-4-部署名稱>"
+  "AZURE_OPENAI_API_KEY=<您的-Azure-OpenAI-API-Key>" \
+  "AZURE_OPENAI_ENDPOINT=<您的-Azure-OpenAI-Endpoint>"
 
-# LLM2 設定 (備用)
+# Embedding 設定 (一般用途)
 az functionapp config appsettings set \
   --name $FUNCTION_APP \
   --resource-group $RESOURCE_GROUP \
   --settings \
-  "LLM2_ENDPOINT=<您的-Azure-OpenAI-Endpoint>" \
-  "LLM2_API_KEY=<您的-Azure-OpenAI-API-Key>"
+  "AZURE_OPENAI_EMBEDDING_ENDPOINT=<您的-Embedding-Endpoint>" \
+  "AZURE_OPENAI_EMBEDDING_API_KEY=<您的-Embedding-API-Key>"
 
-# Embedding 設定
+# Course Embedding 設定 (課程搜索專用)
 az functionapp config appsettings set \
   --name $FUNCTION_APP \
   --resource-group $RESOURCE_GROUP \
   --settings \
-  "EMBEDDING_ENDPOINT=<您的-Embedding-Endpoint>" \
-  "EMBEDDING_API_KEY=<您的-Embedding-API-Key>"
-
-# JWT 設定
-az functionapp config appsettings set \
-  --name $FUNCTION_APP \
-  --resource-group $RESOURCE_GROUP \
-  --settings \
-  "JWT_SECRET_KEY=<生成-32-字符-隨機-密鑰>" \
-  "JWT_ALGORITHM=HS256" \
-  "JWT_EXPIRE_MINUTES=30"
+  "AZURE_OPENAI_COURSE_EMBEDDING_ENDPOINT=<您的-Course-Embedding-Endpoint>" \
+  "AZURE_OPENAI_COURSE_EMBEDDING_API_KEY=<您的-Course-Embedding-API-Key>"
 ```
 
 ### 📝 **環境變數對照表**
 
 | 環境變數 | 說明 | 必要性 | 範例值 |
 |---------|------|--------|--------|
-| `OPENAI_API_KEY` | Azure OpenAI API 金鑰 | 必要 | `8ZtDqEK70Xog...` |
-| `OPENAI_API_BASE` | Azure OpenAI 端點 | 必要 | `https://wenha-xxx.cognitiveservices.azure.com` |
-| `OPENAI_DEPLOYMENT_NAME` | GPT 模型部署名稱 | 必要 | `gpt-4o-2` |
-| `LLM2_ENDPOINT` | 備用 LLM 端點 | 選用 | 同上 |
-| `EMBEDDING_ENDPOINT` | 向量化端點 | 選用 | `https://xxx.../embeddings?api-version=2023-05-15` |
-| `JWT_SECRET_KEY` | JWT 加密密鑰 | 必要 | 32 字符隨機字串 |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API 金鑰 (主要 LLM) | 必要 | `8ZtDqEK70Xog...` |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI 端點 (主要 LLM) | 必要 | `https://wenha-xxx.cognitiveservices.azure.com` |
+| `AZURE_OPENAI_EMBEDDING_API_KEY` | 一般用途 Embedding API 金鑰 | 必要 | `8ZtDqEK70Xog...` |
+| `AZURE_OPENAI_EMBEDDING_ENDPOINT` | 一般用途 Embedding 端點 | 必要 | `https://xxx.../embeddings?api-version=2023-05-15` |
+| `AZURE_OPENAI_COURSE_EMBEDDING_API_KEY` | 課程搜索 Embedding API 金鑰 | 選用 | `bdc4f515c9f6...` |
+| `AZURE_OPENAI_COURSE_EMBEDDING_ENDPOINT` | 課程搜索 Embedding 端點 | 選用 | `https://xxx.../embeddings?api-version=2023-05-15` |
+| `MONITORING_ENABLED` | 啟用監控功能 | 選用 | `true` 或 `false` |
 
 ---
 
