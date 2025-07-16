@@ -23,11 +23,11 @@ jobs:
       id: health_check
       run: |
         # Perform health check with function key
-        FUNCTION_KEY="${{ secrets.AZURE_FUNCTION_KEY }}"
+        FUNCTION_KEY="${{ secrets.FUNCTION_KEY }}"
         
         # Debug: Check if key is available
         if [ -z "${FUNCTION_KEY}" ]; then
-          echo "❌ ERROR: AZURE_FUNCTION_KEY secret is not available"
+          echo "❌ ERROR: FUNCTION_KEY secret is not available"
           echo "Please ensure the secret is configured in: Settings → Secrets and variables → Actions"
           exit 1
         else
@@ -57,7 +57,7 @@ jobs:
           echo "❌ Health check failed with status code: $response"
           echo ""
           echo "Troubleshooting steps:"
-          echo "1. Verify AZURE_FUNCTION_KEY secret is set in GitHub repository settings"
+          echo "1. Verify FUNCTION_KEY secret is set in GitHub repository settings"
           echo "2. Ensure the key matches the one in Azure Portal"
           echo "3. Check if the Function App is running in Azure Portal"
           exit 1
@@ -67,10 +67,10 @@ jobs:
       id: keyword_check
       if: success()
       env:
-        AZURE_FUNCTION_KEY: ${{ secrets.AZURE_FUNCTION_KEY }}
+        FUNCTION_KEY: ${{ secrets.FUNCTION_KEY }}
       run: |
         # Test keyword extraction with minimal request
-        response=$(curl -s -X POST "${{ env.FUNCTION_APP_URL }}/api/v1/extract-jd-keywords?code=${{ env.AZURE_FUNCTION_KEY }}" \
+        response=$(curl -s -X POST "${{ env.FUNCTION_APP_URL }}/api/v1/extract-jd-keywords?code=${{ env.FUNCTION_KEY }}" \
           -H "Content-Type: application/json" \
           -d '{
             "job_description": "We are looking for a Python developer with FastAPI experience",
@@ -97,7 +97,7 @@ jobs:
         echo "**Status Code**: ${{ steps.health_check.outputs.status_code || 'Unknown' }}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Action Required:" >> $GITHUB_STEP_SUMMARY
-        echo "1. Check if AZURE_FUNCTION_KEY secret is configured correctly" >> $GITHUB_STEP_SUMMARY
+        echo "1. Check if FUNCTION_KEY secret is configured correctly" >> $GITHUB_STEP_SUMMARY
         echo "2. Verify Function App is running in Azure Portal" >> $GITHUB_STEP_SUMMARY
         echo "3. Check Application Insights for detailed errors" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
