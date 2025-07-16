@@ -4,7 +4,8 @@ Following FHS architecture principles.
 """
 from typing import Any
 
-from pydantic_settings import BaseSettings
+from pydantic import Field, AliasChoices
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -37,7 +38,11 @@ class Settings(BaseSettings):
     
     # Course embedding settings (for course search)
     course_embedding_endpoint: str = "https://ai-azureai700705952086.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15"
-    course_embedding_api_key: str = ""
+    course_embedding_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("COURSE_EMBEDDING_API_KEY", "AZURE_OPENAI_COURSE_EMBEDDING_API_KEY"),
+        description="Course embedding API key - supports both COURSE_EMBEDDING_API_KEY and AZURE_OPENAI_COURSE_EMBEDDING_API_KEY"
+    )
     course_embedding_model: str = "text-embedding-3-small"
     
     # Similarity calculation settings
