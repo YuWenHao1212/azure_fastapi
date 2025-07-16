@@ -2,10 +2,9 @@
 Core configuration module for Azure FastAPI application.
 Following FHS architecture principles.
 """
-from typing import Any
 
-from pydantic import Field, AliasChoices
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -50,6 +49,18 @@ class Settings(BaseSettings):
         description="Course embedding API key - supports both COURSE_EMBEDDING_API_KEY and AZURE_OPENAI_COURSE_EMBEDDING_API_KEY"
     )
     course_embedding_model: str = "text-embedding-3-small"
+    
+    # Azure OpenAI settings (for GPT-4o-2 model)
+    azure_openai_endpoint: str = Field(
+        default="https://test.openai.azure.com",
+        validation_alias=AliasChoices("AZURE_OPENAI_ENDPOINT", "LLM2_ENDPOINT"),
+        description="Azure OpenAI endpoint - supports both AZURE_OPENAI_ENDPOINT and LLM2_ENDPOINT"
+    )
+    azure_openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("AZURE_OPENAI_API_KEY", "LLM2_API_KEY"),
+        description="Azure OpenAI API key - supports both AZURE_OPENAI_API_KEY and LLM2_API_KEY"
+    )
     
     # Similarity calculation settings
     sigmoid_x0: float = 0.373

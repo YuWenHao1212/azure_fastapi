@@ -28,7 +28,6 @@ async def search_courses(request: CourseSearchRequest) -> CourseSearchResponse:
         result = await search_service.search_courses_v2(
             skill_name=request.skill_name,
             search_context=request.search_context,
-            category=request.category,
             limit=request.limit,
             similarity_threshold=request.similarity_threshold
         )
@@ -40,7 +39,7 @@ async def search_courses(request: CourseSearchRequest) -> CourseSearchResponse:
         monitoring_service.track_event("CourseSearchError", {
             "error": str(e),
             "skill_name": request.skill_name,
-            "category": request.category
+            "search_context": request.search_context
         })
         
         # Bubble.io 相容：總是回傳 200 狀態碼

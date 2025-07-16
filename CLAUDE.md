@@ -1,5 +1,24 @@
 # CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.0
 
+## ⚠️ 關鍵提醒 (CRITICAL REMINDERS)
+
+### 🕐 時間處理規則 (TIME HANDLING RULE)
+**任何需要日期或時間時，必須先執行**：
+```bash
+TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S %Z'
+```
+- 文檔命名：`[TYPE]_[MODULE]_YYYYMMDD.md`
+- 日誌記錄：`YYYY-MM-DD HH:MM:SS CST`
+- 絕不使用 <env> 中的日期或憑空推測！
+
+### 🚫 Git 提交規則 (GIT COMMIT RULE)
+Claude Code **絕對不可以**自行執行 `git commit`
+- 必須先執行 `./run_precommit_tests.sh`
+- 向用戶展示完整測試結果
+- 獲得用戶明確同意後才能提交
+
+---
+
 本文件為 Claude Code + Cursor + Azure DevOps 協作開發指南，專門為 API 重構專案（FHS + FastAPI）設計。
 
 ## 📋 目錄
@@ -1148,8 +1167,8 @@ Shell腳本:    temp/dev/scripts/[功能]_[用途].sh
 
 ---
 
-**文檔版本**: 2.4.0  
-**最後更新**: 2025-07-09  
+**文檔版本**: 2.5.0  
+**最後更新**: 2025-07-16  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
 

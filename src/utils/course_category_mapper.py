@@ -28,7 +28,15 @@ CATEGORY_MAPPING = {
 }
 
 def get_category_filter(category: str) -> list[str]:
-    """取得分類過濾清單"""
+    """
+    取得分類過濾清單
+    
+    Args:
+        category: "Tech" 或 "Non-Tech"
+        
+    Returns:
+        對應的具體分類清單
+    """
     if category in CATEGORY_MAPPING:
         return CATEGORY_MAPPING[category]
     return []

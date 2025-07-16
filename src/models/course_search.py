@@ -1,5 +1,5 @@
 """Course Search Models for Bubble.io compatibility"""
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, validator
 
@@ -8,7 +8,6 @@ class CourseSearchRequest(BaseModel):
     """課程搜尋請求模型"""
     skill_name: str
     search_context: str = ""
-    category: Literal["", "Tech", "Non-Tech"] = ""
     limit: int = 5
     similarity_threshold: float = 0.3
     
@@ -40,7 +39,6 @@ class CourseSearchRequest(BaseModel):
             "example": {
                 "skill_name": "Python",
                 "search_context": "for data analysis and machine learning",
-                "category": "Tech",
                 "limit": 5,
                 "similarity_threshold": 0.3
             }
@@ -51,18 +49,14 @@ class CourseResult(BaseModel):
     id: str = ""
     name: str = ""
     description: str = ""
-    manufacturer: str = ""
-    category: str = ""
-    sub_category: str = ""
-    current_price: float = 0.0
-    original_price: float = 0.0
-    discount_percentage: float = 0.0
+    provider: str = ""
+    provider_standardized: str = ""
+    provider_logo_url: str = ""
+    price: float = 0.0
     currency: str = "USD"
     image_url: str = ""
-    course_url: str = ""
-    tracking_url: str = ""
+    affiliate_url: str = ""
     similarity_score: float = 0.0
-    highlights: list[str] = []
 
 class CourseSearchData(BaseModel):
     """搜尋結果資料"""

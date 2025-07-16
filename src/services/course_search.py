@@ -96,12 +96,13 @@ class CourseSearchService:
                         c.id,
                         c.name,
                         c.description,
-                        c.provider as manufacturer,
+                        COALESCE(c.provider_standardized, c.provider) as provider,
+                        c.provider_standardized,
+                        c.provider_logo_url,
                         c.price as current_price,
-                        c.price as original_price,
                         c.currency,
                         c.image_url,
-                        c.metadata,
+                        c.affiliate_url,
                         1 - (c.embedding <=> $1::vector) as similarity
                     FROM courses c
                     WHERE c.platform = 'coursera'
@@ -116,9 +117,9 @@ class CourseSearchService:
                     filter_conditions = []
                     param_index = 3
                     
-                    if 'manufacturer' in filters:
-                        filter_conditions.append(f"c.manufacturer = ${param_index}")
-                        params.append(filters['manufacturer'])
+                    if 'provider' in filters:
+                        filter_conditions.append(f"COALESCE(c.provider_standardized, c.provider) = ${param_index}")
+                        params.append(filters['provider'])
                         param_index += 1
                     
                     if 'max_price' in filters:
@@ -127,9 +128,16 @@ class CourseSearchService:
                         param_index += 1
                     
                     if 'category' in filters:
-                        filter_conditions.append(f"c.metadata->>'category' = ${param_index}")
+                        filter_conditions.append(f"c.category = ${param_index}")
                         params.append(filters['category'])
                         param_index += 1
+                    
+                    # 支援 category_list 過濾（多個分類）
+                    if 'category_list' in filters:
+                        placeholders = ','.join([f'${param_index + i}' for i in range(len(filters['category_list']))])
+                        filter_conditions.append(f"c.category IN ({placeholders})")
+                        params.extend(filters['category_list'])
+                        param_index += len(filters['category_list'])
                     
                     if filter_conditions:
                         base_query += " AND " + " AND ".join(filter_conditions)
@@ -152,12 +160,13 @@ class CourseSearchService:
                         "id": row['id'],
                         "name": row['name'],
                         "description": row['description'][:500] + "..." if len(row['description']) > 500 else row['description'],
-                        "manufacturer": row['manufacturer'],
-                        "current_price": float(row['current_price']),
-                        "original_price": float(row['original_price']),
+                        "provider": row['provider'],
+                        "provider_standardized": row['provider_standardized'] or '',
+                        "provider_logo_url": row['provider_logo_url'] or '',
+                        "price": float(row['current_price']),
                         "currency": row['currency'],
                         "image_url": row['image_url'],
-                        "metadata": json.loads(row['metadata']) if isinstance(row['metadata'], str) else row['metadata'],
+                        "affiliate_url": row.get('affiliate_url') or '',
                         "similarity_score": round(float(row['similarity']), 4)
                     }
                     courses.append(course)
@@ -231,9 +240,13 @@ class CourseSearchService:
                     c.id,
                     c.name,
                     c.description,
-                    c.provider as manufacturer,
+                    COALESCE(c.provider_standardized, c.provider) as provider,
+                    c.provider_standardized,
+                    c.provider_logo_url,
                     c.price as current_price,
+                    c.currency,
                     c.image_url,
+                    c.affiliate_url,
                     1 - (c.embedding <=> $1::vector) as similarity
                 FROM courses c
                 WHERE c.id != $2
@@ -250,9 +263,13 @@ class CourseSearchService:
                     "id": row['id'],
                     "name": row['name'],
                     "description": row['description'][:300] + "..." if len(row['description']) > 300 else row['description'],
-                    "manufacturer": row['manufacturer'],
-                    "current_price": float(row['current_price']),
+                    "provider": row['provider'],
+                    "provider_standardized": row['provider_standardized'] or '',
+                    "provider_logo_url": row['provider_logo_url'] or '',
+                    "price": float(row['current_price']),
+                    "currency": row.get('currency', 'USD'),
                     "image_url": row['image_url'],
+                    "affiliate_url": row.get('affiliate_url', ''),
                     "similarity_score": round(float(row['similarity']), 4)
                 }
                 similar_courses.append(course)
@@ -305,7 +322,6 @@ class CourseSearchService:
         self,
         skill_name: str,
         search_context: str = "",
-        category: str = "",
         limit: int = 5,
         similarity_threshold: float = 0.3
     ) -> dict[str, Any]:
@@ -315,9 +331,8 @@ class CourseSearchService:
         Args:
             skill_name: 技能名稱
             search_context: 搜尋情境描述
-            category: Tech/Non-Tech 分類過濾
             limit: 回傳結果數量（預設 5，最大 10）
-            similarity_threshold: 相似度門檻（預設 0.7）
+            similarity_threshold: 相似度門檻（預設 0.3）
             
         Returns:
             CourseSearchResponse 格式的字典
@@ -329,7 +344,6 @@ class CourseSearchService:
             ErrorModel,
         )
         from src.services.course_cache import CourseSearchCache
-        from src.utils.course_category_mapper import categorize_course
         
         start_time = datetime.now()
         
@@ -339,7 +353,7 @@ class CourseSearchService:
         
         # 建立快取鍵值
         cache_key = self.cache.get_cache_key(
-            skill_name, search_context, category, similarity_threshold
+            skill_name, search_context, "", similarity_threshold
         )
         
         # 檢查快取
@@ -358,7 +372,6 @@ class CourseSearchService:
             # 向量搜尋（含重試）
             courses = await self._search_with_retry(
                 query_text=query_text,
-                category=category,
                 limit=limit,
                 threshold=similarity_threshold
             )
@@ -369,33 +382,20 @@ class CourseSearchService:
             # 格式化課程結果
             course_results = []
             for course in courses:
-                # 計算折扣百分比
-                discount = 0.0
-                if course.get('original_price', 0) > 0:
-                    discount = ((course['original_price'] - course['current_price']) / 
-                               course['original_price'] * 100)
-                
-                # 取得追蹤連結（目前使用原始連結）
-                tracking_url = course.get('tracking_url', course.get('course_url', ''))
-                
                 course_result = CourseResult(
                     id=course['id'],
                     name=course['name'],
                     description=course['description'][:500] + "..." 
                                if len(course.get('description', '')) > 500 
                                else course.get('description', ''),
-                    manufacturer=course.get('manufacturer', ''),
-                    category=categorize_course(course.get('category', '')),
-                    sub_category=course.get('category', ''),
-                    current_price=float(course.get('current_price', 0)),
-                    original_price=float(course.get('original_price', 0)),
-                    discount_percentage=round(discount, 1),
+                    provider=course.get('provider', ''),
+                    provider_standardized=course.get('provider_standardized', ''),
+                    provider_logo_url=course.get('provider_logo_url', ''),
+                    price=float(course.get('price', 0)),
                     currency=course.get('currency', 'USD'),
                     image_url=course.get('image_url', ''),
-                    course_url=course.get('course_url', ''),
-                    tracking_url=tracking_url,
-                    similarity_score=round(float(course.get('similarity_score', 0)), 4),
-                    highlights=[]  # 保留欄位
+                    affiliate_url=course.get('affiliate_url', ''),
+                    similarity_score=round(float(course.get('similarity_score', 0)), 4)
                 )
                 course_results.append(course_result)
             
@@ -408,7 +408,6 @@ class CourseSearchService:
                     query=query_text,
                     search_time_ms=duration_ms,
                     filters_applied={
-                        "category": category,
                         "similarity_threshold": similarity_threshold
                     }
                 ),
@@ -419,13 +418,13 @@ class CourseSearchService:
             self.cache.set(cache_key, response.model_dump())
             
             # 記錄監控
-            self._track_search_success(skill_name, search_context, category, courses, duration_ms)
+            self._track_search_success(skill_name, search_context, courses, duration_ms)
             
             return response
             
         except Exception as e:
             # 記錄錯誤
-            self._track_search_error(e, skill_name, search_context, category)
+            self._track_search_error(e, skill_name, search_context)
             
             # 回傳錯誤（Bubble.io 相容）
             return CourseSearchResponse(
@@ -441,7 +440,6 @@ class CourseSearchService:
     async def _search_with_retry(
         self, 
         query_text: str,
-        category: str,
         limit: int,
         threshold: float,
         max_retries: int = 3
@@ -463,17 +461,10 @@ class CourseSearchService:
                 
                 query_embedding = embeddings[0]
                 
-                # 建立過濾條件
-                filters = {}
-                if category:
-                    # 由於所有課程都有相同的類別，我們不使用類別過濾
-                    # 改為在後處理階段根據課程名稱和描述進行過濾
-                    filters['category_filter'] = category
-                
                 # 執行向量搜尋
                 courses = await self._execute_vector_search_v2(
                     embedding=query_embedding,
-                    filters=filters,
+                    filters={},
                     limit=limit,
                     threshold=threshold
                 )
@@ -506,14 +497,13 @@ class CourseSearchService:
                     c.id,
                     c.name,
                     c.description,
-                    c.provider as manufacturer,
+                    COALESCE(c.provider_standardized, c.provider) as provider,
+                    c.provider_standardized,
+                    c.provider_logo_url,
                     c.price as current_price,
-                    c.price as original_price,
                     c.currency,
                     c.image_url,
-                    c.metadata,
                     c.affiliate_url as tracking_url,
-                    c.category,
                     1 - (c.embedding <=> $1::vector) as similarity_score
                 FROM courses c
                 WHERE c.platform = 'coursera'
@@ -526,7 +516,7 @@ class CourseSearchService:
             # 加入分類過濾
             if 'category_list' in filters:
                 placeholders = ','.join([f'${i+3}' for i in range(len(filters['category_list']))])
-                base_query += f" AND c.metadata->>'category' IN ({placeholders})"
+                base_query += f" AND c.category IN ({placeholders})"
                 params.extend(filters['category_list'])
             
             # 加入排序和限制
@@ -547,15 +537,14 @@ class CourseSearchService:
                     "id": row['id'],
                     "name": row['name'],
                     "description": row['description'],
-                    "manufacturer": row['manufacturer'],
-                    "current_price": float(row['current_price']),
-                    "original_price": float(row['original_price']),
+                    "provider": row['provider'],
+                    "provider_standardized": row['provider_standardized'] or '',
+                    "provider_logo_url": row['provider_logo_url'] or '',
+                    "price": float(row['current_price']),
                     "currency": row['currency'],
                     "image_url": row['image_url'],
-                    "category": row['category'],
-                    "tracking_url": row['tracking_url'] or '',
-                    "similarity_score": float(row['similarity_score']),
-                    "metadata": json.loads(row['metadata']) if isinstance(row['metadata'], str) else row['metadata']
+                    "affiliate_url": row['tracking_url'] or '',
+                    "similarity_score": float(row['similarity_score'])
                 }
                 courses.append(course)
             
@@ -563,7 +552,7 @@ class CourseSearchService:
             return courses
     
     def _track_search_success(self, skill_name: str, search_context: str, 
-                             category: str, courses: list, duration_ms: int):
+                             courses: list, duration_ms: int):
         """記錄成功的搜尋"""
         course_ids = [c['id'] for c in courses[:5]]
         similarity_scores = [c.get('similarity_score', 0) for c in courses[:5]]
@@ -571,7 +560,6 @@ class CourseSearchService:
         monitoring_service.track_event("CourseSearchExecuted", {
             "skill_name": skill_name,
             "search_context": search_context,
-            "category": category,
             "result_count": len(courses),
             "course_ids": course_ids,
             "similarity_scores": similarity_scores,
@@ -580,15 +568,14 @@ class CourseSearchService:
         })
     
     def _track_search_error(self, error: Exception, skill_name: str, 
-                           search_context: str, category: str):
+                           search_context: str):
         """記錄搜尋錯誤"""
         monitoring_service.track_event("CourseSearchError", {
             "error_code": self._get_error_code(error),
             "error_type": type(error).__name__,
             "error_message": str(error),
             "skill_name": skill_name,
-            "search_context": search_context,
-            "category": category
+            "search_context": search_context
         })
     
     def _get_error_code(self, error: Exception) -> str:

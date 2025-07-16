@@ -151,9 +151,19 @@ class TestBilingualIntegration:
     @pytest.mark.asyncio
     async def test_service_integration(self):
         """Test language detection service integration."""
+        from unittest.mock import AsyncMock
+
         from src.services.keyword_extraction_v2 import KeywordExtractionServiceV2
         
+        # Create service instance
         service = KeywordExtractionServiceV2()
+        
+        # Mock the OpenAI client directly on the service instance
+        mock_client = AsyncMock()
+        service.openai_client = mock_client
+        
+        # Mock the complete_text method to return test data
+        mock_client.complete_text.return_value = "Python, developer, software, programming, API"
         
         # Test that service can handle language detection
         test_data = {

@@ -16,12 +16,10 @@ def test_course_search_request_validation():
     request = CourseSearchRequest(
         skill_name="Python",
         search_context="for data analysis",
-        category="Tech",
         limit=5
     )
     assert request.skill_name == "Python"
     assert request.limit == 5
-    assert request.category == "Tech"
     
     # 測試限制
     request = CourseSearchRequest(
@@ -44,13 +42,6 @@ def test_course_search_request_validation():
             skill_name="Python",
             search_context="a" * 501
         )
-    
-    # 測試無效的 category
-    with pytest.raises(ValueError):
-        CourseSearchRequest(
-            skill_name="Python",
-            category="Invalid"  # type: ignore
-        )
 
 
 def test_course_search_response_structure():
@@ -64,9 +55,13 @@ def test_course_search_response_structure():
                     id="course_123",
                     name="Python for Beginners",
                     description="Learn Python",
-                    manufacturer="Coursera",
-                    category="Tech",
-                    current_price=49.99,
+                    provider="Coursera",
+                    provider_standardized="Coursera",
+                    provider_logo_url="https://bubble.io/.../coursera-official.svg",
+                    price=49.99,
+                    currency="USD",
+                    image_url="https://course-image.jpg",
+                    affiliate_url="https://imp.i384100.net/...",
                     similarity_score=0.95
                 )
             ],
@@ -81,6 +76,8 @@ def test_course_search_response_structure():
     assert response.success is True
     assert len(response.data.results) == 1
     assert response.data.results[0].name == "Python for Beginners"
+    assert response.data.results[0].price == 49.99
+    assert response.data.results[0].affiliate_url == "https://imp.i384100.net/..."
     assert response.error.code == ""
     
     # 失敗回應
@@ -105,8 +102,11 @@ def test_bubble_io_compatibility():
     empty_result = CourseResult()
     assert empty_result.id == ""
     assert empty_result.name == ""
-    assert empty_result.current_price == 0.0
-    assert empty_result.highlights == []
+    assert empty_result.price == 0.0
+    assert empty_result.affiliate_url == ""
+    assert empty_result.provider == ""
+    assert empty_result.provider_standardized == ""
+    assert empty_result.provider_logo_url == ""
     
     empty_data = CourseSearchData()
     assert empty_data.results == []

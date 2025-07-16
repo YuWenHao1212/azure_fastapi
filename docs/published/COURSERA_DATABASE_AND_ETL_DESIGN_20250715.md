@@ -339,18 +339,36 @@ POST /api/v1/courses/search
 
 ```json
 {
-    "success": true,
-    "data": {
-        "courses": [{
-            "id": "coursera_crse:python-123",
-            "name": "Python for Data Science",
-            "provider": "Google",
-            "course_type": "course",
-            "price": 49.00,
-            "affiliate_url": "https://imp.i384100.net/...",
-            "similarity_score": 0.8934
-        }]
+  "success": true,
+  "data": {
+    "results": [
+      {
+        "id": "coursera_crse:python-123",
+        "name": "Python for Data Science",
+        "description": "Learn Python programming for data analysis",
+        "provider": "Google",
+        "provider_standardized": "Google",
+        "provider_logo_url": "https://bubble.io/.../google-official.svg",
+        "price": 49.00,
+        "currency": "USD",
+        "image_url": "https://course-image.jpg",
+        "affiliate_url": "https://imp.i384100.net/...",
+        "similarity_score": 0.8934
+      }
+    ],
+    "total_count": 2,
+    "returned_count": 2,
+    "query": "Python for data analysis",
+    "search_time_ms": 342,
+    "filters_applied": {
+      "similarity_threshold": 0.3
     }
+  },
+  "error": {
+    "code": "",
+    "message": "",
+    "details": ""
+  }
 }
 ```
 

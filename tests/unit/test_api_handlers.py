@@ -331,73 +331,73 @@ class TestKeywordExtractionAPI:
         # Create mock service
         mock_service = AsyncMock()
         
-        # Override the dependency
-        from src.services.keyword_extraction import get_keyword_extraction_service
-        app.dependency_overrides[get_keyword_extraction_service] = lambda: mock_service
-        
-        # Mock response with all required fields
-        mock_service.validate_input.return_value = {
-            "job_description": "We need a Python developer with FastAPI experience.",
-            "max_keywords": 20,
-            "prompt_version": "1.4.0"
-        }
-        mock_service.process.return_value = {
-            "keywords": ["Python", "FastAPI"],
-            "keyword_count": 2,
-            "confidence_score": 0.85,
-            "extraction_method": "2_round_intersection",
-            "processing_time_ms": 2000.0,
-            "intersection_stats": {
-                "intersection_count": 2,
-                "round1_count": 3,
-                "round2_count": 3,
-                "strategy_used": "2_round_intersection"
-            },
-            "warning": {
-                "has_warning": False,
-                "message": "",
-                "expected_minimum": 12,
-                "actual_extracted": 2
+        # Patch the service function directly since it's not dependency injected
+        import src.api.v1.keyword_extraction
+        with patch.object(src.api.v1.keyword_extraction, 'get_keyword_extraction_service_v2', return_value=mock_service):
+            
+            # Mock response with all required fields
+            mock_service.validate_input.return_value = {
+                "job_description": "We need a Python developer with FastAPI experience.",
+                "max_keywords": 20,
+                "prompt_version": "1.4.0"
             }
-        }
-        
-        request_data = {
-            "job_description": "We need a Python developer with FastAPI experience.",
-            "max_keywords": 20,
-            "prompt_version": "1.4.0"
-        }
-        
-        response = client.post("/api/v1/extract-jd-keywords", json=request_data)
-        
-        assert response.status_code == 200
-        data = response.json()
-        
-        # Verify Bubble.io compatibility: consistent schema
-        assert "success" in data
-        assert "data" in data
-        assert "error" in data
-        assert "timestamp" in data
-        
-        # Verify error object structure (even in success case)
-        error = data["error"]
-        assert "code" in error
-        assert "message" in error
-        assert "details" in error
-        
-        # Verify no None/null values
-        def check_no_none_values(obj, path=""):
-            if isinstance(obj, dict):
-                for key, value in obj.items():
-                    current_path = f"{path}.{key}" if path else key
-                    assert value is not None, f"None value found at {current_path}"
-                    check_no_none_values(value, current_path)
-            elif isinstance(obj, list):
-                for i, item in enumerate(obj):
-                    current_path = f"{path}[{i}]"
-                    assert item is not None, f"None value found at {current_path}"
-                    check_no_none_values(item, current_path)
-        
-        check_no_none_values(data)
+            mock_service.process.return_value = {
+                "keywords": ["Python", "FastAPI"],
+                "keyword_count": 2,
+                "confidence_score": 0.85,
+                "extraction_method": "2_round_intersection",
+                "processing_time_ms": 2000.0,
+                "intersection_stats": {
+                    "intersection_count": 2,
+                    "round1_count": 3,
+                    "round2_count": 3,
+                    "strategy_used": "2_round_intersection"
+                },
+                "warning": {
+                    "has_warning": False,
+                    "message": "",
+                    "expected_minimum": 12,
+                    "actual_extracted": 2
+                }
+            }
+            
+            request_data = {
+                "job_description": "We need a Python developer with FastAPI experience.",
+                "max_keywords": 20,
+                "prompt_version": "1.4.0"
+            }
+            
+            response = client.post("/api/v1/extract-jd-keywords", json=request_data)
+            
+            assert response.status_code == 200
+            data = response.json()
+            
+            # Verify Bubble.io compatibility: consistent schema
+            assert "success" in data
+            assert "data" in data
+            assert "error" in data
+            assert "timestamp" in data
+            
+            # Verify error object structure (even in success case)
+            error = data["error"]
+            assert "code" in error
+            assert "message" in error
+            assert "details" in error
+            
+            # Verify no None/null values
+            def check_no_none_values(obj, path=""):
+                if isinstance(obj, dict):
+                    for key, value in obj.items():
+                        current_path = f"{path}.{key}" if path else key
+                        assert value is not None, f"None value found at {current_path}"
+                        check_no_none_values(value, current_path)
+                elif isinstance(obj, list):
+                    for i, item in enumerate(obj):
+                        current_path = f"{path}[{i}]"
+                        assert item is not None, f"None value found at {current_path}"
+                        check_no_none_values(item, current_path)
+            
+            check_no_none_values(data)
     
     def test_http_methods_not_allowed(self, client):
         """Test that only allowed HTTP methods work."""
