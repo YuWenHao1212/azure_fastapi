@@ -32,12 +32,24 @@ class Settings(BaseSettings):
     llm_seed_round2: int = 43
     
     # Embedding settings (for general embeddings)
-    embedding_endpoint: str = "https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2023-05-15"
-    embedding_api_key: str = ""
+    embedding_endpoint: str = Field(
+        default="https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com/openai/deployments/text-embedding-3-large/embeddings?api-version=2023-05-15",
+        validation_alias=AliasChoices("EMBEDDING_ENDPOINT", "AZURE_OPENAI_EMBEDDING_ENDPOINT"),
+        description="Embedding endpoint - supports both EMBEDDING_ENDPOINT and AZURE_OPENAI_EMBEDDING_ENDPOINT"
+    )
+    embedding_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("EMBEDDING_API_KEY", "AZURE_OPENAI_EMBEDDING_API_KEY"),
+        description="Embedding API key - supports both EMBEDDING_API_KEY and AZURE_OPENAI_EMBEDDING_API_KEY"
+    )
     embedding_model: str = "text-embedding-3-large"
     
     # Course embedding settings (for course search)
-    course_embedding_endpoint: str = "https://ai-azureai700705952086.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15"
+    course_embedding_endpoint: str = Field(
+        default="https://ai-azureai700705952086.cognitiveservices.azure.com/openai/deployments/text-embedding-3-small/embeddings?api-version=2023-05-15",
+        validation_alias=AliasChoices("COURSE_EMBEDDING_ENDPOINT", "AZURE_OPENAI_COURSE_EMBEDDING_ENDPOINT"),
+        description="Course embedding endpoint - supports both COURSE_EMBEDDING_ENDPOINT and AZURE_OPENAI_COURSE_EMBEDDING_ENDPOINT"
+    )
     course_embedding_api_key: str = Field(
         default="",
         validation_alias=AliasChoices("COURSE_EMBEDDING_API_KEY", "AZURE_OPENAI_COURSE_EMBEDDING_API_KEY"),
