@@ -9,6 +9,7 @@
 #   --parallel: Run tests in parallel using multiple CPU cores
 #   --timeout <seconds>: Set custom timeout (default: 300 seconds)
 #   --no-coverage: Skip coverage report generation to save time
+#   --real-creds: Use real credentials from .env instead of test credentials
 
 set -e  # Exit on error
 
@@ -34,6 +35,7 @@ SKIP_API_STARTUP=false
 RUN_FULL_PERF_TESTS=false
 PARALLEL_EXECUTION=false
 SKIP_COVERAGE=false
+USE_REAL_CREDENTIALS=false
 TIMEOUT_SECONDS=300  # 5 minutes default
 for arg in "$@"; do
     case $arg in
@@ -51,6 +53,10 @@ for arg in "$@"; do
             ;;
         --no-coverage)
             SKIP_COVERAGE=true
+            shift
+            ;;
+        --real-creds)
+            USE_REAL_CREDENTIALS=true
             shift
             ;;
         --timeout)
@@ -131,7 +137,12 @@ start_api_server() {
     fi
     
     # Export test environment variables
-    export $(cat .env.test | grep -v '^#' | xargs)
+    if [ "$USE_REAL_CREDENTIALS" = true ] && [ -f ".env" ]; then
+        echo -e "${YELLOW}   Using real credentials from .env${NC}"
+        export $(cat .env | grep -v '^#' | xargs)
+    else
+        export $(cat .env.test | grep -v '^#' | xargs)
+    fi
     
     # Start the API server in background
     uvicorn src.main:app --port 8000 --log-level error > /tmp/api_server.log 2>&1 &
@@ -178,7 +189,20 @@ echo "📍 Working directory: $(pwd)"
 echo ""
 
 # Load test environment if exists
-if [ -f ".env.test" ]; then
+if [ "$USE_REAL_CREDENTIALS" = true ] && [ -f ".env" ]; then
+    echo "📄 Loading environment from .env (real credentials)"
+    # Export variables, handling values with commas properly
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ -n "$key" ]]; then
+            # Remove leading/trailing whitespace
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            # Export the variable
+            export "$key=$value"
+        fi
+    done < .env
+elif [ -f ".env.test" ]; then
     echo "📄 Loading test environment from .env.test"
     # Export variables, handling values with commas properly
     while IFS='=' read -r key value; do
@@ -442,6 +466,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "   ./run_precommit_tests.sh --no-api           # Skip API tests for quick check"
     echo "   ./run_precommit_tests.sh --parallel         # Run tests in parallel (faster)"
     echo "   ./run_precommit_tests.sh --no-coverage      # Skip coverage report (saves ~30s)"
+    echo "   ./run_precommit_tests.sh --real-creds       # Use real credentials from .env"
     echo "   ./run_precommit_tests.sh --parallel --no-coverage  # Fastest full test"
     echo "   ./run_precommit_tests_quick.sh              # Ultra-fast essential tests only"
     exit 0
