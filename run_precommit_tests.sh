@@ -130,6 +130,9 @@ start_api_server() {
         fi
     fi
     
+    # Export test environment variables
+    export $(cat .env.test | grep -v '^#' | xargs)
+    
     # Start the API server in background
     uvicorn src.main:app --port 8000 --log-level error > /tmp/api_server.log 2>&1 &
     API_PID=$!

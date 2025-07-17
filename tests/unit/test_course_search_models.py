@@ -6,6 +6,7 @@ from src.models.course_search import (
     CourseSearchData,
     CourseSearchRequest,
     CourseSearchResponse,
+    CourseTypeCount,
     ErrorModel,
 )
 
@@ -62,13 +63,15 @@ def test_course_search_response_structure():
                     currency="USD",
                     image_url="https://course-image.jpg",
                     affiliate_url="https://imp.i384100.net/...",
-                    similarity_score=0.95
+                    course_type="course",
+                    similarity_score=95
                 )
             ],
             total_count=1,
             returned_count=1,
             query="Python",
-            search_time_ms=150
+            search_time_ms=150,
+            type_counts=CourseTypeCount(course=1)
         ),
         error=ErrorModel()
     )
@@ -107,10 +110,17 @@ def test_bubble_io_compatibility():
     assert empty_result.provider == ""
     assert empty_result.provider_standardized == ""
     assert empty_result.provider_logo_url == ""
+    assert empty_result.course_type == ""
+    assert empty_result.similarity_score == 0
     
     empty_data = CourseSearchData()
     assert empty_data.results == []
     assert empty_data.total_count == 0
+    assert empty_data.type_counts.course == 0
+    assert empty_data.type_counts.professional_certificate == 0
+    assert empty_data.type_counts.specialization == 0
+    assert empty_data.type_counts.degree == 0
+    assert empty_data.type_counts.guided_project == 0
     
     empty_error = ErrorModel()
     assert empty_error.code == ""

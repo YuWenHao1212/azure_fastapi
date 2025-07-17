@@ -135,7 +135,7 @@ CREATE INDEX idx_courses_logo_available ON courses(provider_logo_url) WHERE prov
 ### 4.1 支援的課程類型
 
 ```sql
--- course_type 欄位的可能值
+-- course_type 欄位的可能值 (資料庫儲存)
 'course'                    -- 標準個人課程
 'specialization'            -- 多課程專項課程
 'specialization-course'     -- 專項課程中的個別課程
@@ -143,6 +143,13 @@ CREATE INDEX idx_courses_logo_available ON courses(provider_logo_url) WHERE prov
 'guided-project'           -- 短期實作項目
 'degree'                   -- 完整學位課程
 'mastertrack-certificate'  -- MasterTrack 認證課程
+
+-- API 回應簡化映射 (前端顯示)
+'course'                    -- 包含: course, specialization-course, mastertrack-certificate
+'specialization'            -- 保持原樣
+'professional-certificate'  -- 保持原樣
+'guided-project'           -- 保持原樣
+'degree'                   -- 保持原樣
 ```
 
 ### 4.2 自動化分類流程
@@ -217,7 +224,7 @@ ORDER BY count DESC;
 
 ## 6. API 回應格式更新
 
-### 6.1 更新後的 API 回應
+### 6.1 更新後的 API 回應 (v1.1)
 
 ```json
 {
@@ -235,7 +242,8 @@ ORDER BY count DESC;
         "currency": "USD",
         "image_url": "https://course-image.jpg",
         "affiliate_url": "https://imp.i384100.net/...",
-        "similarity_score": 0.8934
+        "course_type": "course",
+        "similarity_score": 89
       }
     ],
     "total_count": 2,
@@ -244,6 +252,13 @@ ORDER BY count DESC;
     "search_time_ms": 342,
     "filters_applied": {
       "similarity_threshold": 0.3
+    },
+    "type_counts": {
+      "course": 1,
+      "professional_certificate": 0,
+      "specialization": 1,
+      "degree": 0,
+      "guided_project": 0
     }
   },
   "error": {
@@ -253,6 +268,11 @@ ORDER BY count DESC;
   }
 }
 ```
+
+**變更說明**：
+- 🆕 新增 `course_type` 欄位 (簡化為 5 種類型)
+- 🆕 新增 `type_counts` 統計各類型數量
+- 📝 `similarity_score` 改為整數百分比 (0.8934 → 89)
 
 ### 6.2 Bubble.io 前端整合
 

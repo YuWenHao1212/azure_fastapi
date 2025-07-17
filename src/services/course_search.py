@@ -247,6 +247,7 @@ class CourseSearchService:
                     c.currency,
                     c.image_url,
                     c.affiliate_url,
+                    c.course_type,
                     1 - (c.embedding <=> $1::vector) as similarity
                 FROM courses c
                 WHERE c.id != $2
@@ -256,9 +257,30 @@ class CourseSearchService:
                 LIMIT $3
             """, target_embedding, course_id, limit)
             
+            # 課程類型映射（簡化前端顯示）
+            type_mapping = {
+                # 合併為 "course"
+                "course": "course",
+                "specialization-course": "course",
+                "mastertrack-certificate": "course",
+                
+                # 保持原樣
+                "professional-certificate": "professional-certificate",
+                "specialization": "specialization",
+                "degree": "degree",
+                "guided-project": "guided-project"
+            }
+            
             # 格式化結果
             similar_courses = []
             for row in results:
+                # 取得原始課程類型並映射
+                original_type = row.get('course_type', 'course')
+                mapped_type = type_mapping.get(original_type, original_type)
+                
+                # 將 similarity 轉換為整數百分比
+                similarity_percentage = int(float(row['similarity']) * 100)
+                
                 course = {
                     "id": row['id'],
                     "name": row['name'],
@@ -270,7 +292,8 @@ class CourseSearchService:
                     "currency": row.get('currency', 'USD'),
                     "image_url": row['image_url'],
                     "affiliate_url": row.get('affiliate_url', ''),
-                    "similarity_score": round(float(row['similarity']), 4)
+                    "course_type": mapped_type,
+                    "similarity_score": similarity_percentage
                 }
                 similar_courses.append(course)
             
@@ -341,6 +364,7 @@ class CourseSearchService:
             CourseResult,
             CourseSearchData,
             CourseSearchResponse,
+            CourseTypeCount,
             ErrorModel,
         )
         from src.services.course_cache import CourseSearchCache
@@ -379,9 +403,28 @@ class CourseSearchService:
             # 建立回應
             duration_ms = int((datetime.now() - start_time).total_seconds() * 1000)
             
-            # 格式化課程結果
+            # 格式化課程結果並統計類型
             course_results = []
+            type_counts = {
+                'course': 0,
+                'professional_certificate': 0,
+                'specialization': 0,
+                'degree': 0,
+                'guided_project': 0
+            }
+            
             for course in courses:
+                # 將 similarity_score 轉換為整數百分比
+                similarity_percentage = int(float(course.get('similarity_score', 0)) * 100)
+                
+                # 取得課程類型
+                course_type = course.get('course_type', 'course')
+                
+                # 統計課程類型（將連字符轉換為底線以匹配欄位名稱）
+                type_key = course_type.replace('-', '_')
+                if type_key in type_counts:
+                    type_counts[type_key] += 1
+                
                 course_result = CourseResult(
                     id=course['id'],
                     name=course['name'],
@@ -395,7 +438,8 @@ class CourseSearchService:
                     currency=course.get('currency', 'USD'),
                     image_url=course.get('image_url', ''),
                     affiliate_url=course.get('affiliate_url', ''),
-                    similarity_score=round(float(course.get('similarity_score', 0)), 4)
+                    course_type=course_type,
+                    similarity_score=similarity_percentage
                 )
                 course_results.append(course_result)
             
@@ -409,7 +453,8 @@ class CourseSearchService:
                     search_time_ms=duration_ms,
                     filters_applied={
                         "similarity_threshold": similarity_threshold
-                    }
+                    },
+                    type_counts=CourseTypeCount(**type_counts)
                 ),
                 error=ErrorModel()
             )
@@ -504,6 +549,7 @@ class CourseSearchService:
                     c.currency,
                     c.image_url,
                     c.affiliate_url as tracking_url,
+                    c.course_type,
                     1 - (c.embedding <=> $1::vector) as similarity_score
                 FROM courses c
                 WHERE c.platform = 'coursera'
@@ -530,9 +576,27 @@ class CourseSearchService:
             print(f"[CourseSearch] Executing vector search with threshold={threshold}, limit={limit}")
             results = await conn.fetch(base_query, *params)
             
+            # 課程類型映射（簡化前端顯示）
+            type_mapping = {
+                # 合併為 "course"
+                "course": "course",
+                "specialization-course": "course",
+                "mastertrack-certificate": "course",
+                
+                # 保持原樣
+                "professional-certificate": "professional-certificate",
+                "specialization": "specialization",
+                "degree": "degree",
+                "guided-project": "guided-project"
+            }
+            
             # 格式化結果
             courses = []
             for row in results:
+                # 取得原始課程類型並映射
+                original_type = row.get('course_type', 'course')
+                mapped_type = type_mapping.get(original_type, original_type)
+                
                 course = {
                     "id": row['id'],
                     "name": row['name'],
@@ -544,6 +608,7 @@ class CourseSearchService:
                     "currency": row['currency'],
                     "image_url": row['image_url'],
                     "affiliate_url": row['tracking_url'] or '',
+                    "course_type": mapped_type,
                     "similarity_score": float(row['similarity_score'])
                 }
                 courses.append(course)

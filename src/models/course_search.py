@@ -56,7 +56,16 @@ class CourseResult(BaseModel):
     currency: str = "USD"
     image_url: str = ""
     affiliate_url: str = ""
-    similarity_score: float = 0.0
+    course_type: str = ""
+    similarity_score: int = 0
+
+class CourseTypeCount(BaseModel):
+    """課程類型數量統計"""
+    course: int = 0
+    professional_certificate: int = 0
+    specialization: int = 0
+    degree: int = 0
+    guided_project: int = 0
 
 class CourseSearchData(BaseModel):
     """搜尋結果資料"""
@@ -66,6 +75,7 @@ class CourseSearchData(BaseModel):
     query: str = ""
     search_time_ms: int = 0
     filters_applied: dict[str, Any] = {}
+    type_counts: CourseTypeCount = CourseTypeCount()
 
 class ErrorModel(BaseModel):
     """錯誤模型"""

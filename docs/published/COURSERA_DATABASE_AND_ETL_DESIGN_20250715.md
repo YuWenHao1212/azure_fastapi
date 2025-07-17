@@ -335,7 +335,7 @@ POST /api/v1/courses/search
 }
 ```
 
-### 8.2 回應格式
+### 8.2 回應格式 (v1.1 - 2025-07-17 更新)
 
 ```json
 {
@@ -353,7 +353,8 @@ POST /api/v1/courses/search
         "currency": "USD",
         "image_url": "https://course-image.jpg",
         "affiliate_url": "https://imp.i384100.net/...",
-        "similarity_score": 0.8934
+        "course_type": "course",
+        "similarity_score": 89
       }
     ],
     "total_count": 2,
@@ -362,6 +363,13 @@ POST /api/v1/courses/search
     "search_time_ms": 342,
     "filters_applied": {
       "similarity_threshold": 0.3
+    },
+    "type_counts": {
+      "course": 1,
+      "professional_certificate": 0,
+      "specialization": 1,
+      "degree": 0,
+      "guided_project": 0
     }
   },
   "error": {
@@ -371,6 +379,11 @@ POST /api/v1/courses/search
   }
 }
 ```
+
+**API v1.1 更新**：
+- 新增 `course_type` 欄位 (簡化為 5 種類型)
+- 新增 `type_counts` 統計物件
+- `similarity_score` 改為整數百分比
 
 ## 9. 維護指南
 
