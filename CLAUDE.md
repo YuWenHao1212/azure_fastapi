@@ -17,6 +17,19 @@ Claude Code **絕對不可以**自行執行 `git commit`
 - 向用戶展示完整測試結果
 - 獲得用戶明確同意後才能提交
 
+### 🧪 測試執行規則 (TESTING RULE)
+**執行預提交測試時，必須提醒用戶可以使用 `--real-creds` 選項**：
+```bash
+# 使用真實憑證執行完整測試（推薦）
+./run_precommit_tests.sh --real-creds --parallel --no-coverage
+
+# 快速測試（可能有部分失敗）
+./run_precommit_tests.sh --parallel --no-coverage
+```
+- `--real-creds`：使用 .env 中的真實 Azure OpenAI 憑證
+- 避免因測試憑證導致的認證錯誤
+- 確保整合測試能正常執行
+
 ---
 
 本文件為 Claude Code + Cursor + Azure DevOps 協作開發指南，專門為 API 重構專案（FHS + FastAPI）設計。
@@ -823,6 +836,9 @@ az monitor app-insights query \
 pytest tests/unit/
 uvicorn src.main:app --reload
 
+# 預提交測試（使用真實憑證 - 推薦）
+./run_precommit_tests.sh --real-creds --parallel --no-coverage
+
 # 測試 Azure Function App
 curl -X POST "https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]" \
   -H "Content-Type: application/json" \
@@ -1043,12 +1059,20 @@ ruff check src/ tests/ --exclude=legacy,archive
 #### 執行命令
 
 ```bash
-# 完整測試（修改程式碼）
+# 完整測試 - 使用真實憑證（推薦）
+./run_precommit_tests.sh --real-creds --parallel --no-coverage
+
+# 完整測試 - 使用測試憑證（可能有部分失敗）
 ./run_precommit_tests.sh --parallel
 
 # 快速測試（文檔/配置）  
 ./run_precommit_tests.sh --no-api
+
+# 最快速測試組合
+./run_precommit_tests.sh --real-creds --parallel --no-coverage
 ```
+
+⚠️ **重要提醒**：使用 `--real-creds` 可以避免 Azure OpenAI 認證錯誤！
 
 #### 測試要求
 
