@@ -62,10 +62,10 @@ class CourseResult(BaseModel):
 class CourseTypeCount(BaseModel):
     """課程類型數量統計"""
     course: int = 0
-    professional_certificate: int = 0
+    certification: int = 0  # 原 professional_certificate
     specialization: int = 0
     degree: int = 0
-    guided_project: int = 0
+    project: int = 0  # 原 guided_project
 
 class CourseSearchData(BaseModel):
     """搜尋結果資料"""

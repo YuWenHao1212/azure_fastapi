@@ -4,6 +4,7 @@ Course Vector Search Service
 """
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -12,6 +13,8 @@ from pgvector.asyncpg import register_vector
 
 from src.core.monitoring_service import monitoring_service
 from src.services.embedding_client import get_course_embedding_client
+
+logger = logging.getLogger(__name__)
 
 
 class CourseSearchService:
@@ -77,11 +80,11 @@ class CourseSearchService:
             await self.initialize()
             
             # 產生查詢 embedding
-            print(f"[CourseSearch] Generating embedding for query: {query[:50]}...")
+            logger.debug(f"[CourseSearch] Generating embedding for query: {query[:50]}...")
             query_embeddings = await self.embedding_client.create_embeddings([query])
             
             if not query_embeddings or len(query_embeddings) == 0:
-                print("[CourseSearch] Failed to generate query embedding")
+                logger.error("[CourseSearch] Failed to generate query embedding")
                 return []
             
             query_embedding = query_embeddings[0]
@@ -103,6 +106,7 @@ class CourseSearchService:
                         c.currency,
                         c.image_url,
                         c.affiliate_url,
+                        c.course_type_standard as course_type,
                         1 - (c.embedding <=> $1::vector) as similarity
                     FROM courses c
                     WHERE c.platform = 'coursera'
@@ -150,7 +154,7 @@ class CourseSearchService:
                 params.append(limit)
                 
                 # 執行查詢
-                print(f"[CourseSearch] Executing vector search with threshold={similarity_threshold}, limit={limit}")
+                logger.debug(f"[CourseSearch] Executing vector search with threshold={similarity_threshold}, limit={limit}")
                 results = await conn.fetch(base_query, *params)
                 
                 # 格式化結果
@@ -167,6 +171,7 @@ class CourseSearchService:
                         "currency": row['currency'],
                         "image_url": row['image_url'],
                         "affiliate_url": row.get('affiliate_url') or '',
+                        "course_type": row.get('course_type', 'course'),
                         "similarity_score": round(float(row['similarity']), 4)
                     }
                     courses.append(course)
@@ -182,12 +187,12 @@ class CourseSearchService:
                     "has_filters": bool(filters)
                 })
                 
-                print(f"[CourseSearch] Found {len(courses)} courses in {duration:.2f}s")
+                logger.info(f"[CourseSearch] Found {len(courses)} courses in {duration:.2f}s")
                 
                 return courses
                 
         except Exception as e:
-            print(f"[CourseSearch] Error: {e}")
+            logger.error(f"[CourseSearch] Error: {e}")
             monitoring_service.track_event("CourseSearchError", {
                 "query": query[:100],
                 "error": str(e)
@@ -257,26 +262,13 @@ class CourseSearchService:
                 LIMIT $3
             """, target_embedding, course_id, limit)
             
-            # 課程類型映射（簡化前端顯示）
-            type_mapping = {
-                # 合併為 "course"
-                "course": "course",
-                "specialization-course": "course",
-                "mastertrack-certificate": "course",
-                
-                # 保持原樣
-                "professional-certificate": "professional-certificate",
-                "specialization": "specialization",
-                "degree": "degree",
-                "guided-project": "guided-project"
-            }
+            # 不再需要映射，直接使用 course_type_standard
             
             # 格式化結果
             similar_courses = []
             for row in results:
-                # 取得原始課程類型並映射
-                original_type = row.get('course_type', 'course')
-                mapped_type = type_mapping.get(original_type, original_type)
+                # 直接使用 course_type_standard
+                course_type = row.get('course_type', 'course')
                 
                 # 將 similarity 轉換為整數百分比
                 similarity_percentage = int(float(row['similarity']) * 100)
@@ -292,7 +284,7 @@ class CourseSearchService:
                     "currency": row.get('currency', 'USD'),
                     "image_url": row['image_url'],
                     "affiliate_url": row.get('affiliate_url', ''),
-                    "course_type": mapped_type,
+                    "course_type": course_type,
                     "similarity_score": similarity_percentage
                 }
                 similar_courses.append(course)
@@ -407,10 +399,10 @@ class CourseSearchService:
             course_results = []
             type_counts = {
                 'course': 0,
-                'professional_certificate': 0,
+                'certification': 0,
                 'specialization': 0,
                 'degree': 0,
-                'guided_project': 0
+                'project': 0
             }
             
             for course in courses:
@@ -420,10 +412,9 @@ class CourseSearchService:
                 # 取得課程類型
                 course_type = course.get('course_type', 'course')
                 
-                # 統計課程類型（將連字符轉換為底線以匹配欄位名稱）
-                type_key = course_type.replace('-', '_')
-                if type_key in type_counts:
-                    type_counts[type_key] += 1
+                # 統計課程類型（直接使用 course_type_standard 的值）
+                if course_type in type_counts:
+                    type_counts[course_type] += 1
                 
                 course_result = CourseResult(
                     id=course['id'],
@@ -498,7 +489,7 @@ class CourseSearchService:
                 await self.initialize()
                 
                 # 產生 embedding
-                print(f"[CourseSearch] Generating embedding for: {query_text[:50]}...")
+                logger.debug(f"[CourseSearch] Generating embedding for: {query_text[:50]}...")
                 embeddings = await self.embedding_client.create_embeddings([query_text])
                 
                 if not embeddings or len(embeddings) == 0:
@@ -517,7 +508,7 @@ class CourseSearchService:
                 return courses
                 
             except Exception as e:
-                print(f"[CourseSearch] Attempt {attempt + 1} failed: {e}")
+                logger.warning(f"[CourseSearch] Attempt {attempt + 1} failed: {e}")
                 
                 if attempt == max_retries - 1:
                     raise Exception(f"Search failed after {max_retries} attempts: {str(e)}")
@@ -549,7 +540,7 @@ class CourseSearchService:
                     c.currency,
                     c.image_url,
                     c.affiliate_url as tracking_url,
-                    c.course_type,
+                    c.course_type_standard as course_type,
                     1 - (c.embedding <=> $1::vector) as similarity_score
                 FROM courses c
                 WHERE c.platform = 'coursera'
@@ -573,29 +564,16 @@ class CourseSearchService:
             params.append(limit)
             
             # 執行查詢
-            print(f"[CourseSearch] Executing vector search with threshold={threshold}, limit={limit}")
+            logger.debug(f"[CourseSearch] Executing vector search with threshold={threshold}, limit={limit}")
             results = await conn.fetch(base_query, *params)
             
-            # 課程類型映射（簡化前端顯示）
-            type_mapping = {
-                # 合併為 "course"
-                "course": "course",
-                "specialization-course": "course",
-                "mastertrack-certificate": "course",
-                
-                # 保持原樣
-                "professional-certificate": "professional-certificate",
-                "specialization": "specialization",
-                "degree": "degree",
-                "guided-project": "guided-project"
-            }
+            # 不再需要映射，直接使用 course_type_standard
             
             # 格式化結果
             courses = []
             for row in results:
-                # 取得原始課程類型並映射
-                original_type = row.get('course_type', 'course')
-                mapped_type = type_mapping.get(original_type, original_type)
+                # 直接使用 course_type_standard
+                course_type = row.get('course_type', 'course')
                 
                 course = {
                     "id": row['id'],
@@ -608,12 +586,12 @@ class CourseSearchService:
                     "currency": row['currency'],
                     "image_url": row['image_url'],
                     "affiliate_url": row['tracking_url'] or '',
-                    "course_type": mapped_type,
+                    "course_type": course_type,
                     "similarity_score": float(row['similarity_score'])
                 }
                 courses.append(course)
             
-            print(f"[CourseSearch] Found {len(courses)} courses")
+            logger.info(f"[CourseSearch] Found {len(courses)} courses")
             return courses
     
     def _track_search_success(self, skill_name: str, search_context: str, 
@@ -662,63 +640,3 @@ class CourseSearchService:
             await self.embedding_client.close()
         if self._connection_pool:
             await self._connection_pool.close()
-
-
-# 測試函數
-async def test_course_search():
-    """測試課程搜尋功能"""
-    search_service = CourseSearchService()
-    
-    try:
-        # 測試 1: 基本搜尋
-        print("\n=== 測試 1: 搜尋 Python 課程 ===")
-        results = await search_service.search_courses(
-            query="Python programming for data science",
-            limit=5
-        )
-        
-        for i, course in enumerate(results, 1):
-            print(f"\n{i}. {course['name']}")
-            print(f"   Provider: {course['manufacturer']}")
-            print(f"   Price: ${course['current_price']}")
-            print(f"   Similarity: {course['similarity_score']}")
-        
-        # 測試 2: 帶過濾條件的搜尋
-        print("\n\n=== 測試 2: 搜尋 Google 的課程 ===")
-        results = await search_service.search_courses(
-            query="cloud computing",
-            limit=5,
-            filters={"manufacturer": "Google"}
-        )
-        
-        for i, course in enumerate(results, 1):
-            print(f"\n{i}. {course['name']}")
-            print(f"   Provider: {course['manufacturer']}")
-            print(f"   Similarity: {course['similarity_score']}")
-        
-        # 測試 3: 搜尋相似課程
-        if results:
-            print(f"\n\n=== 測試 3: 找出與 '{results[0]['name']}' 相似的課程 ===")
-            similar = await search_service.find_similar_courses(
-                course_id=results[0]['id'],
-                limit=3
-            )
-            
-            for i, course in enumerate(similar, 1):
-                print(f"\n{i}. {course['name']}")
-                print(f"   Provider: {course['manufacturer']}")
-                print(f"   Similarity: {course['similarity_score']}")
-        
-        # 測試 4: 取得熱門分類
-        print("\n\n=== 測試 4: 熱門課程分類 ===")
-        categories = await search_service.get_popular_categories()
-        
-        for i, cat in enumerate(categories[:10], 1):
-            print(f"{i}. {cat['name']} ({cat['course_count']} courses)")
-            
-    finally:
-        await search_service.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(test_course_search())

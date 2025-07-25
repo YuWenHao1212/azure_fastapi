@@ -364,6 +364,53 @@ How: [怎麼做的]
 
 ---
 
+## 斜線指令與知識管理
+
+### 全域斜線指令引用
+本專案整合全域知識管理系統的斜線指令：
+- `/take-note`：記錄重要討論到 Obsidian
+- `/organize-notes`：整理 Quick Notes
+
+全域指令定義位置：`/Users/yuwenhao/Claude Code/knowledge-base/commands/`
+
+### 專案特定斜線指令
+本專案提供專屬的 API 開發斜線指令：
+
+#### `/take-note-api`
+記錄 API 開發相關的重要內容，同時保存到：
+- Obsidian Quick Notes（個人知識庫）
+- `.serena/memories/development_logs/`（專案記錄）
+
+使用範例：
+```
+/take-note-api
+```
+
+#### `/organize-api-notes`
+整理本專案的開發筆記和記錄：
+- 整合 `.serena/memories/` 中的開發日誌
+- 生成階段性總結
+- 更新專案進度文檔
+
+使用範例：
+```
+/organize-api-notes --period=week
+```
+
+### 自動同步機制
+專案斜線指令會自動同步內容到：
+1. **Obsidian**：`/Users/yuwenhao/Library/Mobile Documents/iCloud~md~obsidian/Documents/Root/WenHao/`
+2. **專案記憶**：`.serena/memories/development_logs/`
+3. **專案文檔**：`docs/published/` (重要總結)
+
+### 使用時機建議
+- **技術決策討論後**：使用 `/take-note-api` 記錄決策理由
+- **完成重要功能後**：記錄實作要點和學習心得
+- **每週五**：使用 `/organize-api-notes` 生成週總結
+- **解決複雜問題後**：記錄解決方案供未來參考
+
+---
+
 ## 測試策略與管理
 
 ### 測試層級

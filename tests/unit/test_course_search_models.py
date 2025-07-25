@@ -117,10 +117,10 @@ def test_bubble_io_compatibility():
     assert empty_data.results == []
     assert empty_data.total_count == 0
     assert empty_data.type_counts.course == 0
-    assert empty_data.type_counts.professional_certificate == 0
+    assert empty_data.type_counts.certification == 0  # 改為 certification
     assert empty_data.type_counts.specialization == 0
     assert empty_data.type_counts.degree == 0
-    assert empty_data.type_counts.guided_project == 0
+    assert empty_data.type_counts.project == 0  # 改為 project
     
     empty_error = ErrorModel()
     assert empty_error.code == ""
