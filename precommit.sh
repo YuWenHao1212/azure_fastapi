@@ -3,6 +3,9 @@
 # Pre-commit Test Script - Simplified Version for Keyword Extraction API
 # Based on CLAUDE.md Level 0-3 testing strategy
 # Usage: ./precommit.sh [--level-0|--level-1|--level-2|--level-3]
+#
+# NOTE: This script focuses on keyword extraction API only.
+# Other endpoints still use the original LLM (GPT-4o-2).
 
 set -e  # Exit on error
 
