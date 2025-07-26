@@ -107,7 +107,7 @@ Claude Code **絕對不可以**自行執行 `git commit`
   postgresql://[USER]:[PASSWORD]@airesumeadvisor-courses-db-eastasia.postgres.database.azure.com/coursesdb?sslmode=require
   ```
 
-### PostgreSQL Schema (2025-01-27 版本)
+### PostgreSQL Schema (2025-07-26 版本)
 
 **資料表結構**：
 
