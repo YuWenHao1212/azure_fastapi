@@ -1,4 +1,6 @@
-# CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.0
+# CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.7.2
+
+> 最後更新：2025-07-26 11:41:34 CST
 
 ## ⚠️ 關鍵提醒 (CRITICAL REMINDERS)
 
@@ -13,22 +15,32 @@ TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S %Z'
 
 ### 🚫 Git 提交規則 (GIT COMMIT RULE)
 Claude Code **絕對不可以**自行執行 `git commit`
-- 必須先執行 `./run_precommit_tests.sh`
+- 必須根據修改類型執行對應層級的預提交測試：
+  - Prompt 修改：`./run_precommit_tests.sh --level-0`
+  - 程式碼格式/註解：`./run_precommit_tests.sh --level-1`
+  - 功能邏輯修改：`./run_precommit_tests.sh --level-2 --parallel`
+  - API/核心修改：`./run_precommit_tests.sh --level-3 --parallel`
 - 向用戶展示完整測試結果
 - 獲得用戶明確同意後才能提交
 
 ### 🧪 測試執行規則 (TESTING RULE)
-**執行預提交測試時，必須提醒用戶可以使用 `--real-creds` 選項**：
+**根據修改類型選擇適當的測試層級**：
 ```bash
-# 使用真實憑證執行完整測試（推薦）
-./run_precommit_tests.sh --real-creds --parallel --no-coverage
+# Level 0: Prompt 修改（不需要 AI）
+./run_precommit_tests.sh --level-0
 
-# 快速測試（可能有部分失敗）
-./run_precommit_tests.sh --parallel --no-coverage
+# Level 1: 程式碼風格（不需要 AI）
+./run_precommit_tests.sh --level-1
+
+# Level 2: 單元測試（建議使用 --parallel）
+./run_precommit_tests.sh --level-2 --parallel
+
+# Level 3: 完整測試（建議使用 --parallel）
+./run_precommit_tests.sh --level-3 --parallel
 ```
-- `--real-creds`：使用 .env 中的真實 Azure OpenAI 憑證
-- 避免因測試憑證導致的認證錯誤
-- 確保整合測試能正常執行
+- Level 0-1：不需要 AI 憑證，執行快速
+- Level 2-3：需要真實 API 憑證（從 .env 讀取）
+- 使用 `--parallel` 加速測試執行
 
 ---
 
@@ -40,14 +52,13 @@ Claude Code **絕對不可以**自行執行 `git commit`
 2. [安全配置指南](#安全配置指南)
 3. [協作角色與職責](#協作角色與職責)
 4. [開發階段與里程碑](#開發階段與里程碑)
-5. [Work Items 統一管理](#work-items-統一管理)
+5. [任務管理方式](#任務管理方式)
 6. [文檔工作流程](#文檔工作流程)
-7. [協作記錄指南](#協作記錄指南)
-8. [測試策略與管理](#測試策略與管理)
-9. [Azure CLI 命令參考](#azure-cli-命令參考)
-10. [快速參考卡](#快速參考卡)
-11. [Bubble.io API 相容性](#bubbleio-api-相容性)
-12. [注意事項](#注意事項)
+7. [測試策略與管理](#測試策略與管理)
+8. [Azure CLI 命令參考](#azure-cli-命令參考)
+9. [快速參考卡](#快速參考卡)
+10. [Bubble.io API 相容性](#bubbleio-api-相容性)
+11. [注意事項](#注意事項)
 
 ---
 
@@ -56,11 +67,13 @@ Claude Code **絕對不可以**自行執行 `git commit`
 ### 技術棧
 - **架構模式**: FHS (Functional Hierarchy Structure)
 - **框架**: FastAPI
-- **Python 版本**: 3.10+ (建議使用 3.11)
+- **Python 版本**: 3.11.8 (使用 .venv 虛擬環境)
+- **虛擬環境**: `/Users/yuwenhao/Documents/GitHub/azure_fastapi/.venv/`
 - **部署平台**: Azure Function App
 - **版本控制**: GitHub (主要) + Azure DevOps Repos (鏡像)
 - **CI/CD**: ✅ GitHub Actions → Azure Functions（已完成設置，push to main 自動部署）
-- **協作工具**: Claude Code + Cursor + Azure DevOps + Serena MCP
+- **協作工具**: Claude Code + WenHao (Cursor 僅作為 IDE，不使用其 LLM)
+- **記憶系統**: Serena MCP (提供歷史記錄查詢，但非日常開發工具)
 
 ### Azure DevOps 專案資訊
 - **組織**: airesumeadvisor
@@ -81,32 +94,89 @@ Claude Code **絕對不可以**自行執行 `git commit`
   - Azure Portal → Function App → Function Keys
   - 本地環境變數或 `.env` 檔案（已加入 .gitignore）
   - Azure Key Vault（生產環境）
-- **API URL 格式**:
+- **已部署的 API 端點** (生產環境):
   ```
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/[endpoint]?code=[YOUR_HOST_KEY]
+  # 關鍵字提取
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
+  
+  # 指標計算
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
+  
+  # 指標計算與間隙分析
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
+  
+  # 履歷格式化
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
+  
+  # 履歷優化
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
+  
+  # 課程搜尋
+  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
   ```
 
 ### FHS + FastAPI 架構規範
 
 ```
-api_project/
+azure_fastapi/
 ├── CLAUDE.md                    # 本協作指南
-├── .cursor/                     # Cursor IDE 配置
-├── .serena/                     # Serena MCP 記憶系統
-├── legacy/                      # 舊版參考資料
-├── temp/                        # 臨時檔案統一管理
-│   ├── tests/                  # 測試相關臨時檔案
-│   ├── demos/                  # 展示檔案
-│   └── dev/                    # 開發暫存檔案
-├── docs/                        # 文檔管理
-│   ├── drafts/                 # 草稿文檔
-│   ├── published/              # 已發布文檔
-│   ├── work_items/             # Work Item 記錄
-│   └── local/                  # 本地文檔
-├── src/                         # FHS 架構原始碼
-├── tests/                       # 測試檔案
-├── azure/                       # Azure 部署相關
-└── .github/                     # CI/CD 配置
+├── README.md                    # 專案說明文件
+├── requirements.txt             # Python 套件依賴
+├── pyproject.toml              # Python 專案配置
+├── pytest.ini                  # pytest 測試配置
+├── function.json               # Azure Function 配置
+├── function_app.py             # Azure Function 入口點
+├── host.json                   # Azure Function Host 配置
+├── .venv/                      # Python 虛擬環境 (3.11.8)
+├── .claude/                    # Claude Code 全域設定
+├── .cursor/                    # Cursor IDE 配置 (僅作為 IDE)
+├── .serena/                    # Serena MCP 記憶系統
+│   ├── memories/              # 開發記憶與決策記錄
+│   ├── cache/                 # 快取資料
+│   └── project.yml            # Serena 專案配置
+├── .github/                    # GitHub Actions CI/CD
+│   └── workflows/             # 自動部署工作流程
+├── src/                        # FHS 架構原始碼
+│   ├── main.py               # FastAPI 應用主程式
+│   ├── api/                  # API 路由端點
+│   │   ├── v1/              # v1 版本 API
+│   │   └── endpoints/       # 特定功能端點
+│   ├── core/                # 核心功能
+│   │   ├── config.py       # 配置管理
+│   │   └── monitoring/     # 監控相關
+│   ├── services/           # 業務邏輯服務
+│   │   ├── language_detection/  # 語言偵測
+│   │   ├── standardization/     # 標準化處理
+│   │   └── etl/                 # ETL 處理
+│   ├── models/             # 資料模型
+│   ├── prompts/            # LLM Prompt 模板
+│   ├── data/               # 靜態資料
+│   └── utils/              # 工具函數
+├── tests/                      # 測試檔案
+│   ├── unit/                  # 單元測試
+│   ├── integration/           # 整合測試
+│   ├── functional/            # 功能測試
+│   └── temp/                  # 臨時測試檔案
+├── docs/                       # 文檔管理
+│   ├── published/             # 已發布文檔
+│   ├── bubble_integration/    # Bubble.io 整合文檔
+│   └── local/                 # 本地文檔
+├── temp/                       # 臨時檔案統一管理
+│   ├── tests/                # 測試相關臨時檔案
+│   ├── demos/                # 展示檔案
+│   └── dev/                  # 開發暫存檔案
+├── tools/                      # 開發工具
+│   ├── testing/              # 測試工具
+│   ├── monitoring/           # 監控工具
+│   └── coursera_db_manager/  # Coursera 資料庫管理
+├── legacy/                     # 舊版參考資料
+├── archive/                    # 歸檔資料
+├── azure/                      # Azure 部署相關配置
+├── commands/                   # 自定義指令
+├── custom/                     # 自定義擴充
+├── data/                       # 專案資料檔案
+├── htmlcov/                   # 測試覆蓋率報告
+└── wiki-export/               # Wiki 匯出檔案
 ```
 
 ---
@@ -164,19 +234,20 @@ class Settings(BaseSettings):
 
 ## 協作角色與職責
 
-### 責任分配矩陣 (RACI)
+### 責任分配矩陣 (RACI) - 更新版
 
-| 任務 | Claude | Cursor | WenHao |
-|------|--------|--------|--------|
-| 需求分析 | R | C | A |
-| 架構設計 | R | C | A |
-| 文檔撰寫 | R | I | A |
-| Work Item 建立 | R | I | A |
-| 程式碼實作 | C | R | A |
-| 單元測試 | C | R | A |
-| 整合測試 | R | R | A |
-| 部署執行 | C | C | R |
-| 文檔上傳 | I | I | R |
+| 任務 | Claude Code | WenHao |
+|------|-------------|--------|
+| 需求分析 | R | A |
+| 架構設計 | R | A |
+| 文檔撰寫 | R | A |
+| Work Item 建立 | R | A |
+| 程式碼實作 | R | A |
+| 單元測試 | R | A |
+| 整合測試 | R | A |
+| 部署執行 | C | R |
+| 文檔上傳 | I | R |
+| 除錯與修復 | R | A |
 
 *R=負責執行, A=最終負責, C=需諮詢, I=需通知*
 
@@ -187,558 +258,483 @@ class Settings(BaseSettings):
 - 生成需求、測試、設計、部署文檔
 - Work Items 規劃與建立
 - 測試案例設計
+- 程式碼實作與測試執行
+- **必須依照測試分級策略執行對應層級的測試，全部通過才能回報完成**
+- 協助除錯與問題解決
 
-**💻 Cursor**
-- 程式碼實作與單元測試
-- 確保符合 FHS + FastAPI 最佳實踐
-- 執行整合測試
+**💻 Cursor (僅作為 IDE)**
+- 提供開發環境
+- 程式碼編輯介面
+- 不使用 Cursor 的 LLM 功能
 
 **👤 WenHao**
 - 審核確認文檔和規劃
 - 執行部署與環境配置
 - 同步文檔到 DevOps Wiki
+- 最終決策與品質把關
 
 ---
 
 ## 開發階段與里程碑
 
-### 開發流程概覽
+### 當前狀態（2025年7月）
+
+✅ **已完成的里程碑**：
+- **MVP 開發**：所有核心 API 端點實作完成
+- **Azure 部署**：成功部署至 Azure Function App
+- **CI/CD 設置**：GitHub Actions 自動化測試與部署
+- **監控系統**：Application Insights 整合完成
+
+🚀 **已上線的 API 端點**：
+- `/api/v1/extract-jd-keywords` - 關鍵字提取
+- `/api/v1/index-calculation` - 相似度計算
+- `/api/v1/index-cal-and-gap-analysis` - 差距分析
+- `/api/v1/format-resume` - 履歷格式化
+- `/api/v1/tailor-resume` - 履歷優化
+- `/api/v1/courses/search` - 課程搜尋
+
+### 下一階段：效能優化與功能增強
 
 ```mermaid
 graph LR
-    A[Phase 1: MVP] --> B[Phase 2: 首次部署]
-    B --> C[Phase 3: 持續開發]
-    C --> D[Phase 4: 自動化]
+    A[當前：V1 已上線] --> B[Phase 5: 效能優化]
+    B --> C[Phase 6: 功能增強]
+    C --> D[Phase 7: 進階功能]
 ```
 
-### Phase 1: MVP 開發（Week 1-3）
-**目標**: 完成核心功能的本地開發
-- [ ] 分析原始 API，識別核心模組
-- [ ] 設計 FHS 架構
-- [ ] 實作基本功能
-- [ ] 本地測試通過
-- [ ] API 文檔完成
+### Phase 5: 效能優化（進行中）
 
-### Phase 2: 首次部署（Week 4）
-**目標**: 手動部署到 Azure
-- [ ] 準備部署環境
-- [ ] 配置環境變數
-- [ ] 執行手動部署
-- [ ] 線上測試與問題修復
-- [ ] 記錄部署步驟
+**目標**: 提升每個端點的回應時間和效能, 目前Chat LLM 僅使用同一個Azure deployed LLM, 是否需要再加上另一個? 
 
-### Phase 3: 持續開發（Week 5-6）
-**目標**: 基於部署經驗優化
-- [ ] 開發更多模組
-- [ ] 優化架構
-- [ ] 整合測試
-- [ ] 準備自動化
+#### 優化重點
+1. **關鍵字提取 API**
+   - [ ] P95 回應時間 < 4 秒
+   - [ ] 優化 prompt管理
+2. **履歷reformat API**
+   - [ ] P95 回應時間 < 15 秒
+   - [ ] 目前使用外部OCR API, 看是否能合併進來
+3. **Index Cal and Gap Analysis**
+   - [ ] P95 回應時間 < 30 秒
+   - [ ] 加上Course是否有recommend course function
+4. **履歷優化 API** 
+   - [ ] P95 回應時間 < 20 秒
+   - [ ] Rich Editor 機率性不顯示issue (這可能是前端問題)
 
-### Phase 4: 自動化與優化（已完成）
-**狀態**: ✅ 已完成
-- [x] 設置 GitHub Actions
-- [x] 自動化測試
-- [x] 自動化部署（push to main → Azure）
-- [x] 監控優化
+### 效能優化檢查清單
 
-### 階段檢查點
-
-**MVP 完成標準**
-- 核心 API 模組完成
-- 本地測試通過
-- 基本錯誤處理
-- API 文檔自動生成
-
-**部署完成標準**
-- Azure Function App 運行正常
-- 環境變數正確配置
-- 監控設置完成
-- 成本在預算內
+每個端點優化時需確認：
+- [ ] 回應時間測量與基準建立
+- [ ] 識別效能瓶頸（profiling）
+- [ ] 實作優化方案
+- [ ] 更新文檔與監控
 
 ---
 
-## Work Items 統一管理
+## 任務管理方式
 
-### Work Item 類型與負責人
+### 使用 GitHub 原生功能
 
-| 類型 | 預設負責人 | Azure DevOps 使用者 | 職責 |
-|------|------------|-------------------|------|
-| Epic | Claude | claude@airesumeadvisor.com | 高層次規劃 |
-| Feature | Claude | claude@airesumeadvisor.com | 功能設計 |
-| User Story | Cursor | cursor@airesumeadvisor.com | 實作細節 |
-| Task | 依性質 | 見下方 | 具體執行 |
-| Test Case | Claude/Cursor | 見下方 | 測試設計/執行 |
-| Bug | 依類型 | 見下方 | 問題解決 |
+由於團隊規模精簡（Claude Code + WenHao），我們採用 GitHub 的輕量級工作流程：
 
-**Task 負責人分配**
-- 程式碼實作 → cursor@airesumeadvisor.com
-- 環境設定 → wenhao@airesumeadvisor.com
-- 部署配置 → wenhao@airesumeadvisor.com
-- 文檔撰寫 → claude@airesumeadvisor.com
+#### GitHub Issues 分類
+- **🐛 Bug**：程式錯誤或異常行為
+- **✨ Enhancement**：功能改進或新功能
+- **📚 Documentation**：文檔相關任務
+- **🚀 Performance**：效能優化相關
+- **❓ Question**：需要討論的問題
 
-### Work Item 狀態流程
+#### 任務分工
+- **Claude Code**：
+  - 技術方案設計
+  - 程式碼實作
+  - 單元測試撰寫
+  - 技術文檔
+  
+- **WenHao**：
+  - 需求確認與優先級
+  - 測試驗證
+  - 部署執行
+  - 監控與回饋
 
-```mermaid
-stateDiagram-v2
-    [*] --> New: 建立
-    New --> Active: 開始工作
-    Active --> Resolved: 完成實作
-    Resolved --> Closed: 驗證通過
-    Active --> New: 需要重新規劃
-```
+### 整合式開發流程
 
-### 狀態管理最佳實踐
-1. **即時更新**: 開始工作時立即更新為 Active
-2. **單一負責**: 同時只有一個 Work Item 處於 Active
-3. **完成即報**: 完成後立即更新狀態
-4. **驗收確認**: Resolved → Closed 需要明確驗收
-
----
-
-## 文檔工作流程
-
-### 文檔生命週期
+將任務管理與文檔流程整合，確保每個功能都有完整的文檔記錄：
 
 ```mermaid
-graph TD
-    A[需求分析] --> B[生成草稿]
-    B --> C[包含 Work Item 規劃]
-    C --> D[docs/drafts/]
-    D --> E[審核確認]
-    E --> F{通過?}
-    F -->|是| G[建立 Work Items]
-    F -->|否| B
-    G --> H[更新文檔 IDs]
-    H --> I[docs/published/]
-    I --> J[上傳 Wiki]
+graph LR
+    A[GitHub Issue] --> B[Claude 撰寫方案文檔]
+    B --> C[docs/drafts/]
+    C --> D[WenHao 審核方案]
+    D --> E{批准?}
+    E -->|否| B
+    E -->|是| F[Claude Code 實作]
+    F --> G[建立 PR]
+    G --> H[測試 & Review]
+    H --> I{通過?}
+    I -->|否| F
+    I -->|是| J[合併到 main]
+    J --> K[自動部署]
+    K --> L[更新文檔至 docs/published/]
 ```
 
-### 文檔分類
-- **drafts/**: 待審核文檔（含 [PENDING_XXX_ID] 佔位符）
-- **published/**: 已發布文檔（含實際 Work Item URLs）
-- **work_items/**: Work Item 建立記錄
-- **local/**: 本地文檔（不上傳）
+### 文檔驅動開發（Documentation-Driven Development）
 
-### 文檔命名規範
+1. **方案先行**：
+   - 每個新功能/修復先寫技術方案
+   - 儲存至 `docs/drafts/[功能名稱]_方案_YYYYMMDD.md`
+   - 包含：背景、目標、技術方案、預期結果
+
+2. **實作追蹤**：
+   - 方案批准後開始實作
+   - PR 描述連結到方案文檔
+   - 程式碼註解引用文檔決策
+
+3. **知識累積**：
+   - 部署成功後，將方案整合到相關文檔
+   - `docs/published/` 保存最終實作版本
+   - 重要決策記錄到 `.serena/memories/`
+
+### 文檔管理原則
+
+1. **極簡主義**：一個功能一個文檔，避免過度分類
+2. **整合內容**：每個文檔包含該功能的需求、設計、實作說明
+3. **方案討論**：新功能先在 `drafts/[功能]_方案_YYYYMMDD.md` 討論
+4. **知識沉澱**：實作完成後更新到對應的 `features/` 文檔
+
+### 協作原則
+1. **No Code Without Doc**：先有文檔，後有程式碼
+2. **Review Everything**：方案和程式碼都需審核
+3. **Keep It Simple**：流程簡單，但該有的都有
+4. **Knowledge Sharing**：重要知識及時記錄
+
+### 檔案管理與命名規範
+
+#### 極簡文檔結構
 ```yaml
-需求文檔: REQ_[模組]_[YYYYMMDD].md
-測試文檔: TEST_[模組]_[YYYYMMDD].md
-設計文檔: DESIGN_[模組]_[YYYYMMDD].md
-部署文檔: DEPLOY_[模組]_[YYYYMMDD].md
-API文檔: API_[模組]_[版本].md
-Work Item: WI_[模組]_[YYYYMMDD].json
+docs/
+├── README.md               # API 總覽與快速開始
+├── ARCHITECTURE.md         # 架構設計決策
+├── API_REFERENCE.md        # 所有 API 的參考文檔
+├── DEPLOYMENT.md           # 部署與維運指南
+└── features/               # 各功能的詳細說明
+    ├── keyword_extraction.md         # /extract-jd-keywords
+    ├── index_calculation.md          # /index-calculation
+    ├── gap_analysis.md               # /index-cal-and-gap-analysis
+    ├── resume_format.md              # /format-resume
+    ├── resume_tailoring.md           # /tailor-resume
+    └── course_search.md              # /courses/search
 ```
+
+#### 臨時檔案建立規則
+```yaml
+# Claude Code 建立臨時檔案時必須遵循
+測試腳本:  temp/tests/scripts/test_[功能]_[日期].py
+測試日誌:  temp/tests/logs/[功能]_test_[日期].log  
+測試結果:  temp/tests/results/[功能]_results_[日期].json
+Demo檔案:  temp/demos/html/[功能]_demo_[日期].html
+Shell腳本: temp/dev/scripts/[功能]_[用途].sh
+實驗代碼:  temp/dev/experiments/[實驗名稱].py
+# 筆記請使用 /take-note 指令儲存到 Obsidian
+```
+
+#### 命名約定
+- **日期格式**: YYYYMMDD (例：20250714)
+- **功能描述**: 使用底線分隔 (gap_analysis, api_performance)  
+- **包含用途**: test, debug, demo, experiment
+
+#### 檔案存放位置與用途區分
+
+**正式檔案** (版本控制內)：
+- `tests/unit/`, `tests/integration/` - 正式測試程式碼
+- `docs/` - 所有專案文檔
+  - `drafts/` - 討論中的技術方案
+  - `features/` - 各功能的完整說明
+  - 根目錄的通用文檔（README、ARCHITECTURE 等）
+
+**臨時檔案** (不納入版本控制)：
+- `temp/` - 所有臨時性、實驗性的檔案（測試腳本、實驗代碼等）
+
+**開發筆記**：
+- 使用 `/take-note` 指令儲存到 Obsidian 知識庫
+- 路徑：`/Users/yuwenhao/Library/Mobile Documents/iCloud~md~obsidian/Documents/Root/WenHao/Inbox/Qiuck Note/`
+
+**記憶系統**：
+- `.serena/memories/` - Serena MCP 的持久化記憶（API分析、開發進度、架構決策）
 
 ---
-
-## 協作記錄指南
-
-### 記錄格式 (5W1H)
-```markdown
-### [HH:MM] [工具] - [動作]
-Who: [Cursor/Claude Code/用戶]
-What: [做了什麼]
-Why: [為什麼做]
-When: [台灣時間]
-How: [怎麼做的]
-```
-
-### 必須記錄的操作
-- 代碼修改
-- 配置變更
-- 測試執行
-- 部署操作
-- 文檔更新
-- 技術決策
-
-### Cursor 任務分派
-當 Claude 分派任務時：
-1. 詳細規格記錄在 COLLABORATION_LOG.md
-2. 給用戶簡短提示：
-```
-請查看 COLLABORATION_LOG.md 中的任務指派：
-📍 位置：第 XXX-XXX 行
-⏰ 時間：[HH:MM] 
-📋 任務：[簡述]
-```
 
 ---
 
 ## 斜線指令與知識管理
 
-### 全域斜線指令引用
-本專案整合全域知識管理系統的斜線指令：
-- `/take-note`：記錄重要討論到 Obsidian
-- `/organize-notes`：整理 Quick Notes
+### 統一使用全域指令
+本專案使用全域 `/take-note` 指令記錄所有開發筆記（包括 API 相關）：
 
-全域指令定義位置：`/Users/yuwenhao/Claude Code/knowledge-base/commands/`
-
-### 專案特定斜線指令
-本專案提供專屬的 API 開發斜線指令：
-
-#### `/take-note-api`
-記錄 API 開發相關的重要內容，同時保存到：
-- Obsidian Quick Notes（個人知識庫）
-- `.serena/memories/development_logs/`（專案記錄）
+#### `/take-note`
+記錄重要討論和技術決策到 Obsidian：
+- **輸出路徑**: `/Users/yuwenhao/Library/Mobile Documents/iCloud~md~obsidian/Documents/Root/WenHao/Inbox/Qiuck Note/`
+- **檔名格式**: `[主題] - YYYY-MM-DD HH-mm.md`
+- **自動擷取**: 核心概念、解決方案、關鍵決策、學到的知識
+- **API 開發**: 會自動識別 API 相關內容並加上適當標籤
 
 使用範例：
 ```
-/take-note-api
+/take-note  # 記錄任何重要討論，包括 API 開發
 ```
 
 #### `/organize-api-notes`
-整理本專案的開發筆記和記錄：
-- 整合 `.serena/memories/` 中的開發日誌
-- 生成階段性總結
-- 更新專案進度文檔
+專案特定指令，用於整理 API 開發總結：
+- **功能**: 收集並整理專案記錄，生成週期性總結
+- **使用時機**: 每週或每個開發階段結束時
+- **詳細說明**: 見 `commands/organize-api-notes.md`
 
-使用範例：
+### 筆記格式範例
+```markdown
+# [主題] - YYYY-MM-DD HH:mm
+
+## 📍 Context
+- Project: azure_fastapi
+- Topic: [討論主題]
+
+## 🎯 Key Points
+[重點整理]
+
+## 💡 Solutions/Code
+[解決方案或程式碼]
+
+## 📚 Learnings
+[學到的知識]
+
+## 🔗 References
+[相關連結或檔案]
 ```
-/organize-api-notes --period=week
+
+---
+
+## 程式碼品質管理
+
+### Ruff - Python Code Style 檢查工具
+
+**Ruff** 是一個極快速的 Python linter，用於確保程式碼品質和一致性。
+
+#### 核心規則
+- **F**: 未使用的變數、import (F401, F841)
+- **E**: PEP 8 風格（行長度 88 字元）
+- **I**: Import 排序 (I001)
+- **UP**: 使用現代 Python 語法 (UP006, UP035)
+- **SIM**: 簡化程式碼建議
+
+#### Claude Code 自動檢查流程
+
+每次修改程式碼後，Claude Code 必須：
+
+```bash
+# 1. 執行檢查
+ruff check src/ tests/ --exclude=legacy,archive
+
+# 2. 如有問題，自動修復
+ruff check src/ tests/ --exclude=legacy,archive --fix
+
+# 3. 確認看到
+All checks passed!
 ```
 
-### 自動同步機制
-專案斜線指令會自動同步內容到：
-1. **Obsidian**：`/Users/yuwenhao/Library/Mobile Documents/iCloud~md~obsidian/Documents/Root/WenHao/`
-2. **專案記憶**：`.serena/memories/development_logs/`
-3. **專案文檔**：`docs/published/` (重要總結)
-
-### 使用時機建議
-- **技術決策討論後**：使用 `/take-note-api` 記錄決策理由
-- **完成重要功能後**：記錄實作要點和學習心得
-- **每週五**：使用 `/organize-api-notes` 生成週總結
-- **解決複雜問題後**：記錄解決方案供未來參考
+只有確認程式碼風格通過後，才能回報任務完成。
 
 ---
 
 ## 測試策略與管理
 
-### 測試層級
-- **單元測試**: 覆蓋率 > 80%
-- **整合測試**: 涵蓋關鍵路徑  
-- **Security Tests**: 使用安全標記，順序執行（避免 LLM API 速率限制）
-- **API 文檔測試**: 驗證 OpenAPI schema 正確性
-- **效能測試**: 一致性和回應時間驗證
+### 程式碼修改測試分級策略 (強制執行！)
 
-### KPI 測試標準
-```yaml
-一致性測試:
-  測試次數: 50次
-  目標:
-    短文本: ≥70% 一致率
-    長文本: ≥50% 一致率
-    兩次相同: ≥35%
-```
+**⚠️ 強制要求**：Claude Code 必須根據修改類型執行對應層級的測試，全部通過後才能回報完成！
 
-### 測試資料規範
-```yaml
-測試文本要求:
-  job_description:
-    最小長度: 200字元
-    最大長度: 5000字元  # Bubble.io 前端限制
-    保證: 前端已確保非空值
-  
-  resume:
-    最小長度: 200字元  
-    最大長度: 5000字元  # Bubble.io 前端限制
-    保證: 前端已確保非空值
-  
-  測試重點:
-    - 正常案例 (200-1000字)
-    - 邊界案例 (接近5000字)
-    - 特殊字元 (emoji、多語言)
-    - 不需測試: None、空字串、超長文本
-  
-範例:
-  # 正常測試案例
-```
+#### Level 0: Prompt 修改（YAML 檔案）
+**適用範圍**：
+- 修改 prompt 檔案（src/prompts/**/*.yaml）
+- 調整 prompt 內容、格式或參數
+- 新增 prompt 版本
 
-### 邊界測試設計原則
+**必須通過**：
+- ✅ YAML 格式驗證（確認檔案可正確解析）
+- ✅ 確認版本命名正確（v[X.Y.Z]-[language].yaml）
 
-在設計邊界測試（Boundary Testing）時，必須先與 WenHao 討論以收斂程式碼複雜度：
+**執行時間**：< 5 秒
 
-1. **了解業務約束**
+---
+
+#### Level 1: 程式碼風格檢查（基礎修改）
+**適用範圍**：
+- 文檔修改（docstring、註解）
+- 程式碼格式調整（空白、換行）
+- Import 語句調整
+- 變數重命名（不影響邏輯）
+- 型別標註（type hints）
+
+**必須通過**：
+- ✅ `ruff check src/ tests/ --exclude=legacy,archive`
+- 如有錯誤：`ruff check src/ tests/ --exclude=legacy,archive --fix`
+
+**執行時間**：< 1 秒
+
+---
+
+#### Level 2: 單元測試（功能修改）
+**適用範圍**：
+- 修改函數內部邏輯
+- 新增輔助函數
+- 修改資料模型（models/）
+- 修改工具函數（utils/）
+- 修改服務層邏輯（services/）
+- 修改 prompt 載入邏輯或預設版本
+
+**必須通過**：
+- ✅ `ruff check src/ tests/ --exclude=legacy,archive`
+- ✅ `pytest tests/unit/test_[相關模組].py -v`
+- ✅ 如果新增功能，必須同時新增對應的單元測試
+
+**執行時間**：10-30 秒
+
+---
+
+#### Level 3: 整合測試（API/核心功能修改）
+**適用範圍**：
+- 修改 API 端點（api/v1/）
+- 修改主程式（main.py）
+- 修改核心配置（core/config.py）
+- 修改中間件（middleware/）
+- 修改資料庫相關功能
+- 修改外部服務整合（OpenAI、Azure）
+- 修改會影響 API 輸出的任何邏輯
+
+**必須通過**：
+- ✅ `ruff check src/ tests/ --exclude=legacy,archive`
+- ✅ `pytest tests/unit/test_[相關模組].py -v`
+- ✅ `pytest tests/integration/test_[相關功能].py -v`
+- ✅ 確認沒有破壞現有 API 契約
+
+**執行時間**：1-2 分鐘
+
+---
+
+#### 快速決策表
+
+| 修改內容 | 測試層級 | 執行命令 |
+|---------|---------|---------|
+| Prompt YAML | Level 0 | 手動檢查 YAML 格式 |
+| 程式碼註解 | Level 1 | `ruff check` |
+| 工具函數邏輯 | Level 2 | `ruff check` + `pytest unit` |
+| API 端點 | Level 3 | `ruff check` + `pytest unit` + `pytest integration` |
+| Prompt + 預設版本 | Level 0 + 2 | YAML 檢查 + `ruff` + `pytest unit` |
+| 不確定 | Level 3 | 執行完整測試 |
+
+### 核心測試原則
+
+- **單元測試覆蓋率**: > 80%
+- **Bubble.io 相容性**: 文本長度 200-5000 字元（前端已驗證）
+- **安全測試**: 使用安全標記避免觸發真實攻擊
+- **效能優化**: 使用 pytest-xdist 平行化測試
+
+### 重要測試實踐
+
+1. **邊界測試精簡化**
    ```yaml
-   # 範例：前端已實施的約束
-   job_description:
-     min_length: 200      # Bubble.io 前端保證
-     max_length: 5000     # Bubble.io 前端限制
-     nullable: false      # 前端確保非空
+   # Bubble.io 前端已驗證
+   min_length: 200   # 前端保證
+   max_length: 5000  # 前端限制
    
-   # 測試設計應反映這些約束
-   boundary_tests:
-     - 199 chars         # 低於最小值
-     - 200 chars         # 剛好最小值
-     - 5000 chars        # 剛好最大值
-     - 5001 chars        # 略超最大值
-     # 不需要測試 None/空字串（前端已防止）
+   # 只測試關鍵邊界
+   test_cases:
+     - 199 chars     # 低於最小值
+     - 200 chars     # 剛好最小值
+     - 5000 chars    # 剛好最大值
+     - 5001 chars    # 略超最大值
    ```
 
-2. **避免不必要的測試組合**
+2. **安全測試標記**
    ```python
-   # ❌ 錯誤：測試所有理論上可能的情況
-   test_cases = [
-       None, "", " ", "a", "ab", "abc", ... "a"*10000
-   ]
+   # ✅ 使用安全標記
+   payload = "SAFE_SQL_TEST_DROP_KEYWORD"
    
-   # ✅ 正確：只測試實際業務場景
-   test_cases = [
-       "a" * 199,    # 接近最小邊界
-       "a" * 200,    # 最小邊界
-       "a" * 5000,   # 最大邊界
-       "a" * 5001,   # 超出邊界
-   ]
-   ```
-
-3. **討論時機**
-   - 設計新的邊界測試前
-   - 發現測試案例過多時
-   - 不確定業務規則時
-
-### 安全測試設計原則
-
-1. **驗證防護而非攻擊**
-   ```python
-   # ❌ 錯誤：使用真實惡意程式碼
+   # ❌ 避免真實攻擊碼
    payload = "'; DROP TABLE users; --"  # 可能觸發 IP 封鎖
-   
-   # ✅ 正確：使用安全測試標記
-   payload = "SAFE_SQL_TEST_DROP_KEYWORD"  # 不會觸發封鎖
    ```
 
-2. **測試數據管理**
-   ```yaml
-   安全測試標記:
-     SQL注入: SAFE_SQL_TEST_[類型]
-     XSS攻擊: SAFE_XSS_TEST_[類型]
-     路徑遍歷: SAFE_PATH_TEST_[類型]
-   ```
+3. **測試隔離原則**
+   - 使用 pytest fixture 自動清理
+   - 每個測試用獨立資料
+   - 不依賴執行順序
+   - 清理所有建立的資源
 
-3. **測試環境隔離**
-   - 使用測試專用 headers（X-Test-Bypass-Security）
-   - 每個測試前清理安全封鎖狀態
-   - 避免測試間相互影響
-
-### 避免測試相互影響的實作方法
-
-1. **使用 Fixture 自動清理**
+4. **明確的錯誤訊息**
    ```python
-   # conftest.py
-   @pytest.fixture(autouse=True)
-   def clean_test_environment():
-       """每個測試前後自動清理"""
-       # 測試前：清理任何殘留狀態
-       from src.core.monitoring.security_monitor import security_monitor
-       security_monitor.clear_all_blocks()
-       
-       yield  # 執行測試
-       
-       # 測試後：再次清理
-       security_monitor.clear_all_blocks()
-   ```
-
-2. **獨立的測試數據**
-   ```python
-   # ❌ 錯誤：共用測試數據
-   TEST_USER = {"id": 1, "name": "test"}
-   
-   def test_1():
-       TEST_USER["status"] = "active"  # 修改共用數據！
-   
-   def test_2():
-       # TEST_USER 已被 test_1 修改！
-       assert TEST_USER.get("status") is None  # 失敗！
-   
-   # ✅ 正確：每個測試用獨立數據
-   def test_1():
-       user = {"id": 1, "name": "test"}
-       user["status"] = "active"
-   
-   def test_2():
-       user = {"id": 1, "name": "test"}  # 全新的數據
-       assert user.get("status") is None  # 成功！
-   ```
-
-3. **測試隔離檢查清單**
-   - [ ] 不修改全域變數
-   - [ ] 不依賴測試執行順序
-   - [ ] 清理所有建立的資源
-   - [ ] 重置所有修改的設定
-   - [ ] 使用獨立的測試數據
-
-### 測試設計的額外最佳實踐
-
-1. **明確的錯誤訊息**
-   ```python
-   # ❌ 錯誤：不明確的斷言
-   assert response.status_code == 200
-   
-   # ✅ 正確：提供上下文資訊
+   # 提供上下文資訊
    assert response.status_code == 200, \
        f"Expected 200 but got {response.status_code}. " \
        f"Response: {response.text[:500]}"
    ```
 
-2. **測試資料的可讀性**
-   ```python
-   # ❌ 錯誤：無意義的測試資料
-   test_jd = "a" * 200
-   
-   # ✅ 正確：接近真實但明確是測試
-   test_jd = """
-   [TEST DATA] Software Engineer Position
-   We are looking for a talented engineer with experience in:
-   - Python development (3+ years)
-   - FastAPI framework
-   - Cloud deployment (Azure preferred)
-   This is test data for boundary validation.
-   """ + " Additional requirements." * 10  # 補充到需要的長度
-   ```
-
-3. **測試失敗時的除錯資訊**
-   ```python
-   # 在測試失敗時自動輸出有用資訊
-   @pytest.fixture
-   def client_with_logging():
-       client = TestClient(app)
-       
-       # 攔截所有請求
-       original_request = client.request
-       def logged_request(method, url, **kwargs):
-           response = original_request(method, url, **kwargs)
-           
-           # 失敗時輸出詳細資訊
-           if response.status_code >= 400:
-               print(f"\n=== Request Failed ===")
-               print(f"Method: {method} {url}")
-               print(f"Headers: {kwargs.get('headers', {})}")
-               print(f"Body: {kwargs.get('json', kwargs.get('data'))}")
-               print(f"Response: {response.status_code}")
-               print(f"Content: {response.text[:1000]}")
-               
-           return response
-       
-       client.request = logged_request
-       return client
-   ```
-
-4. **效能考量的平衡**
-   ```python
-   # ❌ 錯誤：過度測試
-   @pytest.mark.parametrize("size", range(1, 10000))  # 10000個測試！
-   def test_all_sizes(size):
-       pass
-   
-   # ✅ 正確：選擇關鍵測試點
-   @pytest.mark.parametrize("size,expected", [
-       (199, 422),      # 低於最小值
-       (200, 200),      # 最小邊界
-       (1000, 200),     # 正常值
-       (5000, 200),     # 最大邊界
-       (5001, 422),     # 超過最大值
-   ])
-   def test_key_boundaries(size, expected):
-       pass
-   ```
-
-5. **測試的可維護性**
-   ```python
-   # 將測試常數集中管理
-   class TestConstants:
-       # API 限制
-       MIN_TEXT_LENGTH = 200
-       MAX_TEXT_LENGTH = 5000
-       
-       # 測試資料模板
-       JD_TEMPLATE = """
-       [TEST] {role} Position at {company}
-       Requirements: {requirements}
-       """
-       
-       # 預期錯誤訊息
-       ERROR_TOO_SHORT = "Text must be at least 200 characters"
-       ERROR_TOO_LONG = "Text exceeds 5000 character limit"
-   ```
-
-6. **非同步測試的陷阱**
-   ```python
-   # ❌ 錯誤：忘記 await
-   @pytest.mark.asyncio
-   async def test_async_endpoint():
-       response = client.post("/async-endpoint")  # 忘記 await！
-   
-   # ✅ 正確：正確處理非同步
-   @pytest.mark.asyncio
-   async def test_async_endpoint():
-       async with httpx.AsyncClient() as client:
-           response = await client.post("/async-endpoint")
-   ```
-
-7. **測試覆蓋率的智慧**
+5. **測試覆蓋率智慧分配**
    ```yaml
    覆蓋率目標:
      核心業務邏輯: 90%+
      API 端點: 100%
      錯誤處理: 80%+
      工具函數: 70%+
-     
-   不需要測試:
-     - 第三方庫的功能
-     - 簡單的 getter/setter
-     - 框架自動生成的代碼
    ```
 
-8. **測試命名規範**
-   ```python
-   # 測試命名：test_[被測功能]_[測試場景]_[預期結果]
-   
-   def test_keyword_extraction_valid_input_returns_keywords():
-       """測試關鍵字提取在有效輸入時返回關鍵字"""
-       pass
-   
-   def test_keyword_extraction_empty_jd_returns_422():
-       """測試關鍵字提取在空JD時返回422錯誤"""
-       pass
-   ```
+### 測試執行策略
 
-9. **測試文檔化**
-   ```python
-   class TestKeywordExtraction:
-       """
-       關鍵字提取 API 測試套件
-       
-       測試範圍：
-       - 正常輸入處理
-       - 邊界值驗證
-       - 錯誤處理
-       - 安全防護
-       
-       前置條件：
-       - API 服務運行在 localhost:8000
-       - 測試數據符合業務規則（200-5000字元）
-       
-       已知限制：
-       - 不測試 None 值（前端保證非空）
-       - 不測試超長文本（前端限制5000）
-       """
-   ```
+#### 開發階段（針對性測試）
+- 只測試**被修改的檔案/模組**
+- 快速反饋，專注於當前工作
+- 範例：修改 keyword_extraction.py
+  ```bash
+  ruff check src/services/keyword_extraction.py
+  pytest tests/unit/test_keyword_extraction.py -v
+  pytest tests/integration/test_api_endpoints.py::test_extract_keywords -v
+  ```
 
-10. **回歸測試的重要性**
-    ```python
-    # 當修復bug時，立即加入回歸測試
-    def test_regression_empty_keywords_array():
-        """
-        回歸測試：確保空關鍵字陣列不會導致崩潰
-        Issue: #123 - API返回空陣列時前端崩潰
-        Fixed: 2024-07-14
-        """
-        response = client.post("/api/v1/extract-jd-keywords", 
-                             json={"job_description": "Short text"})
-        
-        # 確保即使沒有關鍵字也有正確結構
-        assert response.json()["data"]["keywords"] == []
-        assert isinstance(response.json()["data"]["keywords"], list)
-    ```
+#### 提交前（全面性測試）
+- 對**整個 codebase** 執行對應層級測試
+- 確保沒有破壞其他功能
+- 使用 `./run_precommit_tests.sh --level-X`
+
+### 處理 Timeout 限制與效能優化
+
+由於 Bash 工具有 2 分鐘執行限制，採用分段執行 + 平行處理策略：
+
+#### 分段執行 + 平行處理
+```bash
+# Level 1-2 平行執行（< 1 分鐘）
+(ruff check src/ tests/ --exclude=legacy,archive) &
+(pytest tests/unit/test_[修改的模組].py -v -n auto) &
+wait
+
+# Level 3 分段執行（每段 < 2 分鐘）
+# 步驟 1：基礎檢查
+ruff check && pytest unit tests
+# 步驟 2：整合測試
+pytest integration tests
+```
+
+### 預提交測試命令
+
+```bash
+# 使用真實憑證執行完整測試（推薦）
+./run_precommit_tests.sh --real-creds --parallel --no-coverage
+
+# 各層級測試（開發中功能）
+./run_precommit_tests.sh --level-0                      # Prompt only (不需要 --parallel)
+./run_precommit_tests.sh --level-1                      # + Code style (不需要 --parallel)
+./run_precommit_tests.sh --level-2 --parallel           # + Unit tests (建議使用 --parallel)
+./run_precommit_tests.sh --level-3 --parallel           # + Integration (建議使用 --parallel)
+
+# 快速測試組合
+./run_precommit_tests.sh --no-api           # 離線測試
+./run_precommit_tests.sh --parallel         # 平行執行
+./run_precommit_tests.sh --no-coverage      # 跳過覆蓋率
+```
 
 ### API 文檔測試設計原則
 
@@ -794,14 +790,14 @@ How: [怎麼做的]
    # 避免不必要的 async fixture
    # 簡單的數據獲取用同步即可
    ```
-  job_description: |
+    job_description: |
     We are looking for an experienced Software Engineer to join our dynamic team.
     The ideal candidate will have strong programming skills in Python and JavaScript,
     extensive experience with cloud technologies including AWS and Azure,
     and excellent problem-solving abilities. You will be working on cutting-edge
     projects in a collaborative environment with opportunities for growth.
     Minimum 5 years of experience required.
-    
+   
   # 邊界測試案例  
   job_description: "合理的長文本" * 100  # 約 500 字，不需要測試 5000+ 字
 ```
@@ -971,30 +967,8 @@ class DataModel(BaseModel):
 ### 重要提醒
 1. 敏感資訊絕不提交到版本控制
 2. 使用 Azure CLI 存取 DevOps（無需 PAT token）
-3. 建立 Work Item 時指定正確的 Owner
 4. ✅ CI/CD 已完成設置，push to main 自動部署到 Azure
-5. 確保 Python 3.10+ 避免相容性問題
 6. 注意 Azure 成本監控
-7. **Git 提交規則**：專案已完成 CI/CD 設置（push to main 自動部署到 Azure），Claude Code **絕對不可以**自行執行 `git commit`。任何提交前必須：
-   - 執行預提交測試：`./run_precommit_tests.sh`
-   - 向用戶展示完整測試結果
-   - 確保所有測試通過（包括代碼風格檢查）
-   - 詳細說明要提交的內容
-   - 獲得用戶明確同意後才能執行
-   - 提交訊息需包含清晰的變更說明
-8. **時間處理規則**：任何需要使用日期或時間的場合（如文檔命名、日誌記錄、時間戳等），必須：
-   - 先使用 Bash 工具執行 `TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S %Z'` 獲取準確的台灣時間
-   - 文檔命名使用格式：`[TYPE]_[MODULE]_YYYYMMDD.md`（例：`TEST_GAP_ANALYSIS_20250711.md`）
-   - 日誌記錄使用格式：`YYYY-MM-DD HH:MM:SS CST`
-   - 絕不使用 <env> 中的日期或憑空推測日期
-9. **LLM Prompt 修改規則**：
-   - **僅修改 Prompt 檔案**：可使用 `--no-api` 快速測試
-   - **Prompt 位置**：`src/prompts/[task]/v[X.Y.Z]-[language].yaml`
-   - **程式碼修改情況**：
-     - 新版本建立 → 無需修改程式碼
-     - 改變默認版本 → 修改 `default_prompt_version`
-     - 新增 prompt 參數 → 修改服務層
-     - 回應格式變更 → 修改 response model
 
 ### 環境變數問題解決方案
 
@@ -1044,129 +1018,7 @@ class DataModel(BaseModel):
 
 **建議**：使用方法 3，確保所有環境變數都通過統一的 Settings 管理。
 
-### Code Style 自動檢查規則 (重要！)
 
-在每次完成程式碼修改後，Claude Code **必須**執行 code style 檢查：
-
-```bash
-# 執行 code style 檢查
-ruff check src/ tests/ --exclude=legacy,archive
-```
-
-如果發現任何 style 問題：
-1. **立即使用 --fix 自動修復**：
-   ```bash
-   ruff check src/ tests/ --exclude=legacy,archive --fix
-   ```
-
-2. **常見的 ruff 錯誤類型**：
-   - `I001`: Import 排序問題 → 自動修復
-   - `F401`: 未使用的 import → 自動修復
-   - `UP035`: 過時的 typing 語法 → 自動修復
-   - `UP006`: 使用舊式 type annotation → 自動修復
-   - `SIM`: 簡化程式碼建議 → 部分可自動修復
-
-3. **在提交程式碼前，確保看到**：
-   ```
-   All checks passed!
-   ```
-
-4. **Claude Code 工作流程**：
-   ```
-   編寫/修改程式碼
-   ↓
-   執行 ruff check
-   ↓
-   如有錯誤 → ruff check --fix
-   ↓
-   確認 "All checks passed!"
-   ↓
-   才告知使用者完成
-   ```
-
-這樣可以避免使用者在執行 precommit tests 時才發現 style 問題！
-
-### 預提交測試流程
-
-#### 快速決策規則
-
-**使用 `--no-api` 快速測試**：
-- 文檔檔案 (`*.md`, `docs/*`)  
-- 配置檔案 (`.gitignore`, `*.json` 配置)
-- 測試檔案修改 (`tests/*`)
-- 工具腳本 (`tools/*`, `*.sh`)
-- **LLM Prompt 檔案** (`src/prompts/**/*.yaml`) - prompt 調整不影響程式邏輯
-
-**使用完整測試**：
-- 任何 `src/` 目錄的 `.py` 檔案（除了 `src/prompts/`）
-- 關鍵配置 (`config.py`, `requirements.txt`)  
-- 部署相關 (`main.py`, `azure-functions/`)
-- 最終提交前（無論修改什麼）
-
-#### 執行命令
-
-```bash
-# 完整測試 - 使用真實憑證（推薦）
-./run_precommit_tests.sh --real-creds --parallel --no-coverage
-
-# 完整測試 - 使用測試憑證（可能有部分失敗）
-./run_precommit_tests.sh --parallel
-
-# 快速測試（文檔/配置）  
-./run_precommit_tests.sh --no-api
-
-# 最快速測試組合
-./run_precommit_tests.sh --real-creds --parallel --no-coverage
-```
-
-⚠️ **重要提醒**：使用 `--real-creds` 可以避免 Azure OpenAI 認證錯誤！
-
-#### 測試要求
-
-**涵蓋範圍**: 單元測試、整合測試、性能測試、Bubble.io 相容性、代碼風格 (ruff)
-
-**通過標準**: 所有測試 Passed、Failed: 0、代碼風格檢查通過
-
-### 代碼風格規範（ruff）
-
-**核心規則**: SIM (簡化)、F (未使用變數)、E (行長度88字元)、I (import排序)、UP (現代語法)
-
-**編碼實踐**: 使用現代 Python 語法、保持 import 整潔、適當換行
-
-### 檔案管理
-
-#### 臨時檔案建立規則 (重要！)
-
-**Claude Code 建立臨時檔案時必須遵循以下規則：**
-
-```yaml
-測試腳本:     temp/tests/scripts/test_[功能]_[日期].py
-測試日誌:     temp/tests/logs/[功能]_test_[日期].log  
-測試結果:     temp/tests/results/[功能]_results_[日期].json
-Demo檔案:     temp/demos/html/[功能]_demo_[日期].html
-Shell腳本:    temp/dev/scripts/[功能]_[用途].sh
-實驗代碼:     temp/dev/experiments/[實驗名稱].py
-草稿文檔:     temp/dev/drafts/[主題]_draft.md
-```
-
-**命名約定**:
-- 日期格式: YYYYMMDD (例：20250714)
-- 功能描述: 使用底線分隔 (gap_analysis, api_performance)  
-- 包含用途說明: test, debug, demo, experiment
-
-**範例**:
-```python
-# temp/tests/scripts/test_gap_analysis_retry_20250714.py
-"""
-測試 Gap Analysis 重試機制
-建立: 2025-07-14, 用途: 驗證重試邏輯
-"""
-```
-
-#### 正式檔案結構
-- **正式測試**: `tests/unit/`, `tests/integration/`
-- **專案文檔**: `docs/published/`, `docs/drafts/`  
-- **記憶系統**: `.serena/memories/` (API分析、開發進度、架構決策)
 
 ### LLM 呼叫最佳實踐
 
@@ -1238,10 +1090,83 @@ Shell腳本:    temp/dev/scripts/[功能]_[用途].sh
 
 ---
 
-**文檔版本**: 2.5.0  
-**最後更新**: 2025-07-16  
+**文檔版本**: 2.8.2  
+**最後更新**: 2025-07-26  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
+
+### v2.8.2 更新內容 (2025-07-26)
+- 移除 `/take-note-api` 指令，統一使用全域 `/take-note`
+- 更新斜線指令章節，簡化為一個通用指令 + 一個整理指令
+- 保持簡單，避免重複功能
+
+### v2.8.1 更新內容 (2025-07-26)
+- 移除過時的「協作記錄指南」章節（已無 Cursor 協作）
+- 更正 features 文檔為 6 個（對應實際的 6 個 API 端點）
+- 清理目錄連結和序號
+
+### v2.8.0 更新內容 (2025-07-26)
+- 採用極簡主義文檔結構，從複雜的分類改為簡單的功能導向
+- 移除過度分類的文檔命名規範（REQ、TEST、DESIGN 等）
+- 統一為 4 個通用文檔 + features 目錄下的 6 個功能文檔（對應 6 個 API 端點）
+
+### v2.7.9 更新內容 (2025-07-26)
+- 整合任務管理與文檔流程為「整合式開發流程」
+- 引入文檔驅動開發（Documentation-Driven Development）概念
+- 明確 docs/drafts/（方案討論）和 docs/published/（最終實作）的用途
+
+### v2.7.8 更新內容 (2025-07-26)
+- 移除 Azure DevOps Work Items 流程，改用 GitHub Issues
+- 簡化文檔工作流程，移除不必要的複雜步驟
+- 反映實際團隊規模（Claude Code + WenHao）的協作方式
+
+### v2.7.7 更新內容 (2025-07-26)
+- 更新「開發階段與里程碑」章節，反映當前已完成 V1 部署的狀態
+- 新增 Phase 5-7 的效能優化與功能增強計畫
+- 列出所有已上線的 API 端點清單
+
+### v2.7.6 更新內容 (2025-07-26)
+- 統一使用 Obsidian 作為開發筆記系統
+- 移除 `temp/dev/notes/`，改用 `/take-note` 指令
+- 避免重複的筆記管理系統
+
+### v2.7.5 更新內容 (2025-07-26)
+- 釐清 `docs/drafts/` 與 `temp/dev/` 的區別
+- 將 `temp/dev/drafts/` 改為 `temp/dev/notes/` 避免混淆
+- 明確說明正式檔案與臨時檔案的用途區分
+
+### v2.7.4 更新內容 (2025-07-26)
+- 合併「文檔命名規範」和「檔案管理」為單一章節
+- 整合正式文檔和臨時檔案的命名規範
+- 簡化重複內容，提升可讀性
+
+### v2.7.3 更新內容 (2025-07-26)
+- 移動 Code Style 相關內容到「測試策略與管理」之前
+- 新增「程式碼品質管理」章節，簡化 Ruff 說明
+- 改進文檔結構的邏輯順序
+
+### v2.7.2 更新內容 (2025-07-26)
+- 更新 Git 提交規則，明確指出要執行對應層級的預提交測試
+- 刪除重複的「LLM Prompt 修改規則」（使用過時的 --no-api 參數）
+
+### v2.7.1 更新內容 (2025-07-26)
+- 移除舊的「預提交測試流程」章節（使用過時的 --no-api 和 --real-creds 參數）
+- 保留新的「測試執行策略」章節（使用 --level-X 參數）
+
+### v2.7.0 更新內容 (2025-07-26)
+- 重構並精簡「測試策略與管理」章節
+- 整合「程式碼修改測試分級策略」與舊的測試管理內容
+- 新增 Code Style 自動檢查規則章節
+- 移除重複的測試執行策略內容
+- 優化預提交測試流程說明
+
+### v2.6.0 更新內容 (2025-07-26)
+- 更新開發環境資訊：Python 3.11.8 + .venv 虛擬環境
+- 新增已部署的生產環境 API 端點列表
+- 更新協作模式說明：Claude Code + WenHao
+- 更新完整的專案檔案樹結構
+- 簡化 RACI 矩陣，移除 Cursor 角色
+- 加入 Serena MCP 使用說明
 
 ---
 

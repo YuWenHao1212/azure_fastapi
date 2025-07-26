@@ -4,17 +4,6 @@
 
 ## 指令清單
 
-### `/take-note-api`
-記錄 API 開發相關的重要內容，自動同步到 Obsidian 和專案記憶。
-
-**使用方式**：
-```
-/take-note-api
-/take-note-api --type=performance
-```
-
-**詳細說明**：[take-note-api.md](./take-note-api.md)
-
 ### `/organize-api-notes`
 整理專案的開發筆記，生成階段性總結報告。
 
@@ -55,10 +44,10 @@
 
 ## 與全域指令的關係
 
-- 全域指令（`/take-note`、`/organize-notes`）：通用知識管理
-- 專案指令（`/take-note-api`、`/organize-api-notes`）：API 開發專用
+- 全域指令（`/take-note`、`/organize-notes`）：通用知識管理，包括 API 開發筆記
+- 專案指令（`/organize-api-notes`）：專門整理 API 開發總結
 
-兩者可以同時使用，不會衝突。
+建議統一使用 `/take-note` 記錄所有筆記，保持簡單。
 
 ## 維護說明
 

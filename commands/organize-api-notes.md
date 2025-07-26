@@ -141,8 +141,8 @@
 
 ## 與其他工具的配合
 
-1. **配合 /take-note-api**
-   - 先用 `/take-note-api` 記錄單次討論
+1. **配合 /take-note**
+   - 先用 `/take-note` 記錄單次討論
    - 再用 `/organize-api-notes` 生成總結
 
 2. **配合 CI/CD**
