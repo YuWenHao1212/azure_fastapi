@@ -94,6 +94,85 @@ Claude Code **絕對不可以**自行執行 `git commit`
   - Azure Portal → Function App → Function Keys
   - 本地環境變數或 `.env` 檔案（已加入 .gitignore）
   - Azure Key Vault（生產環境）
+
+### PostgreSQL 資料庫資訊
+- **Host**: airesumeadvisor-courses-db-eastasia.postgres.database.azure.com
+- **Database**: coursesdb
+- **Port**: 5432
+- **SSL Mode**: require
+- **SKU**: Standard_B1ms (Burstable)
+- **Location**: East Asia
+- **連接字串格式**:
+  ```
+  postgresql://[USER]:[PASSWORD]@airesumeadvisor-courses-db-eastasia.postgres.database.azure.com/coursesdb?sslmode=require
+  ```
+
+### PostgreSQL Schema (2025-01-27 版本)
+
+**資料表結構**：
+
+1. **courses** - 課程主表
+   ```sql
+   id VARCHAR(255) PRIMARY KEY                   -- 格式: {platform}_{external_id}
+   platform VARCHAR(50) NOT NULL DEFAULT 'coursera'
+   external_id VARCHAR(255) NOT NULL             -- 原始平台 ID
+   name TEXT NOT NULL                            -- 課程名稱
+   description TEXT                              -- 課程描述
+   provider VARCHAR(500)                         -- 原始提供者名稱
+   provider_standardized VARCHAR(255)            -- 標準化提供者名稱
+   provider_logo_url VARCHAR(1000)              -- 提供者 Logo URL
+   category VARCHAR(500)                         -- 類別
+   course_type VARCHAR(50)                       -- 原始課程類型
+   course_type_standard VARCHAR(50)              -- 標準化課程類型
+   price NUMERIC DEFAULT 0                       -- 價格
+   currency VARCHAR(10) DEFAULT 'USD'            -- 貨幣
+   image_url TEXT                                -- 課程圖片
+   affiliate_url TEXT NOT NULL                   -- 聯盟行銷連結
+   difficulty_level VARCHAR(20)                  -- 難度等級
+   rating NUMERIC                                -- 評分
+   ratings_count INTEGER                         -- 評分數量
+   enrolled_count INTEGER                        -- 註冊人數
+   estimated_hours INTEGER                       -- 預估學習時數
+   embedding vector(3072)                        -- 向量嵌入 (pgvector)
+   metadata JSONB                                -- 額外元資料
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   
+   UNIQUE(platform, external_id)
+   ```
+
+2. **search_logs** - 搜尋記錄
+   ```sql
+   id SERIAL PRIMARY KEY
+   query TEXT NOT NULL                           -- 搜尋查詢
+   results_count INTEGER DEFAULT 0               -- 結果數量
+   response_time_ms INTEGER                      -- 回應時間(毫秒)
+   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   ```
+
+3. **sync_logs** - 同步記錄
+   ```sql
+   id SERIAL PRIMARY KEY
+   sync_type VARCHAR(50) NOT NULL                -- 同步類型
+   platform VARCHAR(50)                          -- 平台
+   total_processed INTEGER DEFAULT 0             -- 處理總數
+   new_courses INTEGER DEFAULT 0                 -- 新增課程數
+   updated_courses INTEGER DEFAULT 0             -- 更新課程數
+   status VARCHAR(50) NOT NULL                   -- 狀態
+   error_message TEXT                            -- 錯誤訊息
+   started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   completed_at TIMESTAMP
+   ```
+
+**索引**：
+- idx_courses_platform (platform)
+- idx_courses_provider (provider)
+- idx_courses_provider_standardized (provider_standardized)
+- idx_courses_category (category)
+- idx_courses_type (course_type)
+- idx_course_type_standard (course_type_standard)
+- idx_courses_price (price)
+
 - **已部署的 API 端點** (生產環境):
   ```
   # 關鍵字提取
