@@ -118,9 +118,9 @@ class LanguageDetectionService:
             
             if detected_lang in ['zh', 'zh-cn', 'zh-tw']:
                 detected_lang = self._refine_chinese_variant(text)
-            elif has_chinese_chars and chinese_char_count >= 20:
+            elif has_chinese_chars and chinese_char_count >= 10:  # Lower threshold for Chinese detection
                 # If text has significant Chinese content but misdetected as other Asian language
-                if detected_lang in ['ko', 'vi', 'ja'] or confidence < 0.9:
+                if detected_lang in ['ko', 'vi', 'ja', 'no'] or confidence < 0.9:
                     logger.info(f"Potential Chinese text misdetected as {detected_lang}, analyzing Chinese variant")
                     original_lang = detected_lang
                     detected_lang = self._refine_chinese_variant(text)
@@ -129,8 +129,8 @@ class LanguageDetectionService:
                     if detected_lang == 'zh-TW':
                         confidence = max(confidence, 0.85)
                         logger.info(f"Corrected misdetection: {original_lang} -> {detected_lang}")
-                    elif chinese_char_count >= 40:
-                        # For very Chinese-heavy text, even if simplified, prefer zh-TW over other Asian languages
+                    elif chinese_char_count >= 15:  # Lower threshold for Traditional Chinese preference
+                        # For Chinese-heavy text, even if simplified, prefer zh-TW over other Asian languages
                         detected_lang = 'zh-TW'
                         confidence = max(confidence, 0.82)
                         logger.info(f"Chinese-heavy text corrected: {original_lang} -> {detected_lang}")
@@ -138,12 +138,17 @@ class LanguageDetectionService:
                         # Revert to original detection for ambiguous cases
                         detected_lang = original_lang
             
-            # 4. Confidence check
-            if confidence < self.CONFIDENCE_THRESHOLD:
+            # 4. Confidence check - be more lenient for Chinese text
+            effective_threshold = self.CONFIDENCE_THRESHOLD
+            if detected_lang == 'zh-TW' and chinese_char_count >= 20:
+                # Lower threshold for Chinese text with substantial content
+                effective_threshold = 0.7
+                
+            if confidence < effective_threshold:
                 raise LowConfidenceDetectionError(
                     detected_language=detected_lang,
                     confidence=confidence,
-                    threshold=self.CONFIDENCE_THRESHOLD
+                    threshold=effective_threshold
                 )
             
             # 5. Support check

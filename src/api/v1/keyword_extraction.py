@@ -187,11 +187,13 @@ async def extract_jd_keywords(
     # Create V2 service with requested prompt version and performance optimizations
     # V2 uses UnifiedPromptService for YAML-based configuration
     # Cache re-enabled for production performance - provides 50-100x speedup for repeated requests
+    # Now using GPT-4.1 mini Japan East for better performance and 90% cost reduction
     service = get_keyword_extraction_service_v2(
         prompt_version=request.prompt_version,
         enable_cache=True,  # ✅ Cache enabled for production performance
         cache_ttl_minutes=60,  # Cache for 1 hour
-        enable_parallel_processing=True  # ✅ Keep parallel processing for speed
+        enable_parallel_processing=True,  # ✅ Keep parallel processing for speed
+        use_gpt41_mini=settings.use_gpt41_mini_for_keywords  # ✅ Use GPT-4.1 mini based on config
     )
     
     try:
@@ -396,7 +398,9 @@ async def extract_jd_keywords(
     description="Check the health status of keyword extraction service and dependencies",
     tags=["Health Check"]
 )
-async def keyword_extraction_health() -> UnifiedResponse:
+async def keyword_extraction_health(
+    settings = Depends(get_settings)
+) -> UnifiedResponse:
     """
     Health check endpoint for keyword extraction service.
     
@@ -412,7 +416,11 @@ async def keyword_extraction_health() -> UnifiedResponse:
     """
     try:
         # Test V2 service initialization (cache disabled for testing)
-        service = get_keyword_extraction_service_v2(enable_cache=False)
+        # Use config to determine which model to test
+        service = get_keyword_extraction_service_v2(
+            enable_cache=False,
+            use_gpt41_mini=settings.use_gpt41_mini_for_keywords
+        )
         
         # Get service stats including performance optimizations
         service_stats = service.get_service_stats()
@@ -629,7 +637,9 @@ async def get_keyword_extraction_prompt_version(
     description="檢查 Keyword Extraction 服務健康狀態和效能資訊",
     tags=["Health"]
 )
-async def health_check() -> UnifiedResponse:
+async def health_check(
+    settings = Depends(get_settings)
+) -> UnifiedResponse:
     """
     Health check endpoint for keyword extraction service.
     
@@ -637,7 +647,10 @@ async def health_check() -> UnifiedResponse:
     """
     try:
         # Get service instance to check configuration
-        service = get_keyword_extraction_service_v2(enable_cache=False)  # Disable cache for testing
+        service = get_keyword_extraction_service_v2(
+            enable_cache=False,  # Disable cache for testing
+            use_gpt41_mini=settings.use_gpt41_mini_for_keywords
+        )
         
         # Create health data in the expected format
         health_data = {

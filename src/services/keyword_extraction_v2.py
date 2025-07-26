@@ -51,13 +51,26 @@ class KeywordExtractionServiceV2(BaseService):
         prompt_version: str = "latest",
         enable_cache: bool = True,
         cache_ttl_minutes: int = 60,
-        enable_parallel_processing: bool = True
+        enable_parallel_processing: bool = True,
+        use_gpt41_mini: bool = True
     ):
         """Initialize the service with unified prompt management."""
         super().__init__()
         
-        # Core services
-        self.openai_client = openai_client or get_azure_openai_client()
+        # Core services - Use GPT-4.1 mini if specified
+        if openai_client:
+            self.openai_client = openai_client
+        elif use_gpt41_mini:
+            # Use GPT-4.1 mini Japan East for better performance
+            from src.services.openai_client_gpt41 import get_gpt41_mini_client
+            try:
+                self.openai_client = get_gpt41_mini_client()
+                self.logger.info("Using GPT-4.1 mini Japan East for keyword extraction")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize GPT-4.1 mini client: {e}. Falling back to GPT-4o-2")
+                self.openai_client = get_azure_openai_client()
+        else:
+            self.openai_client = get_azure_openai_client()
         
         # Unified prompt service - NEW!
         self.unified_prompt_service = get_unified_prompt_service()
@@ -738,12 +751,14 @@ def get_keyword_extraction_service_v2(
     prompt_version: str = "latest",
     enable_cache: bool = True,
     cache_ttl_minutes: int = 60,
-    enable_parallel_processing: bool = True
+    enable_parallel_processing: bool = True,
+    use_gpt41_mini: bool = True
 ) -> KeywordExtractionServiceV2:
     """
     Get singleton instance of KeywordExtractionServiceV2.
     
     This version uses UnifiedPromptService for YAML-based configuration.
+    Now supports GPT-4.1 mini for better performance and cost efficiency.
     """
     global _keyword_extraction_service_v2
     
@@ -753,7 +768,8 @@ def get_keyword_extraction_service_v2(
             prompt_version=prompt_version,
             enable_cache=enable_cache,
             cache_ttl_minutes=cache_ttl_minutes,
-            enable_parallel_processing=enable_parallel_processing
+            enable_parallel_processing=enable_parallel_processing,
+            use_gpt41_mini=use_gpt41_mini
         )
     
     return _keyword_extraction_service_v2
