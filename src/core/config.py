@@ -72,6 +72,34 @@ class Settings(BaseSettings):
     gap_analysis_temperature: float = 0.7
     gap_analysis_max_tokens: int = 2000
     
+    # GPT-4.1 mini Japan East Configuration (High Performance)
+    gpt41_mini_japaneast_endpoint: str = Field(
+        default="https://airesumeadvisor.openai.azure.com/",
+        validation_alias="GPT41_MINI_JAPANEAST_ENDPOINT",
+        description="GPT-4.1 mini Japan East endpoint for optimized performance"
+    )
+    gpt41_mini_japaneast_api_key: str = Field(
+        default="",
+        validation_alias="GPT41_MINI_JAPANEAST_API_KEY",
+        description="GPT-4.1 mini Japan East API key"
+    )
+    gpt41_mini_japaneast_deployment: str = Field(
+        default="gpt-4-1-mini-japaneast",
+        validation_alias="GPT41_MINI_JAPANEAST_DEPLOYMENT",
+        description="GPT-4.1 mini Japan East deployment name"
+    )
+    gpt41_mini_japaneast_api_version: str = Field(
+        default="2025-01-01-preview",
+        validation_alias="GPT41_MINI_JAPANEAST_API_VERSION",
+        description="GPT-4.1 mini Japan East API version"
+    )
+    
+    # Feature flags for model selection
+    use_gpt41_mini_for_keywords: bool = Field(
+        default=True,
+        description="Use GPT-4.1 mini Japan East for keyword extraction (better performance)"
+    )
+    
     # Security settings
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"

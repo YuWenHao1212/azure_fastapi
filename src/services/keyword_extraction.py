@@ -34,6 +34,10 @@ from src.services.openai_client import (
     AzureOpenAIError,
     get_azure_openai_client,
 )
+from src.services.openai_client_gpt41 import (
+    AzureOpenAIGPT41Client,
+    get_gpt41_mini_client,
+)
 from src.services.standardization import MultilingualStandardizer
 
 
@@ -55,17 +59,29 @@ class KeywordExtractionService(BaseService):
     
     def __init__(
         self,
-        openai_client: AzureOpenAIClient | None = None,
+        openai_client: AzureOpenAIClient | AzureOpenAIGPT41Client | None = None,
         prompt_version: str = "latest",
         enable_cache: bool = True,
         cache_ttl_minutes: int = 60,
-        enable_parallel_processing: bool = True
+        enable_parallel_processing: bool = True,
+        use_gpt41_mini: bool = True
     ):
         """Initialize the bilingual service with all dependencies."""
         super().__init__()
         
-        # Core services
-        self.openai_client = openai_client or get_azure_openai_client()
+        # Core services - use GPT-4.1 mini if enabled and no client provided
+        if openai_client is None:
+            if use_gpt41_mini:
+                try:
+                    self.openai_client = get_gpt41_mini_client()
+                    self.logger.info("Using GPT-4.1 mini Japan East for keyword extraction")
+                except Exception as e:
+                    self.logger.warning(f"Failed to initialize GPT-4.1 mini client: {e}. Falling back to GPT-4o-2")
+                    self.openai_client = get_azure_openai_client()
+            else:
+                self.openai_client = get_azure_openai_client()
+        else:
+            self.openai_client = openai_client
         
         # Bilingual components
         self.language_detector = LanguageDetectionService()
@@ -660,7 +676,8 @@ def get_keyword_extraction_service(
     prompt_version: str = "latest",
     enable_cache: bool = True,
     cache_ttl_minutes: int = 60,
-    enable_parallel_processing: bool = True
+    enable_parallel_processing: bool = True,
+    use_gpt41_mini: bool = True
 ) -> KeywordExtractionService:
     """
     Get a singleton instance of KeywordExtractionService with performance optimizations.
@@ -670,6 +687,7 @@ def get_keyword_extraction_service(
         enable_cache: Enable caching for identical text (default: True)
         cache_ttl_minutes: Cache time-to-live in minutes (default: 60)
         enable_parallel_processing: Enable parallel Round 1/2 processing (default: True)
+        use_gpt41_mini: Use GPT-4.1 mini Japan East for better performance (default: True)
     
     Returns:
         KeywordExtractionService: Configured service instance with optimizations
@@ -683,7 +701,8 @@ def get_keyword_extraction_service(
             prompt_version=prompt_version,
             enable_cache=enable_cache,
             cache_ttl_minutes=cache_ttl_minutes,
-            enable_parallel_processing=enable_parallel_processing
+            enable_parallel_processing=enable_parallel_processing,
+            use_gpt41_mini=use_gpt41_mini
         )
     
     return _keyword_extraction_service
@@ -693,7 +712,8 @@ async def get_keyword_extraction_service_async(
     prompt_version: str = "latest",
     enable_cache: bool = True,
     cache_ttl_minutes: int = 60,
-    enable_parallel_processing: bool = True
+    enable_parallel_processing: bool = True,
+    use_gpt41_mini: bool = True
 ) -> KeywordExtractionService:
     """
     Async version of get_keyword_extraction_service for API endpoints.
@@ -703,6 +723,7 @@ async def get_keyword_extraction_service_async(
         enable_cache: Enable caching for identical text (default: True)
         cache_ttl_minutes: Cache time-to-live in minutes (default: 60)
         enable_parallel_processing: Enable parallel Round 1/2 processing (default: True)
+        use_gpt41_mini: Use GPT-4.1 mini Japan East for better performance (default: True)
     
     Returns:
         KeywordExtractionService: Configured service instance with optimizations
@@ -711,7 +732,8 @@ async def get_keyword_extraction_service_async(
         prompt_version=prompt_version,
         enable_cache=enable_cache,
         cache_ttl_minutes=cache_ttl_minutes,
-        enable_parallel_processing=enable_parallel_processing
+        enable_parallel_processing=enable_parallel_processing,
+        use_gpt41_mini=use_gpt41_mini
     )
 
 

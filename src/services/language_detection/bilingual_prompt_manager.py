@@ -49,9 +49,10 @@ class BilingualPromptManager:
                 "1.3.0": "1.3.0"
             },
             "zh-TW": {
-                "latest": "1.3.0-zh-TW",
-                "1.2.0-zh-TW": "1.2.0-zh-TW",
-                "1.3.0-zh-TW": "1.3.0-zh-TW"
+                "latest": "1.3.0",
+                "1.2.0": "1.2.0",
+                "1.3.0": "1.3.0",
+                "1.4.0": "1.4.0"
             }
         }
         
@@ -341,10 +342,34 @@ Return only JSON with exactly 25 keywords: {{"keywords": ["Term1", "Term2", ...,
             PromptConfig if file exists and is valid, None otherwise
         """
         try:
+            # First try YAML format (preferred)
+            yaml_file = Path(self.prompt_base_path) / "keyword_extraction" / f"v{version}-{language}.yaml"
+            
+            if yaml_file.exists():
+                import yaml
+                with open(yaml_file, encoding='utf-8') as f:
+                    prompt_data = yaml.safe_load(f)
+                    
+                # Extract system and user prompts
+                prompts = prompt_data.get('prompts', {})
+                system_prompt = prompts.get('system', '')
+                user_prompt = prompts.get('user', '')
+                
+                # Combine prompts for compatibility
+                full_prompt = f"{system_prompt}\n\n{user_prompt}" if system_prompt else user_prompt
+                
+                return PromptConfig(
+                    version=version,
+                    language=language,
+                    content=full_prompt,
+                    metadata=prompt_data.get('metadata', {})
+                )
+            
+            # Fallback to JSON format (legacy)
             prompt_file = Path(self.prompt_base_path) / f"keyword_extraction_{language}_{version}.json"
             
             if not prompt_file.exists():
-                logger.debug(f"Prompt file not found: {prompt_file}")
+                logger.debug(f"Prompt file not found: {yaml_file} or {prompt_file}")
                 return None
             
             with open(prompt_file, encoding='utf-8') as f:

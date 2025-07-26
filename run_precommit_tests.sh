@@ -4,18 +4,27 @@
 # Run this script before committing to ensure code quality
 # Usage: ./run_precommit_tests.sh [options]
 # Options:
-#   --no-api: Skip API server startup and online tests
+#   --level-0: Level 0 - Prompt files only (no tests)
+#   --level-1: Level 1 - Code style checks only
+#   --level-2: Level 2 - Code style + Unit tests (default)
+#   --level-3: Level 3 - Full suite (style + unit + integration + performance)
 #   --full-perf: Run all performance tests including flaky ones (default: skip flaky tests)
 #   --parallel: Run tests in parallel using multiple CPU cores
 #   --timeout <seconds>: Set custom timeout (default: 300 seconds)
 #   --no-coverage: Skip coverage report generation to save time
-#   --real-creds: Use real credentials from .env instead of test credentials
 
 set -e  # Exit on error
 
-echo "🚀 Running Pre-commit Test Suite"
-echo "================================"
+echo "🚀 Running Pre-commit Test Suite (Level $TEST_LEVEL)"
+echo "========================================"
 echo "Time: $(date '+%Y-%m-%d %H:%M:%S')"
+echo "Test Level: $TEST_LEVEL"
+case $TEST_LEVEL in
+    0) echo "Scope: Prompt files only (no tests)" ;;
+    1) echo "Scope: Code style checks only" ;;
+    2) echo "Scope: Code style + Unit tests" ;;
+    3) echo "Scope: Full suite (all tests)" ;;
+esac
 echo ""
 
 # Color codes
@@ -30,17 +39,55 @@ PASSED_TESTS=0
 FAILED_TESTS=0
 SKIPPED_TESTS=0
 
-# Parse command line arguments
+# Test level configuration
+TEST_LEVEL=2  # Default to Level 2
+RUN_CODE_STYLE=true
+RUN_UNIT_TESTS=true
+RUN_INTEGRATION_TESTS=false
+RUN_PERFORMANCE_TESTS=false
 SKIP_API_STARTUP=false
+
+# Parse command line arguments
 RUN_FULL_PERF_TESTS=false
 PARALLEL_EXECUTION=false
 SKIP_COVERAGE=false
-USE_REAL_CREDENTIALS=false
 TIMEOUT_SECONDS=300  # 5 minutes default
 for arg in "$@"; do
     case $arg in
-        --no-api)
+        --level-0)
+            TEST_LEVEL=0
+            RUN_CODE_STYLE=false
+            RUN_UNIT_TESTS=false
+            RUN_INTEGRATION_TESTS=false
+            RUN_PERFORMANCE_TESTS=false
             SKIP_API_STARTUP=true
+            shift
+            ;;
+        --level-1)
+            TEST_LEVEL=1
+            RUN_CODE_STYLE=true
+            RUN_UNIT_TESTS=false
+            RUN_INTEGRATION_TESTS=false
+            RUN_PERFORMANCE_TESTS=false
+            SKIP_API_STARTUP=true
+            shift
+            ;;
+        --level-2)
+            TEST_LEVEL=2
+            RUN_CODE_STYLE=true
+            RUN_UNIT_TESTS=true
+            RUN_INTEGRATION_TESTS=false
+            RUN_PERFORMANCE_TESTS=false
+            SKIP_API_STARTUP=true
+            shift
+            ;;
+        --level-3)
+            TEST_LEVEL=3
+            RUN_CODE_STYLE=true
+            RUN_UNIT_TESTS=true
+            RUN_INTEGRATION_TESTS=true
+            RUN_PERFORMANCE_TESTS=true
+            SKIP_API_STARTUP=false
             shift
             ;;
         --full-perf)
@@ -53,10 +100,6 @@ for arg in "$@"; do
             ;;
         --no-coverage)
             SKIP_COVERAGE=true
-            shift
-            ;;
-        --real-creds)
-            USE_REAL_CREDENTIALS=true
             shift
             ;;
         --timeout)
@@ -136,9 +179,9 @@ start_api_server() {
         fi
     fi
     
-    # Export test environment variables
-    if [ "$USE_REAL_CREDENTIALS" = true ] && [ -f ".env" ]; then
-        echo -e "${YELLOW}   Using real credentials from .env${NC}"
+    # Export environment variables
+    if [ -f ".env" ]; then
+        echo -e "${YELLOW}   Using credentials from .env${NC}"
         export $(cat .env | grep -v '^#' | xargs)
     else
         export $(cat .env.test | grep -v '^#' | xargs)
@@ -189,8 +232,8 @@ echo "📍 Working directory: $(pwd)"
 echo ""
 
 # Load test environment if exists
-if [ "$USE_REAL_CREDENTIALS" = true ] && [ -f ".env" ]; then
-    echo "📄 Loading environment from .env (real credentials)"
+if [ -f ".env" ]; then
+    echo "📄 Loading environment from .env"
     # Export variables, handling values with commas properly
     while IFS='=' read -r key value; do
         # Skip comments and empty lines
@@ -242,6 +285,42 @@ if [ "$SKIP_API_STARTUP" = false ]; then
     echo ""
 fi
 
+# Check for Level 0 early exit
+if [ $TEST_LEVEL -eq 0 ]; then
+    echo "═══════════════════════════════════════"
+    echo "📋 LEVEL 0 VALIDATION"
+    echo "═══════════════════════════════════════"
+    echo -e "${YELLOW}Checking prompt files only...${NC}"
+    
+    # Check for prompt files
+    echo -e "\n${YELLOW}Checking for required prompt files...${NC}"
+    missing_prompts=0
+    prompt_files=(
+        "src/prompts/resume_tailoring/v1.0.0.yaml"
+        "src/prompts/resume_tailoring/v1.1.0.yaml"
+        "src/prompts/keyword_extraction/v1.4.0-en.yaml"
+        "src/prompts/keyword_extraction/v1.4.0-zh-TW.yaml"
+        "src/prompts/gap_analysis/v1.0.0.yaml"
+        "src/prompts/resume_format/v1.0.0.yaml"
+    )
+    for prompt_file in "${prompt_files[@]}"; do
+        if [ ! -f "$prompt_file" ]; then
+            echo -e "${RED}   ✗ Missing: $prompt_file${NC}"
+            missing_prompts=$((missing_prompts + 1))
+        else
+            echo -e "${GREEN}   ✓ Found: $prompt_file${NC}"
+        fi
+    done
+    
+    if [ $missing_prompts -eq 0 ]; then
+        echo -e "\n${GREEN}✅ All prompt files found! Level 0 validation passed.${NC}"
+        exit 0
+    else
+        echo -e "\n${RED}❌ Missing $missing_prompts prompt files. Level 0 validation failed.${NC}"
+        exit 1
+    fi
+fi
+
 # 1. Check Python version
 echo -e "${YELLOW}🐍 Checking Python version...${NC}"
 python_version=$(python --version 2>&1)
@@ -252,13 +331,14 @@ else
     echo -e "${RED}   ⚠️  Warning: Recommended Python 3.10+${NC}\n"
 fi
 
-# 2. Run Unit Tests (always run)
-echo "═══════════════════════════════════════"
-echo "🧪 UNIT TESTS"
-echo "═══════════════════════════════════════"
+# 2. Run Unit Tests (if enabled)
+if [ "$RUN_UNIT_TESTS" = true ]; then
+    echo "═══════════════════════════════════════"
+    echo "🧪 UNIT TESTS"
+    echo "═══════════════════════════════════════"
 
-run_test_category "Core Models Test" \
-    "pytest tests/unit/test_core_models.py -v --tb=short"
+    run_test_category "Core Models Test" \
+        "pytest tests/unit/test_core_models.py -v --tb=short"
 
 run_test_category "API Handlers Test" \
     "pytest tests/unit/test_api_handlers.py -v --tb=short"
@@ -281,17 +361,23 @@ run_test_category "Resume Format Test" \
 run_test_category "Resume Tailoring Test" \
     "pytest tests/unit/test_resume_tailoring.py -v --tb=short"
 
-# NEW: Add Enhanced Marker Test
-run_test_category "Enhanced Marker Test" \
-    "pytest tests/unit/test_enhanced_marker.py -v --tb=short"
+    # NEW: Add Enhanced Marker Test
+    run_test_category "Enhanced Marker Test" \
+        "pytest tests/unit/test_enhanced_marker.py -v --tb=short"
+else
+    echo "═══════════════════════════════════════"
+    echo "🧪 UNIT TESTS - SKIPPED (Level $TEST_LEVEL)"
+    echo "═══════════════════════════════════════"
+fi
 
-# 3. Run Integration Tests (partial)
-echo "═══════════════════════════════════════"
-echo "🔗 INTEGRATION TESTS"
-echo "═══════════════════════════════════════"
+# 3. Run Integration Tests (if enabled)
+if [ "$RUN_INTEGRATION_TESTS" = true ]; then
+    echo "═══════════════════════════════════════"
+    echo "🔗 INTEGRATION TESTS"
+    echo "═══════════════════════════════════════"
 
-run_test_category "Azure Deployment Test" \
-    "pytest tests/integration/test_azure_deployment.py -v --tb=short"
+    run_test_category "Azure Deployment Test" \
+        "pytest tests/integration/test_azure_deployment.py -v --tb=short"
 
 run_test_category "Index Cal API Test" \
     "pytest tests/integration/test_index_cal_api.py -v --tb=short"
@@ -306,9 +392,14 @@ run_test_category "Resume Tailoring API Test" \
 run_test_category "Resume Tailoring with Index Test" \
     "pytest tests/integration/test_resume_tailoring_with_index.py -v --tb=short"
 
-# NEW: Add Security Test
-run_test_category "Security Test" \
-    "pytest tests/integration/test_security.py -v --tb=short"
+    # NEW: Add Security Test
+    run_test_category "Security Test" \
+        "pytest tests/integration/test_security.py -v --tb=short"
+else
+    echo "═══════════════════════════════════════"
+    echo "🔗 INTEGRATION TESTS - SKIPPED (Level $TEST_LEVEL)"
+    echo "═══════════════════════════════════════"
+fi
 
 # NEW: Add API Documentation Test
 # TEMPORARILY BYPASSED: API documentation tests skipped during development phase
@@ -316,52 +407,62 @@ run_test_category "Security Test" \
 # run_test_category "API Documentation Test" \
 #     "pytest tests/integration/test_api_documentation.py -v --tb=short"
 
-# Run performance tests based on API availability
-if check_api_server; then
-    echo -e "${GREEN}🌐 API server is available - running all tests${NC}"
-    
-    # Run performance tests
-    if [ "$RUN_FULL_PERF_TESTS" = true ]; then
-        echo -e "${YELLOW}   Running FULL performance tests (including flaky ones)${NC}"
-        run_test_category "Performance Tests (complete)" \
-            "pytest tests/integration/test_performance_suite.py -v --tb=short"
+# Run performance tests (if enabled)
+if [ "$RUN_PERFORMANCE_TESTS" = true ]; then
+    if check_api_server; then
+        echo -e "${GREEN}🌐 API server is available - running performance tests${NC}"
+        
+        # Run performance tests
+        if [ "$RUN_FULL_PERF_TESTS" = true ]; then
+            echo -e "${YELLOW}   Running FULL performance tests (including flaky ones)${NC}"
+            run_test_category "Performance Tests (complete)" \
+                "pytest tests/integration/test_performance_suite.py -v --tb=short"
+        else
+            echo -e "${YELLOW}   Running stable performance tests only (use --full-perf for all)${NC}"
+            run_test_category "Performance Tests (stable only)" \
+                "pytest tests/integration/test_performance_suite.py -v --tb=short -k 'not (parallel_processing_speedup or api_concurrent_performance)'"
+        fi
+        
+        # Run Bubble.io compatibility tests (standalone script)
+        run_test_category "Bubble.io API Compatibility Test" \
+            "python tests/integration/test_bubble_api_compatibility.py"
     else
-        echo -e "${YELLOW}   Running stable performance tests only (use --full-perf for all)${NC}"
-        run_test_category "Performance Tests (stable only)" \
-            "pytest tests/integration/test_performance_suite.py -v --tb=short -k 'not (parallel_processing_speedup or api_concurrent_performance)'"
-    fi
-    
-    # Run Bubble.io compatibility tests (standalone script)
-    run_test_category "Bubble.io API Compatibility Test" \
-        "python tests/integration/test_bubble_api_compatibility.py"
-else
-    echo -e "${YELLOW}⚠️  API server not available${NC}"
-    if [ "$SKIP_API_STARTUP" = true ]; then
-        echo -e "${YELLOW}   Running with --no-api flag, skipping online tests${NC}"
-    else
+        echo -e "${YELLOW}⚠️  API server not available${NC}"
         echo -e "${RED}   Failed to start API server, skipping online tests${NC}"
+        SKIPPED_TESTS=$((SKIPPED_TESTS + 2))
+        TOTAL_TESTS=$((TOTAL_TESTS + 2))
+        
+        # Only run offline performance tests
+        run_test_category "Performance Tests (offline only)" \
+            "pytest tests/integration/test_performance_suite.py -v -k 'not requires_api' --tb=short"
     fi
-    SKIPPED_TESTS=$((SKIPPED_TESTS + 2))
-    TOTAL_TESTS=$((TOTAL_TESTS + 2))
-    
-    # Only run offline performance tests
-    run_test_category "Performance Tests (offline only)" \
-        "pytest tests/integration/test_performance_suite.py -v -k 'not requires_api' --tb=short"
+else
+    if [ $TEST_LEVEL -lt 3 ]; then
+        echo "═══════════════════════════════════════"
+        echo "🚀 PERFORMANCE TESTS - SKIPPED (Level $TEST_LEVEL)"
+        echo "═══════════════════════════════════════"
+    fi
 fi
 
-# 4. Check Code Style (if ruff is installed)
-echo "═══════════════════════════════════════"
-echo "🎨 CODE QUALITY CHECKS"
-echo "═══════════════════════════════════════"
+# 4. Check Code Style (if enabled)
+if [ "$RUN_CODE_STYLE" = true ]; then
+    echo "═══════════════════════════════════════"
+    echo "🎨 CODE QUALITY CHECKS"
+    echo "═══════════════════════════════════════"
 
-if command -v ruff &> /dev/null; then
-    run_test_category "Code Style Check (ruff)" \
-        "ruff check src/ tests/ --exclude=legacy,archive"
+    if command -v ruff &> /dev/null; then
+        run_test_category "Code Style Check (ruff)" \
+            "ruff check src/ tests/ --exclude=legacy,archive"
+    else
+        echo -e "${YELLOW}⚠️  ruff not installed, skipping code style check${NC}"
+        echo -e "   Install with: pip install ruff"
+        SKIPPED_TESTS=$((SKIPPED_TESTS + 1))
+        TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    fi
 else
-    echo -e "${YELLOW}⚠️  ruff not installed, skipping code style check${NC}"
-    echo -e "   Install with: pip install ruff"
-    SKIPPED_TESTS=$((SKIPPED_TESTS + 1))
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    echo "═══════════════════════════════════════"
+    echo "🎨 CODE QUALITY CHECKS - SKIPPED (Level $TEST_LEVEL)"
+    echo "═══════════════════════════════════════"
 fi
 
 # 5. Check for common issues
@@ -409,9 +510,9 @@ else
     echo -e "${RED}⚠️  Missing $missing_prompts prompt files${NC}"
 fi
 
-# 6. Test Coverage Report (if all tests passed)
+# 6. Test Coverage Report (if all tests passed and level >= 2)
 SKIP_COVERAGE=${SKIP_COVERAGE:-false}
-if [ $FAILED_TESTS -eq 0 ] && [ "$SKIP_API_STARTUP" = false ] && [ "$SKIP_COVERAGE" = false ]; then
+if [ $FAILED_TESTS -eq 0 ] && [ $TEST_LEVEL -ge 2 ] && [ "$SKIP_COVERAGE" = false ]; then
     echo ""
     echo "═══════════════════════════════════════"
     echo "📊 TEST COVERAGE REPORT"
@@ -462,13 +563,13 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "   git add -A && git commit -m 'feat: your commit message'"
     echo ""
     echo "📝 Usage tips:"
-    echo "   ./run_precommit_tests.sh                    # Run with auto API startup (default)"
-    echo "   ./run_precommit_tests.sh --no-api           # Skip API tests for quick check"
-    echo "   ./run_precommit_tests.sh --parallel         # Run tests in parallel (faster)"
+    echo "   ./run_precommit_tests.sh --level-0          # Prompt files only"
+    echo "   ./run_precommit_tests.sh --level-1          # Code style only"
+    echo "   ./run_precommit_tests.sh --level-2          # Code style + Unit tests (default)"
+    echo "   ./run_precommit_tests.sh --level-3          # Full test suite"
+    echo "   ./run_precommit_tests.sh --level-2 --parallel    # Faster Level 2"
+    echo "   ./run_precommit_tests.sh --level-3 --parallel    # Faster Level 3"
     echo "   ./run_precommit_tests.sh --no-coverage      # Skip coverage report (saves ~30s)"
-    echo "   ./run_precommit_tests.sh --real-creds       # Use real credentials from .env"
-    echo "   ./run_precommit_tests.sh --parallel --no-coverage  # Fastest full test"
-    echo "   ./run_precommit_tests_quick.sh              # Ultra-fast essential tests only"
     exit 0
 else
     echo -e "${RED}❌ Some tests failed. Please fix before committing.${NC}"
