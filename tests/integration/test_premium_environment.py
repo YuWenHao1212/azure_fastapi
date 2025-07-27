@@ -2,11 +2,13 @@
 Integration tests specifically for Premium environment features.
 Tests the new GPT-4.1 mini Japan East endpoint and premium capabilities.
 """
-import pytest
 import time
+
+import pytest
 from fastapi.testclient import TestClient
-from src.main import app
+
 from src.core.config import get_settings
+from src.main import app
 
 
 @pytest.mark.integration
@@ -31,7 +33,7 @@ class TestPremiumEnvironment:
         assert settings.gpt41_mini_japaneast_deployment == "gpt-4-1-mini-japaneast"
         assert settings.gpt41_mini_japaneast_api_version == "2025-01-01-preview"
         
-        print(f"\n✅ Premium Configuration:")
+        print("\n✅ Premium Configuration:")
         print(f"   Endpoint: {settings.gpt41_mini_japaneast_endpoint}")
         print(f"   Deployment: {settings.gpt41_mini_japaneast_deployment}")
         print(f"   API Version: {settings.gpt41_mini_japaneast_api_version}")
@@ -68,7 +70,7 @@ class TestPremiumEnvironment:
         total_time = (end_time - start_time) * 1000
         api_time = data["data"]["processing_time_ms"]
         
-        print(f"\n📊 GPT-4.1 mini Performance:")
+        print("\n📊 GPT-4.1 mini Performance:")
         print(f"   Total request time: {total_time:.0f}ms")
         print(f"   API processing time: {api_time:.0f}ms")
         print(f"   Keywords extracted: {data['data']['keyword_count']}")
@@ -147,6 +149,7 @@ class TestPremiumEnvironment:
             pytest.skip("GPT-4.1 mini not configured")
         
         import asyncio
+
         import httpx
         
         async def make_request(job_title: str):
@@ -178,7 +181,7 @@ class TestPremiumEnvironment:
             assert len(data["data"]["keywords"]) > 0
         
         total_time = (end_time - start_time) * 1000
-        print(f"\n⚡ Concurrent request performance:")
+        print("\n⚡ Concurrent request performance:")
         print(f"   3 requests completed in: {total_time:.0f}ms")
         print(f"   Average per request: {total_time/3:.0f}ms")
     

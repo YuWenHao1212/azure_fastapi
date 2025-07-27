@@ -2,8 +2,8 @@
 Integration test specific configuration.
 All integration tests use REAL API credentials.
 """
-import os
 import pytest
+
 from src.core.config import get_settings
 
 

@@ -164,3 +164,10 @@ CLEANUP_PROPOSAL.md
 
 # Azure Functions 本地設定（已有範例檔案）
 local.settings.json
+
+# GitHub Secrets 設定腳本（包含敏感資訊）
+set-github-secrets.sh
+setup-github-secrets.sh
+
+# Azure Publish Profiles
+*.PublishSettings

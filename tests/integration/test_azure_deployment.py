@@ -5,10 +5,11 @@ Tests the FastAPI application running on Azure Functions.
 import json
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+
+import pytest
 
 import azure.functions as func
-import pytest
 
 # Add project root to path
 current_dir = Path(__file__).parent

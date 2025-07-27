@@ -4,8 +4,9 @@ This ensures our API abstraction layer works correctly with all providers.
 """
 import pytest
 from fastapi.testclient import TestClient
-from src.main import app
+
 from src.core.config import get_settings
+from src.main import app
 
 
 @pytest.mark.integration
@@ -70,7 +71,7 @@ class TestRealAPIProviders:
         assert result["keyword_count"] == len(result["keywords"])
         assert isinstance(result["confidence_score"], float)
         assert 0 <= result["confidence_score"] <= 1
-        assert isinstance(result["processing_time_ms"], (int, float))
+        assert isinstance(result["processing_time_ms"], int | float)
         assert result["processing_time_ms"] > 0
         
         # Extraction method details
@@ -235,7 +236,7 @@ class TestRealAPIProviders:
         total_time_ms = (end_time - start_time) * 1000
         api_time_ms = response.json()["data"]["processing_time_ms"]
         
-        print(f"\nPerformance metrics:")
+        print("\nPerformance metrics:")
         print(f"  - Total request time: {total_time_ms:.0f}ms")
         print(f"  - API processing time: {api_time_ms:.0f}ms")
         print(f"  - Overhead: {total_time_ms - api_time_ms:.0f}ms")

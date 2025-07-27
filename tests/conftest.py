@@ -41,7 +41,6 @@ def app():
 @pytest.fixture
 def mock_settings(request):
     """Mock Settings for testing."""
-    import os
     from src.core.config import get_settings
     
     # For integration tests, ALWAYS use real settings
