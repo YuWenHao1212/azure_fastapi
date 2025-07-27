@@ -1,0 +1,78 @@
+# Pre-commit hooks for code quality and testing
+# Install: pip install pre-commit && pre-commit install
+
+repos:
+  # Ruff - Fast Python linter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.7
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^(legacy/|archive/|temp/)
+
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(legacy/|temp/tests/)
+      - id: end-of-file-fixer
+        exclude: ^(legacy/|temp/tests/)
+      - id: check-yaml
+        exclude: ^(legacy/|temp/)
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-json
+        exclude: ^(temp/|legacy/)
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Python specific
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-check-blanket-noqa
+      - id: python-use-type-annotations
+      - id: python-no-eval
+
+  # Local hooks
+  - repo: local
+    hooks:
+      # YAML validation for prompts
+      - id: validate-prompts
+        name: Validate prompt YAML files
+        entry: python -c "import yaml, sys; [yaml.safe_load(open(f)) for f in sys.argv[1:]]"
+        language: system
+        files: ^src/prompts/.*\.yaml$
+
+      # 注意: 根據 CLAUDE.md，Claude Code 會根據修改範圍執行適當層級測試
+      # 這裡的 pre-commit hook 僅作為輔助提醒
+      - id: precommit-reminder
+        name: Reminder - Claude Code should run appropriate tests
+        entry: bash -c 'echo "⚠️  提醒: 請確保 Claude Code 已根據修改範圍執行適當層級測試 (Level 0-3)"; echo "📋 詳情請參考 CLAUDE.md 測試分級策略"'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]
+
+      # Check for environment variables
+      - id: check-env-vars
+        name: Check for hardcoded secrets
+        entry: bash -c 'if grep -r "api[_-]key\s*=\s*[\"'\''][^\"'\'']*[\"'\'']" --include="*.py" src/ tests/ | grep -v "mock" | grep -v "example"; then echo "Hardcoded API keys found!"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      # Verify no temp files in commit
+      - id: check-temp-files
+        name: Check for temporary files
+        entry: bash -c 'if find . -path ./temp -prune -o -name "test_*.json" -o -name "test_*.log" -o -name "*.tmp" | grep -v "^\\./temp"; then echo "Temporary files found!"; exit 1; fi'
+        language: system
+        pass_filenames: false
+
+# Configuration
+default_stages: [commit]
+fail_fast: false
+exclude: '^(\.venv/|legacy/experimental/|temp/|archive/|wiki-export/)'

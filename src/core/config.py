@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     
     # Azure OpenAI settings (for GPT-4o-2 model)
     azure_openai_endpoint: str = Field(
-        default="https://test.openai.azure.com",
+        default="",
         validation_alias=AliasChoices("AZURE_OPENAI_ENDPOINT", "LLM2_ENDPOINT"),
         description="Azure OpenAI endpoint - supports both AZURE_OPENAI_ENDPOINT and LLM2_ENDPOINT"
     )

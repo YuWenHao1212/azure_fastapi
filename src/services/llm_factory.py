@@ -118,7 +118,8 @@ def get_llm_client_smart(
     
     # 2. HTTP Header is second priority
     elif headers and getattr(settings, "enable_llm_model_header", True):
-        header_model = headers.get("X-LLM-Model")
+        # FastAPI/Starlette converts headers to lowercase
+        header_model = headers.get("x-llm-model") or headers.get("X-LLM-Model")
         if header_model and header_model in ["gpt4o-2", "gpt41-mini"]:
             selected_model = header_model
             source = "header"

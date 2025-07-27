@@ -1,12 +1,17 @@
-"""Integration tests for LLM dynamic switching functionality."""
+"""Integration tests for LLM dynamic switching functionality.
+
+These tests use REAL API credentials and make actual API calls.
+Ensure you have proper API keys in your .env file before running.
+"""
 import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app
 
 
+@pytest.mark.integration
 class TestLLMSwitchingIntegration:
-    """Test LLM switching with actual API endpoints."""
+    """Test LLM switching with actual API endpoints using real APIs."""
     
     @pytest.fixture
     def client(self):
@@ -33,13 +38,20 @@ class TestLLMSwitchingIntegration:
             headers=headers
         )
         
-        # Should still work (or mock the response)
-        assert response.status_code in [200, 503]  # 503 if no real API key
+        # With real API, should always return 200
+        assert response.status_code == 200, f"Expected 200 but got {response.status_code}. Response: {response.text}"
         
-        if response.status_code == 200:
-            data = response.json()
-            assert data["success"] is True
-            assert "keywords" in data["data"]
+        data = response.json()
+        assert data["success"] is True
+        assert "keywords" in data["data"]
+        assert isinstance(data["data"]["keywords"], list)
+        assert len(data["data"]["keywords"]) > 0
+        assert data["data"]["keyword_count"] > 0
+        
+        # Verify the response is from real API (not mock)
+        # Real API responses have these fields
+        assert "processing_time_ms" in data["data"]
+        assert "confidence_score" in data["data"]
     
     @pytest.mark.asyncio
     async def test_keyword_extraction_default_model(self, client):
@@ -54,7 +66,18 @@ class TestLLMSwitchingIntegration:
             json=request_data
         )
         
-        assert response.status_code in [200, 503]
+        # With real API, should return 200
+        assert response.status_code == 200, f"Expected 200 but got {response.status_code}. Response: {response.text}"
+        
+        data = response.json()
+        assert data["success"] is True
+        assert "keywords" in data["data"]
+        assert isinstance(data["data"]["keywords"], list)
+        assert len(data["data"]["keywords"]) > 0
+        
+        # Verify it's using the default model (should have standard fields)
+        assert "extraction_method" in data["data"]
+        assert "detected_language" in data["data"]
     
     def test_llm_model_info_endpoint(self, client):
         """Test if we can get model info (future enhancement)."""

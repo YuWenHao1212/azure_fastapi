@@ -39,8 +39,20 @@ def app():
 
 
 @pytest.fixture
-def mock_settings():
+def mock_settings(request):
     """Mock Settings for testing."""
+    import os
+    from src.core.config import get_settings
+    
+    # For integration tests, ALWAYS use real settings
+    if request.node.get_closest_marker("integration"):
+        real_settings = get_settings()
+        # Ensure we have real API credentials for integration tests
+        if not (real_settings.openai_api_key or real_settings.llm2_api_key or real_settings.azure_openai_api_key):
+            pytest.skip("Integration tests require real API credentials in .env file")
+        return real_settings
+    
+    # For unit tests, use mock settings
     settings = Mock(spec=Settings)
     settings.azure_openai_endpoint = "https://test.openai.azure.com/"
     settings.azure_openai_api_key = "test-api-key"

@@ -345,7 +345,7 @@ class AzureOpenAIClient:
 def get_azure_openai_client() -> AzureOpenAIClient:
     """
     工廠函數：建立 AzureOpenAI 客戶端實例
-    從環境變數載入配置
+    從 Settings 載入配置
     
     Returns:
         AzureOpenAIClient: 配置好的客戶端實例
@@ -353,11 +353,13 @@ def get_azure_openai_client() -> AzureOpenAIClient:
     Raises:
         ValueError: 缺少必要的環境變數
     """
-    import os
+    from src.core.config import get_settings
     
-    # Support both old (LLM2_*) and new (AZURE_OPENAI_*) environment variables
-    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT") or os.getenv("LLM2_ENDPOINT")
-    api_key = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("LLM2_API_KEY")
+    settings = get_settings()
+    
+    # Use settings which properly handles environment variables
+    endpoint = settings.azure_openai_endpoint
+    api_key = settings.azure_openai_api_key
     
     if not endpoint:
         raise ValueError("AZURE_OPENAI_ENDPOINT or LLM2_ENDPOINT environment variable is required")

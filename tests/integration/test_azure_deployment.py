@@ -115,45 +115,32 @@ class TestAzureFunctionsIntegration:
         sys.path.insert(0, str(project_root))
         from function_app import process_http_request
         
-        # Mock the entire keyword extraction service for reliability
-        with patch('src.services.keyword_extraction_v2.KeywordExtractionServiceV2.process') as mock_process:
-            # Setup mock response in the expected format
-            mock_process.return_value = {
-                "keywords": ["Python", "FastAPI", "Azure", "Developer", "API", "Senior", "Technology", "Team", "Web Development", "Cloud", "Backend", "Software Engineer", "REST API", "Microservices", "Database", "Docker"],
-                "keyword_count": 16,
-                "standardized_terms": [],
-                "confidence_score": 0.95,
-                "processing_time_ms": 250,
-                "extraction_method": "intersection_with_supplement",
-                "intersection_stats": {
-                    "intersection_count": 16,
-                    "strategy_used": "intersection_with_supplement",
-                    "warning": False
-                },
-                "detected_language": "en",
-                "prompt_version_used": "1.3.0"
+        # Create keyword extraction request (using real API)
+        request = mock_http_request(
+            method="POST",
+            url="/api/v1/extract-jd-keywords",
+            headers={"Content-Type": "application/json"},
+            body={
+                "job_description": "We are seeking a Senior Python Developer with extensive FastAPI experience to join our technology team. The ideal candidate should have strong knowledge of web development, API design, and cloud platforms like Azure."
             }
-            
-            # Create keyword extraction request
-            request = mock_http_request(
-                method="POST",
-                url="/api/v1/extract-jd-keywords",
-                headers={"Content-Type": "application/json"},
-                body={
-                    "job_description": "We are seeking a Senior Python Developer with extensive FastAPI experience to join our technology team. The ideal candidate should have strong knowledge of web development, API design, and cloud platforms like Azure."
-                }
-            )
-            
-            # Execute function
-            response = await process_http_request(request)
-            
-            # Verify response
-            assert response.status_code == 200
-            
-            response_data = json.loads(response.get_body().decode())
-            assert response_data["success"] is True
-            assert "keywords" in response_data["data"]
-            assert len(response_data["data"]["keywords"]) > 0
+        )
+        
+        # Execute function with real API
+        response = await process_http_request(request)
+        
+        # Verify response from real API
+        assert response.status_code == 200, f"Real API call failed: {response.get_body().decode()}"
+        
+        response_data = json.loads(response.get_body().decode())
+        assert response_data["success"] is True
+        assert "keywords" in response_data["data"]
+        assert len(response_data["data"]["keywords"]) > 0
+        
+        # Verify it's a real API response (not mock)
+        assert "processing_time_ms" in response_data["data"]
+        assert response_data["data"]["processing_time_ms"] > 0  # Real API takes time
+        assert "confidence_score" in response_data["data"]
+        assert "detected_language" in response_data["data"]
     
     @pytest.mark.asyncio
     @pytest.mark.cors_dependent
@@ -255,44 +242,31 @@ class TestAzureFunctionsIntegration:
         sys.path.insert(0, str(project_root))
         from function_app import process_http_request
         
-        # Mock the keyword extraction service V2
-        with patch('src.services.keyword_extraction_v2.KeywordExtractionServiceV2.process') as mock_process:
-            # Setup mock response
-            mock_process.return_value = {
-                "keywords": ["Python", "Developer", "Senior", "Backend", "API", "Cloud"],
-                "keyword_count": 6,
-                "standardized_terms": [],
-                "confidence_score": 0.90,
-                "processing_time_ms": 200,
-                "extraction_method": "intersection_with_supplement",
-                "intersection_stats": {
-                    "intersection_count": 6,
-                    "strategy_used": "intersection_with_supplement", 
-                    "warning": False
-                },
-                "detected_language": "en",
-                "prompt_version_used": "1.3.0"
+        # Create request with query parameters (using real API)
+        request = mock_http_request(
+            method="POST",
+            url="/api/v1/extract-jd-keywords?max_keywords=5",
+            headers={"Content-Type": "application/json"},
+            params={"max_keywords": "5"},
+            body={
+                "job_description": "We are seeking a Senior Python Developer with extensive experience in backend development. The ideal candidate should have strong knowledge of web development, API design, and cloud platforms."
             }
-            
-            # Create request with query parameters
-            request = mock_http_request(
-                method="POST",
-                url="/api/v1/extract-jd-keywords?max_keywords=5",
-                headers={"Content-Type": "application/json"},
-                params={"max_keywords": "5"},
-                body={
-                    "job_description": "We are seeking a Senior Python Developer with extensive experience in backend development. The ideal candidate should have strong knowledge of web development, API design, and cloud platforms."
-                }
-            )
-            
-            # Execute function
-            response = await process_http_request(request)
-            
-            # Verify response
-            assert response.status_code == 200
-            
-            response_data = json.loads(response.get_body().decode())
-            assert response_data["success"] is True
+        )
+        
+        # Execute function with real API
+        response = await process_http_request(request)
+        
+        # Verify response
+        assert response.status_code == 200, f"Real API call failed: {response.get_body().decode()}"
+        
+        response_data = json.loads(response.get_body().decode())
+        assert response_data["success"] is True
+        assert "keywords" in response_data["data"]
+        
+        # Verify query parameter was respected (though real API might return slightly more/less)
+        # Just check it's reasonable, not exact
+        keyword_count = len(response_data["data"]["keywords"])
+        assert 3 <= keyword_count <= 10, f"Expected reasonable keyword count, got {keyword_count}"
 
 
 @pytest.mark.integration

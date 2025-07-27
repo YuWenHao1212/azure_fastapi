@@ -20,7 +20,9 @@ class CourseraETL:
         # Impact.com API 設定
         self.base_url = "https://api.impact.com"
         self.account_sid = "IR5reNPSapi65901857xTcusvceeZxhuj1"
-        self.auth_token = os.getenv("IMPACT_API_TOKEN", "fqCf-KbEjMdGzihWtHURf2~mnTCNb9jd")
+        self.auth_token = os.getenv("IMPACT_API_TOKEN")
+        if not self.auth_token:
+            raise ValueError("IMPACT_API_TOKEN environment variable is required")
         self.catalog_id = "9419"
         
         # 統計資訊

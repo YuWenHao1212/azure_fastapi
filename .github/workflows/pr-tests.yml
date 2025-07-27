@@ -1,0 +1,167 @@
+name: PR Tests
+
+on:
+  pull_request:
+    branches:
+      - staging  # 只針對 staging 分支
+    types: [opened, synchronize, reopened]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for proper diff
+
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: 📦 Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: 📚 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pre-commit
+
+    - name: 🎨 Run Ruff (Code Style)
+      run: |
+        echo "Running code style checks..."
+        ruff check src/ tests/ --exclude=legacy,archive
+        
+        # Check if there are fixable issues
+        if ! ruff check src/ tests/ --exclude=legacy,archive --fix --diff; then
+          echo "::warning::Some issues can be auto-fixed with 'ruff check --fix'"
+        fi
+
+    - name: 📝 Check YAML Files
+      run: |
+        echo "Validating YAML files..."
+        python -c "
+import yaml
+import sys
+from pathlib import Path
+
+errors = []
+for yaml_file in Path('src/prompts').rglob('*.yaml'):
+    try:
+        with open(yaml_file) as f:
+            yaml.safe_load(f)
+        print(f'✓ {yaml_file}')
+    except Exception as e:
+        errors.append(f'✗ {yaml_file}: {e}')
+        
+if errors:
+    print('\nErrors found:')
+    for error in errors:
+        print(error)
+    sys.exit(1)
+else:
+    print('\nAll YAML files are valid!')
+"
+
+    - name: 🧪 Run Unit Tests (Level 2)
+      run: |
+        echo "Running unit tests..."
+        python -m pytest tests/unit/ -v --tb=short
+
+    - name: 🔗 Run Integration Tests (Level 3)
+      # PR to staging 應該執行 Level 3 測試
+      env:
+        # 使用真實 API 憑證（根據 CLAUDE.md 要求）
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        LLM2_API_KEY: ${{ secrets.LLM2_API_KEY }}
+        LLM2_ENDPOINT: ${{ secrets.LLM2_ENDPOINT }}
+        GPT41_MINI_JAPANEAST_API_KEY: ${{ secrets.GPT41_MINI_JAPANEAST_API_KEY }}
+        GPT41_MINI_JAPANEAST_ENDPOINT: ${{ secrets.GPT41_MINI_JAPANEAST_ENDPOINT }}
+      run: |
+        echo "Running integration tests with real APIs (Level 3)..."
+        # 啟動 API 伺服器
+        uvicorn src.main:app --port 8000 --log-level error > /tmp/api_server.log 2>&1 &
+        API_PID=$!
+        
+        # 等待伺服器啟動
+        sleep 5
+        
+        # 執行整合測試
+        if python -m pytest tests/integration/test_real_api_providers.py -v --tb=short; then
+          echo "✅ Integration tests passed"
+        else
+          echo "❌ Integration tests failed"
+          kill $API_PID 2>/dev/null || true
+          exit 1
+        fi
+        
+        # 停止 API 伺服器
+        kill $API_PID 2>/dev/null || true
+
+    - name: 📊 Test Coverage Report
+      if: github.event_name == 'pull_request'
+      run: |
+        # Run tests with coverage
+        python -m pytest tests/unit/ --cov=src --cov-report=term-missing --cov-report=html
+        
+        # Generate coverage comment
+        coverage_output=$(python -m pytest tests/unit/ --cov=src --cov-report=term-missing --quiet)
+        echo "### 📊 Test Coverage Report" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "$coverage_output" | tail -n 20 >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+    - name: 🔍 Check for Large Files
+      run: |
+        # Find files larger than 1MB
+        large_files=$(find . -type f -size +1M | grep -v ".git" | grep -v ".venv" | grep -v "__pycache__" || true)
+        if [ -n "$large_files" ]; then
+          echo "::warning::Large files detected (>1MB):"
+          echo "$large_files"
+        fi
+
+    - name: 🔐 Security Check
+      run: |
+        # Check for potential secrets
+        if grep -r "api[_-]key.*=" src/ tests/ --include="*.py" | grep -v "os.getenv" | grep -v "settings\." | grep -v "mock"; then
+          echo "::error::Potential hardcoded API keys found!"
+          exit 1
+        fi
+        
+        # Check for private keys
+        if find . -name "*.pem" -o -name "*.key" | grep -v ".git"; then
+          echo "::error::Private key files detected!"
+          exit 1
+        fi
+
+    - name: 📝 PR Summary
+      if: always()
+      run: |
+        echo "## 🔍 PR Test Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Some tests failed. Please check the logs." >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Checklist" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] Code style (Ruff) passed" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] YAML files validated" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] Unit tests passed" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] Integration tests (Level 3) passed" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] No hardcoded secrets" >> $GITHUB_STEP_SUMMARY
+        echo "- [ ] No large files" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📌 **Note**: Level 4 (Azure Functions) 測試需要手動執行" >> $GITHUB_STEP_SUMMARY

@@ -110,6 +110,12 @@ test_*.json
 api_test_response_*.json
 azure_api_test_response_*.json
 
+# 根目錄 HTML 檔案（測試或暫時產生的）
+*.html
+demo.html
+optimized_resume.html
+optimized_simple.html
+
 # 測試結果檔案 (應移到 temp/tests/results/)
 TC416_consistency_report_*.json
 consistency_test_results_*.json
@@ -152,3 +158,9 @@ legacy/Legacy_Code/function_app.py
 
 # Wiki export (contains embedded git repo)
 wiki-export/
+
+# 清理建議文檔（臨時性質）
+CLEANUP_PROPOSAL.md
+
+# Azure Functions 本地設定（已有範例檔案）
+local.settings.json
