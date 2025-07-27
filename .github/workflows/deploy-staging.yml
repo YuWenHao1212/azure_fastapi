@@ -56,6 +56,16 @@ jobs:
         echo "Running Level 3 integration tests for staging deployment..."
         echo "注意: 根據 CLAUDE.md，Claude Code 已執行適當層級測試 (Level 0-3)"
         echo "現在執行 Level 3 整合測試以驗證 API 功能..."
+        
+        # Debug: Show Python and ruff versions
+        echo "Python version: $(python --version)"
+        echo "Ruff version: $(ruff --version || echo 'ruff not found')"
+        
+        # Debug: Run ruff directly to see actual errors
+        echo "Running ruff check directly..."
+        ruff check src/ tests/ --exclude=legacy,archive || echo "Ruff check failed with exit code: $?"
+        
+        # Continue with precommit tests
         ./precommit.sh --level-3 --parallel --no-coverage
 
     - name: 🏗️ Build deployment package
