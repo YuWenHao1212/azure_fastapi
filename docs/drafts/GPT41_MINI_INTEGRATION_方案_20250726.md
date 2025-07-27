@@ -136,11 +136,137 @@ use_gpt41_mini_for_keywords: bool = Field(default=True, ...)
 2. **相容性風險**：低 - 保留降級機制和配置開關
 3. **部署風險**：中 - 需要更新生產環境配置
 
+## 時間開銷視覺化分析
+
+### 端到端時間分解圖
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px'}}}%%
+graph TD
+    subgraph "Bubble.io Frontend"
+        A[用戶點擊提交] -->|~50ms| B[Bubble 處理與驗證]
+        B -->|~20ms| C[發送 HTTP Request]
+    end
+    
+    subgraph "Network Layer 1"
+        C -->|~100ms| D[Bubble → Azure East Asia]
+        D -->|"DNS + TLS"| E[建立連接]
+    end
+    
+    subgraph "Azure Function App (East Asia)"
+        E -->|~200ms<br/>Cold Start| F[Function 初始化]
+        F -->|~50ms| G[請求路由與驗證]
+        G -->|~100ms| H[載入服務與配置]
+        
+        subgraph "Keyword Extraction Service"
+            H -->|~50ms| I[文本預處理]
+            I -->|~30ms| J[語言偵測]
+            J -->|~20ms| K[Prompt 組裝]
+        end
+    end
+    
+    subgraph "Network Layer 2"
+        K -->|~800ms<br/>East Asia → Sweden| L[送至 Azure OpenAI]
+    end
+    
+    subgraph "Azure OpenAI (Sweden Central)"
+        L -->|~2000ms| M[GPT-4o-2 處理]
+        M -->|~50ms| N[回傳結果]
+    end
+    
+    subgraph "Return Path"
+        N -->|~800ms<br/>Sweden → East Asia| O[OpenAI 回應]
+        O -->|~100ms| P[解析與後處理]
+        P -->|~50ms| Q[組裝 API 回應]
+        Q -->|~100ms<br/>East Asia → Bubble| R[HTTP Response]
+    end
+    
+    subgraph "Bubble.io Processing"
+        R -->|~50ms| S[Bubble 接收回應]
+        S -->|~30ms| T[更新 UI]
+    end
+
+    style A fill:#e1f5fe
+    style T fill:#e1f5fe
+    style F fill:#ffecb3
+    style M fill:#ffcdd2
+    style L fill:#ffcdd2
+    style N fill:#ffcdd2
+```
+
+### 時間開銷詳細分析
+
+| 階段 | 子項目 | 時間 (ms) | 佔比 | 說明 |
+|------|--------|-----------|------|------|
+| **Bubble.io 前端** | | **100ms** | **1.7%** | |
+| | 用戶操作 | 50ms | | 點擊到處理 |
+| | 驗證與發送 | 50ms | | 表單驗證 |
+| **網路層 1** | | **100ms** | **1.7%** | |
+| | Bubble → Azure | 100ms | | 含 DNS 解析 |
+| **Azure Function** | | **400ms** | **6.8%** | |
+| | Cold Start | 200ms | | 僅首次請求 |
+| | 初始化服務 | 200ms | | 載入配置 |
+| **業務邏輯** | | **100ms** | **1.7%** | |
+| | 文本處理 | 50ms | | 預處理 |
+| | 語言偵測 | 30ms | | 判斷語言 |
+| | Prompt 準備 | 20ms | | 組裝請求 |
+| **網路層 2** | | **1600ms** | **27.1%** | |
+| | → Sweden | 800ms | | 請求延遲 |
+| | ← Sweden | 800ms | | 回應延遲 |
+| **LLM 處理** | | **2050ms** | **34.7%** | |
+| | GPT-4o-2 | 2000ms | | 模型推理 |
+| | 序列化 | 50ms | | JSON 處理 |
+| **回程處理** | | **250ms** | **4.2%** | |
+| | 結果解析 | 100ms | | JSON 解析 |
+| | 回應組裝 | 50ms | | 格式化 |
+| | → Bubble | 100ms | | 網路傳輸 |
+| **Bubble.io 後端** | | **80ms** | **1.4%** | |
+| | 接收處理 | 50ms | | 解析回應 |
+| | UI 更新 | 30ms | | 渲染結果 |
+| | | | | |
+| **Warm 總計** | | **~5900ms** | **100%** | 符合監控數據 |
+| **Cold 總計** | | **~6100ms** | | 首次請求 |
+
+### GPT-4.1 mini 預期改善
+
+```mermaid
+graph LR
+    subgraph "現狀 (GPT-4o-2 Sweden)"
+        A1[East Asia] -->|800ms| B1[Sweden]
+        B1 -->|2000ms| C1[GPT-4o-2]
+        C1 -->|800ms| D1[East Asia]
+        D1 --> E1[總計: 3600ms]
+    end
+    
+    subgraph "優化後 (GPT-4.1 mini Japan)"
+        A2[East Asia] -->|150ms| B2[Japan]
+        B2 -->|2000ms| C2[GPT-4.1 mini]
+        C2 -->|150ms| D2[East Asia]
+        D2 --> E2[總計: 2300ms]
+    end
+    
+    E1 --> F[節省: 1300ms]
+    E2 --> F
+    
+    style E1 fill:#ffcdd2
+    style E2 fill:#c8e6c9
+    style F fill:#fff9c4
+```
+
+### 關鍵發現
+
+1. **網路延遲佔比高**：East Asia ↔ Sweden 往返佔總時間 27.1%
+2. **LLM 處理時間**：約 2 秒，佔 34.7%
+3. **可優化項目**：
+   - 🚀 切換到 Japan East：預計節省 1.3 秒 (22%)
+   - 📦 啟用快取：避免重複請求
+   - 🔥 保持 Function 溫熱：減少 cold start
+
 ## 預期成果
 
 1. **效能提升**：
-   - 網路延遲：顯著降低（Sweden → Japan 的距離優勢）
-   - 總回應時間：從 ~5.9 秒降至 < 4 秒
+   - 網路延遲：從 1600ms 降至 300ms（節省 81%）
+   - 總回應時間：從 ~5.9 秒降至 < 4.6 秒（節省 22%）
 
 2. **成本節省**：
    - API 使用成本降低 90%

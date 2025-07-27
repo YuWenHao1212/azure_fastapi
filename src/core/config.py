@@ -100,6 +100,44 @@ class Settings(BaseSettings):
         description="Use GPT-4.1 mini Japan East for keyword extraction (better performance)"
     )
     
+    # LLM Model Selection Configuration (NEW)
+    llm_model_default: str = Field(
+        default="gpt4o-2",
+        description="Default LLM model to use when not specified"
+    )
+    llm_model_keywords: str = Field(
+        default="",
+        validation_alias="LLM_MODEL_KEYWORDS",
+        description="LLM model for keyword extraction API (gpt4o-2 or gpt41-mini)"
+    )
+    llm_model_gap_analysis: str = Field(
+        default="",
+        validation_alias="LLM_MODEL_GAP_ANALYSIS",
+        description="LLM model for gap analysis API (gpt4o-2 or gpt41-mini)"
+    )
+    llm_model_resume_format: str = Field(
+        default="",
+        validation_alias="LLM_MODEL_RESUME_FORMAT",
+        description="LLM model for resume format API (gpt4o-2 or gpt41-mini)"
+    )
+    llm_model_resume_tailor: str = Field(
+        default="",
+        validation_alias="LLM_MODEL_RESUME_TAILOR",
+        description="LLM model for resume tailoring API (gpt4o-2 or gpt41-mini)"
+    )
+    
+    # Feature flags for LLM model selection
+    enable_llm_model_override: bool = Field(
+        default=True,
+        validation_alias="ENABLE_LLM_MODEL_OVERRIDE",
+        description="Allow request parameters to override LLM model selection"
+    )
+    enable_llm_model_header: bool = Field(
+        default=True,
+        validation_alias="ENABLE_LLM_MODEL_HEADER",
+        description="Allow HTTP header (X-LLM-Model) to override LLM model selection"
+    )
+    
     # Security settings
     jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"

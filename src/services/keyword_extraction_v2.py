@@ -27,7 +27,6 @@ from src.services.language_detection.simple_language_detector import (
 from src.services.openai_client import (
     AzureOpenAIClient,
     AzureOpenAIError,
-    get_azure_openai_client,
 )
 from src.services.standardization import MultilingualStandardizer
 from src.services.unified_prompt_service import get_unified_prompt_service
@@ -57,20 +56,19 @@ class KeywordExtractionServiceV2(BaseService):
         """Initialize the service with unified prompt management."""
         super().__init__()
         
-        # Core services - Use GPT-4.1 mini if specified
+        # Core services - Use LLM Factory for flexible model selection
         if openai_client:
             self.openai_client = openai_client
-        elif use_gpt41_mini:
-            # Use GPT-4.1 mini Japan East for better performance
-            from src.services.openai_client_gpt41 import get_gpt41_mini_client
-            try:
-                self.openai_client = get_gpt41_mini_client()
-                self.logger.info("Using GPT-4.1 mini Japan East for keyword extraction")
-            except Exception as e:
-                self.logger.warning(f"Failed to initialize GPT-4.1 mini client: {e}. Falling back to GPT-4o-2")
-                self.openai_client = get_azure_openai_client()
         else:
-            self.openai_client = get_azure_openai_client()
+            # Use the new LLM Factory for dynamic model selection
+            from src.services.llm_factory import get_llm_client
+            
+            # For backward compatibility, check use_gpt41_mini flag
+            if use_gpt41_mini:
+                self.openai_client = get_llm_client(model="gpt41-mini", api_name="keywords")
+            else:
+                # Let factory decide based on environment configuration
+                self.openai_client = get_llm_client(api_name="keywords")
         
         # Unified prompt service - NEW!
         self.unified_prompt_service = get_unified_prompt_service()
