@@ -85,9 +85,9 @@ else:
         # LLM2 使用相同的憑證
         LLM2_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
         LLM2_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-        # GPT-4.1 mini (可選)
-        GPT41_MINI_JAPANEAST_API_KEY: ${{ secrets.GPT41_MINI_JAPANEAST_API_KEY || secrets.AZURE_OPENAI_API_KEY }}
-        GPT41_MINI_JAPANEAST_ENDPOINT: ${{ secrets.GPT41_MINI_JAPANEAST_ENDPOINT || secrets.AZURE_OPENAI_ENDPOINT }}
+        # GPT-4.1 mini (必須 - 使用不同的端點)
+        GPT41_MINI_JAPANEAST_API_KEY: ${{ secrets.GPT41_MINI_JAPANEAST_API_KEY }}
+        GPT41_MINI_JAPANEAST_ENDPOINT: ${{ secrets.GPT41_MINI_JAPANEAST_ENDPOINT }}
         # 嵌入服務
         EMBEDDING_API_KEY: ${{ secrets.EMBEDDING_API_KEY || secrets.AZURE_OPENAI_API_KEY }}
         EMBEDDING_ENDPOINT: ${{ secrets.EMBEDDING_ENDPOINT }}
