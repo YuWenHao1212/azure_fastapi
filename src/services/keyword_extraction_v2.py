@@ -50,25 +50,20 @@ class KeywordExtractionServiceV2(BaseService):
         prompt_version: str = "latest",
         enable_cache: bool = True,
         cache_ttl_minutes: int = 60,
-        enable_parallel_processing: bool = True,
-        use_gpt41_mini: bool = True
+        enable_parallel_processing: bool = True
     ):
-        """Initialize the service with unified prompt management."""
+        """Initialize the service with unified prompt management and flexible LLM selection."""
         super().__init__()
         
-        # Core services - Use LLM Factory for flexible model selection
+        # Core services - Use provided client or factory for flexible model selection
         if openai_client:
             self.openai_client = openai_client
+            self.logger.info(f"Using provided LLM client: {type(openai_client).__name__}")
         else:
-            # Use the new LLM Factory for dynamic model selection
+            # Use the LLM Factory for dynamic model selection based on configuration
             from src.services.llm_factory import get_llm_client
-            
-            # For backward compatibility, check use_gpt41_mini flag
-            if use_gpt41_mini:
-                self.openai_client = get_llm_client(model="gpt41-mini", api_name="keywords")
-            else:
-                # Let factory decide based on environment configuration
-                self.openai_client = get_llm_client(api_name="keywords")
+            self.openai_client = get_llm_client(api_name="keywords")
+            self.logger.info(f"Using factory-created LLM client: {type(self.openai_client).__name__}")
         
         # Unified prompt service - NEW!
         self.unified_prompt_service = get_unified_prompt_service()
@@ -746,28 +741,41 @@ _keyword_extraction_service_v2 = None
 
 
 def get_keyword_extraction_service_v2(
+    llm_client: AzureOpenAIClient | None = None,
     prompt_version: str = "latest",
     enable_cache: bool = True,
     cache_ttl_minutes: int = 60,
-    enable_parallel_processing: bool = True,
-    use_gpt41_mini: bool = True
+    enable_parallel_processing: bool = True
 ) -> KeywordExtractionServiceV2:
     """
     Get singleton instance of KeywordExtractionServiceV2.
     
     This version uses UnifiedPromptService for YAML-based configuration.
-    Now supports GPT-4.1 mini for better performance and cost efficiency.
+    Supports dynamic LLM selection through the llm_client parameter.
+    
+    Args:
+        llm_client: Optional LLM client. If not provided, uses factory default.
+        prompt_version: Prompt version to use.
+        enable_cache: Whether to enable caching.
+        cache_ttl_minutes: Cache TTL in minutes.
+        enable_parallel_processing: Whether to enable parallel processing.
+    
+    Returns:
+        KeywordExtractionServiceV2 instance
     """
     global _keyword_extraction_service_v2
     
+    # For simplicity, create new instance when different client is provided
+    # In production, might want more sophisticated caching strategy
     if (_keyword_extraction_service_v2 is None or 
-        _keyword_extraction_service_v2.enable_cache != enable_cache):
+        _keyword_extraction_service_v2.enable_cache != enable_cache or
+        llm_client is not None):
         _keyword_extraction_service_v2 = KeywordExtractionServiceV2(
+            openai_client=llm_client,
             prompt_version=prompt_version,
             enable_cache=enable_cache,
             cache_ttl_minutes=cache_ttl_minutes,
-            enable_parallel_processing=enable_parallel_processing,
-            use_gpt41_mini=use_gpt41_mini
+            enable_parallel_processing=enable_parallel_processing
         )
     
     return _keyword_extraction_service_v2

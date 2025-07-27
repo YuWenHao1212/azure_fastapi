@@ -5,11 +5,15 @@ Following FHS architecture principles.
 import logging
 from datetime import datetime
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# Load environment variables from .env file
+load_dotenv()
 
 from src.api.v1 import router as v1_router
 from src.core.config import settings

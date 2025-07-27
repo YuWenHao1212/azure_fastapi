@@ -32,7 +32,6 @@ from src.models.response import (
 from src.services.keyword_extraction_v2 import (
     get_keyword_extraction_service_v2,
 )
-from src.services.llm_factory import get_llm_client_smart, get_llm_info
 from src.services.openai_client import (
     AzureOpenAIAuthError,
     AzureOpenAIError,
@@ -191,6 +190,8 @@ async def extract_jd_keywords(
         headers = dict(http_request.headers)
     
     # Use smart LLM client selection (hybrid approach)
+    from src.services.llm_factory import get_llm_client_smart, get_llm_info
+    
     llm_client = get_llm_client_smart(
         api_name="keywords",
         request_model=getattr(request, 'llm_model', None),  # Future: add to request model
@@ -203,12 +204,11 @@ async def extract_jd_keywords(
     
     # Create V2 service with dynamic LLM client
     service = get_keyword_extraction_service_v2(
-        openai_client=llm_client,  # Use the dynamically selected client
+        llm_client=llm_client,  # Pass the dynamically selected client
         prompt_version=request.prompt_version,
         enable_cache=True,  # ✅ Cache enabled for production performance
         cache_ttl_minutes=60,  # Cache for 1 hour
-        enable_parallel_processing=True,  # ✅ Keep parallel processing for speed
-        use_gpt41_mini=False  # Disable old flag, using new factory instead
+        enable_parallel_processing=True  # ✅ Keep parallel processing for speed
     )
     
     try:
