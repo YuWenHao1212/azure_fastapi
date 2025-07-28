@@ -1,0 +1,38 @@
+{
+  "analysis_time": "2025-07-28T15:06:51.104332",
+  "data_comparison": {
+    "East Asia → Japan East OpenAI": {
+      "總時間": 5789,
+      "API處理": 2487,
+      "網路開銷": 3136,
+      "網路佔比": 54.2
+    },
+    "Japan East → Japan East OpenAI": {
+      "總時間": 6031,
+      "API處理": 2777,
+      "網路開銷": 3253,
+      "網路佔比": 53.9
+    }
+  },
+  "key_findings": {
+    "total_time_increase": 242,
+    "api_processing_increase": 290,
+    "network_overhead_increase": 117,
+    "percentage_changes": {
+      "total_time": 4.2,
+      "api_processing": 11.7,
+      "network_overhead": 3.7
+    }
+  },
+  "latency_breakdown": {
+    "function_app_overhead_ms": "800-1000",
+    "openai_call_overhead_ms": "500-800",
+    "unknown_latency_ms": "1500-2000"
+  },
+  "recommendations": [
+    "實施分布式追蹤以準確測量各組件耗時",
+    "優化 Function App 處理流程",
+    "考慮架構簡化（減少中間層）",
+    "使用全局共享的 HTTP 客戶端連接池"
+  ]
+}

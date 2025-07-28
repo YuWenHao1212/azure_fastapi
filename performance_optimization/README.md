@@ -1,71 +1,75 @@
-# API 效能優化專案
+# Performance Optimization 專案文件
 
-## 概述
+本目錄包含 Azure FastAPI 專案的效能優化分析和架構提案。
 
-本目錄按照 API Feature 組織所有效能優化相關的測試腳本、報告和文檔。
-
-## Feature 目錄結構
+## 📁 目錄結構
 
 ```
 performance_optimization/
-├── extract-jd-keywords/        # 關鍵字提取 API
-├── index-calculation/          # 指標計算 API  
-├── index-cal-and-gap-analysis/ # 指標計算與間隙分析 API
-├── format-resume/              # 履歷格式化 API
-├── tailor-resume/              # 履歷優化 API
-├── courses-search/             # 課程搜尋 API
-└── LLM_DYNAMIC_SWITCHING_方案.md  # 通用 LLM 切換方案
+├── current/                          # 當前有效的文件
+│   ├── PERFORMANCE_ANALYSIS_REPORT_20250728.md
+│   ├── SIMPLIFIED_ARCHITECTURE_PROPOSAL_20250728.md
+│   └── README.md
+│
+├── archive/                          # 歷史文件歸檔
+│   ├── architecture_analysis/        # 架構分析演進
+│   ├── initial_analysis/            # 初期分析文件
+│   └── README.md
+│
+├── extract-jd-keywords/             # 關鍵字提取 API 測試
+│   ├── test_staging_performance_v2.py
+│   ├── test_network_latency_detailed.py
+│   ├── diagnose_function_overhead.py
+│   └── [測試結果檔案]
+│
+└── [其他 API 測試目錄]
 ```
 
-## 各 Feature 效能目標
+## 🎯 專案成果
 
-| Feature | API 端點 | 目標 P95 | 當前狀態 | 優化方案 |
-|---------|----------|----------|----------|----------|
-| extract-jd-keywords | `/api/v1/extract-jd-keywords` | < 4 秒 | 5.8 秒 | 使用 GPT-4.1 mini |
-| index-calculation | `/api/v1/index-calculation` | < 5 秒 | 待測試 | - |
-| index-cal-and-gap-analysis | `/api/v1/index-cal-and-gap-analysis` | < 30 秒 | 待測試 | 考慮加入課程推薦 |
-| format-resume | `/api/v1/format-resume` | < 15 秒 | 待測試 | 考慮整合 OCR |
-| tailor-resume | `/api/v1/tailor-resume` | < 20 秒 | 待測試 | 使用 GPT-4.1 mini |
-| courses-search | `/api/v1/courses/search` | < 2 秒 | 待測試 | 優化向量搜尋 |
+### 問題發現
+- Azure Function App 造成 3+ 秒固定開銷
+- 影響所有 API endpoints
+- Premium Plan (EP1) 也無法解決
 
-## 當前進度（2025年7月）
+### 解決方案
+- 統一遷移到 Azure Container Apps
+- 預期效能提升 40-90%
+- 成本降低 11%
 
-### ✅ 已完成
-- extract-jd-keywords: GPT-4.1 mini 整合完成，效能提升 44%
-- LLM 動態切換機制實作完成
+## 📊 關鍵數據
 
-### 🚀 進行中
-- 各 Feature 的獨立效能測試
-- 快取機制優化
-- 批次處理支援
+| 指標 | 當前 | 目標 | 改善 |
+|------|------|------|------|
+| 響應時間 (P95) | 3-11 秒 | 0.3-8 秒 | 40-91% |
+| 並發能力 | < 0.5 QPS | 20-50 QPS | 40-100x |
+| 月成本 | $280 | $250 | -11% |
 
-### 📋 待進行
-- 其他 5 個 API 的效能測試和優化
-- 網路延遲優化（考慮 Japan East 部署）
+## 🚀 快速開始
 
-## 使用說明
+1. **查看當前提案**：
+   ```
+   current/SIMPLIFIED_ARCHITECTURE_PROPOSAL_20250728.md
+   ```
 
-每個 feature 目錄包含：
-- 效能測試腳本 (`.py`)
-- 測試結果數據 (`.json`)
-- 效能分析報告 (`.md`)
-- 優化方案文檔
+2. **了解問題分析**：
+   ```
+   current/PERFORMANCE_ANALYSIS_REPORT_20250728.md
+   ```
 
-## 測試方法
+3. **執行測試工具**：
+   ```bash
+   cd extract-jd-keywords
+   python test_staging_performance_v2.py
+   ```
 
-```bash
-# 進入特定 feature 目錄
-cd performance_optimization/extract-jd-keywords
+## 📅 時間軸
 
-# 執行效能測試
-python test_staging_performance.py
-```
+- 2025-07-28：完成效能分析，發現根本問題
+- 2025-07-28：提出並簡化架構方案
+- 下一步：開始 Container Apps POC
 
-## 相關資源
+## 👥 聯絡人
 
-- [Azure Monitor Dashboard](https://portal.azure.com/)
-- [API 文檔](../docs/API_REFERENCE.md)
-- [部署指南](../docs/DEPLOYMENT.md)
-
----
-最後更新：2025-07-28
+- 架構分析：Claude Code
+- 專案負責人：WenHao
