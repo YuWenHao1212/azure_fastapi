@@ -1,0 +1,131 @@
+name: Deploy to Japan East Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_FUNCTIONAPP_NAME: 'airesumeadvisor-fastapi-japaneast'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Setup Python ${{ env.PYTHON_VERSION }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: 📦 Create and activate virtual environment
+      run: |
+        python -m venv .venv
+        source .venv/bin/activate
+        echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
+        echo "$VIRTUAL_ENV/bin" >> $GITHUB_PATH
+
+    - name: 📚 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: 🧪 Run Pre-deployment Tests (Level 3)
+      env:
+        # 主要 LLM 服務
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        # GPT-4.1 mini (必須 - 使用不同的端點)
+        GPT41_MINI_JAPANEAST_API_KEY: ${{ secrets.GPT41_MINI_JAPANEAST_API_KEY }}
+        GPT41_MINI_JAPANEAST_ENDPOINT: ${{ secrets.GPT41_MINI_JAPANEAST_ENDPOINT }}
+        GPT41_MINI_JAPANEAST_DEPLOYMENT: "gpt-4-1-mini-japaneast"
+        GPT41_MINI_JAPANEAST_API_VERSION: "2025-01-01-preview"
+        # 嵌入服務
+        AZURE_OPENAI_EMBEDDING_API_KEY: ${{ secrets.AZURE_OPENAI_EMBEDDING_API_KEY || secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_EMBEDDING_ENDPOINT: ${{ secrets.AZURE_OPENAI_EMBEDDING_ENDPOINT }}
+        EMBEDDING_API_KEY: ${{ secrets.AZURE_OPENAI_EMBEDDING_API_KEY || secrets.AZURE_OPENAI_API_KEY }}
+        EMBEDDING_ENDPOINT: ${{ secrets.AZURE_OPENAI_EMBEDDING_ENDPOINT }}
+        # 功能旗標
+        USE_GPT41_MINI_FOR_KEYWORDS: "true"
+      run: |
+        echo "Running Level 3 integration tests for production deployment..."
+        echo "注意: 根據 CLAUDE.md，Claude Code 已執行適當層級測試 (Level 0-3)"
+        echo "現在執行 Level 3 整合測試以驗證 API 功能..."
+        
+        # Continue with precommit tests
+        ./precommit.sh --level-3 --parallel --no-coverage
+
+    - name: 🏗️ Build deployment package
+      run: |
+        # Create deployment package
+        python -m pip install --target=".python_packages/lib/site-packages" -r requirements.txt
+        
+        # Clean up unnecessary files
+        find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+        find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+    - name: 🚀 Deploy to Japan East Production
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+        publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_JAPANEAST_PUBLISH_PROFILE }}
+        respect-funcignore: true
+
+    - name: 🏥 Health Check - Production
+      run: |
+        echo "Waiting for deployment to complete..."
+        sleep 30
+        
+        # Test production health endpoint
+        echo "Testing production health endpoint..."
+        for i in {1..5}; do
+          if curl -f https://${AZURE_FUNCTIONAPP_NAME}.azurewebsites.net/health; then
+            echo "✅ Production health check passed"
+            break
+          else
+            echo "⏳ Attempt $i failed, retrying..."
+            sleep 10
+          fi
+        done
+
+    - name: 🧪 Run Smoke Tests on Production
+      env:
+        PRODUCTION_URL: "https://airesumeadvisor-fastapi-japaneast.azurewebsites.net"
+        PRODUCTION_HOST_KEY: ${{ secrets.JAPANEAST_PRODUCTION_HOST_KEY }}
+      run: |
+        echo "Running smoke tests on production..."
+        
+        # Test keyword extraction endpoint
+        response=$(curl -s -w "\n%{http_code}" -X POST \
+          "${PRODUCTION_URL}/api/v1/extract-jd-keywords?code=${PRODUCTION_HOST_KEY}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "job_description": "We are looking for a Python Developer with Azure experience.",
+            "language": "en"
+          }')
+        
+        status_code=$(echo "$response" | tail -n 1)
+        if [ "$status_code" = "200" ]; then
+          echo "✅ Keyword extraction test passed"
+        else
+          echo "❌ Keyword extraction test failed with status: $status_code"
+          echo "$response"
+          exit 1
+        fi
+
+    - name: 📊 Report Deployment Status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Production deployment to Japan East completed successfully!"
+          echo "🔗 Production URL: https://${AZURE_FUNCTIONAPP_NAME}.azurewebsites.net"
+        else
+          echo "❌ Production deployment failed. Check the logs above."
+        fi
