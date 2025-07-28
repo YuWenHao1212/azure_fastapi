@@ -453,10 +453,9 @@ async def keyword_extraction_health(
     """
     try:
         # Test V2 service initialization (cache disabled for testing)
-        # Use config to determine which model to test
+        # Let the service use default LLM selection
         service = get_keyword_extraction_service_v2(
-            enable_cache=False,
-            use_gpt41_mini=settings.use_gpt41_mini_for_keywords
+            enable_cache=False
         )
         
         # Get service stats including performance optimizations
@@ -685,8 +684,7 @@ async def health_check(
     try:
         # Get service instance to check configuration
         service = get_keyword_extraction_service_v2(
-            enable_cache=False,  # Disable cache for testing
-            use_gpt41_mini=settings.use_gpt41_mini_for_keywords
+            enable_cache=False  # Disable cache for testing
         )
         
         # Create health data in the expected format

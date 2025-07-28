@@ -94,11 +94,12 @@ class Settings(BaseSettings):
         description="GPT-4.1 mini Japan East API version"
     )
     
-    # Feature flags for model selection
-    use_gpt41_mini_for_keywords: bool = Field(
-        default=True,
-        description="Use GPT-4.1 mini Japan East for keyword extraction (better performance)"
-    )
+    # Deprecated - use llm_model_keywords instead
+    # Kept for backward compatibility only
+    # use_gpt41_mini_for_keywords: bool = Field(
+    #     default=True,
+    #     description="Use GPT-4.1 mini Japan East for keyword extraction (better performance)"
+    # )
     
     # LLM Model Selection Configuration (NEW)
     llm_model_default: str = Field(
