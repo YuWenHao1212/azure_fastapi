@@ -15,10 +15,10 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 # Load environment variables from .env file
 load_dotenv()
 
-from src.api.v1 import router as v1_router
-from src.core.config import settings
-from src.core.monitoring_service import monitoring_service
-from src.middleware.monitoring_middleware import MonitoringMiddleware
+from src.api.v1 import router as v1_router  # noqa: E402
+from src.core.config import settings  # noqa: E402
+from src.core.monitoring_service import monitoring_service  # noqa: E402
+from src.middleware.monitoring_middleware import MonitoringMiddleware  # noqa: E402
 
 # Configure logging
 logging.basicConfig(

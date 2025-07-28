@@ -1,5 +1,7 @@
+# flake8: noqa
 """
 產生課程 embeddings 並儲存到資料庫
+ETL script with CLI output - print statements are intentional
 """
 import asyncio
 import json

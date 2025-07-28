@@ -1,5 +1,7 @@
+# flake8: noqa
 """
 Coursera ETL - 從 Impact.com API 匯入課程資料
+ETL script with CLI output - print statements are intentional
 """
 import asyncio
 import json

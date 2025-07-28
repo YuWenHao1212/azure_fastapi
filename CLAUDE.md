@@ -1,6 +1,6 @@
-# CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.7.2
+# CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.8.3
 
-> 最後更新：2025-07-26 11:41:34 CST
+> 最後更新：2025-07-27 16:38:44 CST
 
 ## ⚠️ 關鍵提醒 (CRITICAL REMINDERS)
 
@@ -16,10 +16,11 @@ TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S %Z'
 ### 🚫 Git 提交規則 (GIT COMMIT RULE)
 Claude Code **絕對不可以**自行執行 `git commit`
 - 必須根據修改類型執行對應層級的預提交測試：
-  - Prompt 修改：`./run_precommit_tests.sh --level-0`
-  - 程式碼格式/註解：`./run_precommit_tests.sh --level-1`
-  - 功能邏輯修改：`./run_precommit_tests.sh --level-2 --parallel`
-  - API/核心修改：`./run_precommit_tests.sh --level-3 --parallel`
+  - Prompt 修改：`./precommit.sh --level-0`
+  - 程式碼格式/註解：`./precommit.sh --level-1`
+  - 功能邏輯修改：`./precommit.sh --level-2 --parallel`
+  - API/核心修改：`./precommit.sh --level-3 --parallel`
+  - 預部署驗證：`./precommit.sh --level-4`
 - 向用戶展示完整測試結果
 - 獲得用戶明確同意後才能提交
 
@@ -27,20 +28,24 @@ Claude Code **絕對不可以**自行執行 `git commit`
 **根據修改類型選擇適當的測試層級**：
 ```bash
 # Level 0: Prompt 修改（不需要 AI）
-./run_precommit_tests.sh --level-0
+./precommit.sh --level-0
 
 # Level 1: 程式碼風格（不需要 AI）
-./run_precommit_tests.sh --level-1
+./precommit.sh --level-1
 
 # Level 2: 單元測試（建議使用 --parallel）
-./run_precommit_tests.sh --level-2 --parallel
+./precommit.sh --level-2 --parallel
 
-# Level 3: 完整測試（建議使用 --parallel）
-./run_precommit_tests.sh --level-3 --parallel
+# Level 3: 整合測試（建議使用 --parallel）
+./precommit.sh --level-3 --parallel
+
+# Level 4: Azure Functions 本地測試（預部署驗證）
+./precommit.sh --level-4
 ```
 - Level 0-1：不需要 AI 憑證，執行快速
 - Level 2-3：需要真實 API 憑證（從 .env 讀取）
-- 使用 `--parallel` 加速測試執行
+- Level 4：需要 Azure Functions Core Tools + 真實 API 憑證
+- 使用 `--parallel` 加速測試執行（Level 2-3）
 
 ---
 
@@ -88,12 +93,28 @@ Claude Code **絕對不可以**自行執行 `git commit`
 - **Portal URL**: https://portal.azure.com/#@wenhaoairesumeadvisor.onmicrosoft.com/resource/subscriptions/5396d388-8261-464e-8ee4-112770674fba/resourceGroups/airesumeadvisorfastapi/providers/Microsoft.Insights/components/airesumeadvisorfastapi/overview
 
 ### Azure Function App 資訊
+
+#### Standard App (Flex Consumption Plan)
 - **Function App 名稱**: airesumeadvisor-fastapi
 - **基礎 URL**: https://airesumeadvisor-fastapi.azurewebsites.net
-- **Host Keys**: 請勿提交到版本控制！存放在：
-  - Azure Portal → Function App → Function Keys
-  - 本地環境變數或 `.env` 檔案（已加入 .gitignore）
-  - Azure Key Vault（生產環境）
+- **Host Key**: `[YOUR_HOST_KEY]` (請從 Azure Portal 獲取)
+- **計畫類型**: Flex Consumption Plan
+- **狀態**: 生產環境
+
+#### Premium App (Premium Plan) - 新環境 🆕
+- **Function App 名稱**: airesumeadvisor-fastapi-premium
+- **計畫類型**: Premium Plan (EP1)
+- **部署槽位**: 
+  - **Production Slot**
+    - **URL**: https://airesumeadvisor-fastapi-premium.azurewebsites.net
+    - **Host Key**: `[YOUR_HOST_KEY]` (請從 Azure Portal 獲取)
+    - **環境**: production
+  - **Staging Slot**
+    - **URL**: https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net
+    - **Host Key**: `[YOUR_HOST_KEY]` (請從 Azure Portal 獲取)
+    - **環境**: staging
+
+**注意**: Premium 環境可用來取代 Standard 環境，提供更好的效能和獨立的測試環境。
 
 ### PostgreSQL 資料庫資訊
 - **Host**: airesumeadvisor-courses-db-eastasia.postgres.database.azure.com
@@ -173,26 +194,70 @@ Claude Code **絕對不可以**自行執行 `git commit`
 - idx_course_type_standard (course_type_standard)
 - idx_courses_price (price)
 
-- **已部署的 API 端點** (生產環境):
-  ```
-  # 關鍵字提取
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
-  
-  # 指標計算
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
-  
-  # 指標計算與間隙分析
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
-  
-  # 履歷格式化
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
-  
-  # 履歷優化
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
-  
-  # 課程搜尋
-  https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
-  ```
+### 已部署的 API 端點
+
+#### Standard 環境 (airesumeadvisor-fastapi)
+```bash
+# 關鍵字提取
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
+
+# 指標計算
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
+
+# 指標計算與間隙分析
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
+
+# 履歷格式化
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
+
+# 履歷優化
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
+
+# 課程搜尋
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
+```
+
+#### Premium 環境 - Production (airesumeadvisor-fastapi-premium) 🆕
+```bash
+# 關鍵字提取
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
+
+# 指標計算
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
+
+# 指標計算與間隙分析
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
+
+# 履歷格式化
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
+
+# 履歷優化
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
+
+# 課程搜尋
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
+```
+
+#### Premium 環境 - Staging (airesumeadvisor-fastapi-premium-staging) 🧪
+```bash
+# 關鍵字提取
+https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
+
+# 指標計算
+https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
+
+# 指標計算與間隙分析
+https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
+
+# 履歷格式化
+https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
+
+# 履歷優化
+https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
+
+# 課程搜尋
+https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
+```
 
 ### FHS + FastAPI 架構規範
 
@@ -696,15 +761,37 @@ All checks passed!
 
 ---
 
+#### Level 4: Azure Functions 本地測試（預部署驗證）
+**適用範圍**：
+- 部署前的最終驗證
+- 使用真實 API 測試功能是否正常
+- 避免 Mock 維護問題，直接使用真實 API
+- 模擬 Azure Functions 環境執行
+
+**必須通過**：
+- ✅ 安裝 Azure Functions Core Tools：`brew install azure-functions-core-tools@4`
+- ✅ 設定真實 API 憑證（.env 檔案）
+- ✅ 啟動本地 Azure Functions（port 7071）
+- ✅ 執行真實 API 呼叫測試
+
+**執行時間**：< 3 分鐘
+
+**使用時機**：
+- 開發階段：使用 Level 0-3
+- 預提交時：執行 Level 4 確保部署後正常運作
+
+---
+
 #### 快速決策表
 
 | 修改內容 | 測試層級 | 執行命令 |
 |---------|---------|---------|
-| Prompt YAML | Level 0 | 手動檢查 YAML 格式 |
-| 程式碼註解 | Level 1 | `ruff check` |
-| 工具函數邏輯 | Level 2 | `ruff check` + `pytest unit` |
-| API 端點 | Level 3 | `ruff check` + `pytest unit` + `pytest integration` |
-| Prompt + 預設版本 | Level 0 + 2 | YAML 檢查 + `ruff` + `pytest unit` |
+| Prompt YAML | Level 0 | `./precommit.sh --level-0` |
+| 程式碼註解 | Level 1 | `./precommit.sh --level-1` |
+| 工具函數邏輯 | Level 2 | `./precommit.sh --level-2 --parallel` |
+| API 端點 | Level 3 | `./precommit.sh --level-3 --parallel` |
+| Prompt + 預設版本 | Level 0 + 2 | YAML 檢查 + Level 2 測試 |
+| 預部署驗證 | Level 4 | `./precommit.sh --level-4` |
 | 不確定 | Level 3 | 執行完整測試 |
 
 ### 核心測試原則
@@ -800,19 +887,22 @@ pytest integration tests
 ### 預提交測試命令
 
 ```bash
-# 使用真實憑證執行完整測試（推薦）
-./run_precommit_tests.sh --real-creds --parallel --no-coverage
+# 開發階段 - 各層級測試
+./precommit.sh --level-0                      # Prompt only (不需要 --parallel)
+./precommit.sh --level-1                      # + Code style (不需要 --parallel)
+./precommit.sh --level-2 --parallel           # + Unit tests (建議使用 --parallel)
+./precommit.sh --level-3 --parallel           # + Integration (建議使用 --parallel)
 
-# 各層級測試（開發中功能）
-./run_precommit_tests.sh --level-0                      # Prompt only (不需要 --parallel)
-./run_precommit_tests.sh --level-1                      # + Code style (不需要 --parallel)
-./run_precommit_tests.sh --level-2 --parallel           # + Unit tests (建議使用 --parallel)
-./run_precommit_tests.sh --level-3 --parallel           # + Integration (建議使用 --parallel)
+# 預部署驗證 - Level 4（需要真實 API）
+./precommit.sh --level-4                      # Azure Functions 本地測試
 
-# 快速測試組合
-./run_precommit_tests.sh --no-api           # 離線測試
-./run_precommit_tests.sh --parallel         # 平行執行
-./run_precommit_tests.sh --no-coverage      # 跳過覆蓋率
+# 測試選項
+--parallel                                    # 平行執行測試（Level 2-3）
+--no-coverage                                 # 跳過覆蓋率報告
+
+# 建議工作流程
+# 1. 開發時：執行對應的 Level 0-3
+# 2. 提交前：執行 Level 4 確保部署正常
 ```
 
 ### API 文檔測試設計原則
@@ -958,8 +1048,11 @@ az monitor app-insights query \
 pytest tests/unit/
 uvicorn src.main:app --reload
 
-# 預提交測試（使用真實憑證 - 推薦）
-./run_precommit_tests.sh --real-creds --parallel --no-coverage
+# 預提交測試（開發階段）
+./precommit.sh --level-3 --parallel
+
+# 預部署驗證（提交前）
+./precommit.sh --level-4
 
 # 測試 Azure Function App
 curl -X POST "https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]" \
@@ -1169,10 +1262,22 @@ class DataModel(BaseModel):
 
 ---
 
-**文檔版本**: 2.8.2  
-**最後更新**: 2025-07-26  
+**文檔版本**: 2.8.4  
+**最後更新**: 2025-07-27  
 **維護者**: Claude Code + WenHao  
 **適用專案**: FHS + FastAPI API 重構專案
+
+### v2.8.4 更新內容 (2025-07-27)
+- 新增 Level 4 測試策略：Azure Functions 本地測試（預部署驗證）
+- 更新所有測試相關命令從 `run_precommit_tests.sh` 改為 `precommit.sh`
+- 加入 Level 4 測試的詳細說明，解決 Mock 維護問題
+- 更新快速決策表，包含 Level 4 測試
+
+### v2.8.3 更新內容 (2025-07-27)
+- 新增 Premium Function App 環境資訊（airesumeadvisor-fastapi-premium）
+- 包含 Production 和 Staging 兩個部署槽位的完整配置
+- 更新所有 API 端點列表，包含完整的 host key
+- 標註 Premium 環境可用來取代 Standard 環境
 
 ### v2.8.2 更新內容 (2025-07-26)
 - 移除 `/take-note-api` 指令，統一使用全域 `/take-note`

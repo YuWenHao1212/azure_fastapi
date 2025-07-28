@@ -7,8 +7,9 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-import azure.functions as func
 import pytest
+
+import azure.functions as func
 
 # Add project root to path
 current_dir = Path(__file__).parent
