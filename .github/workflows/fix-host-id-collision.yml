@@ -1,0 +1,172 @@
+name: Fix Host ID Collision
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_fix:
+        description: 'Apply the Host ID fix (yes/no)'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+        - 'no'
+        - 'yes'
+
+env:
+  RESOURCE_GROUP: 'airesumeadvisorfastapi'
+  FUNCTION_APP_NAME: 'airesumeadvisor-fastapi-japaneast'
+  PRODUCTION_HOST_ID: 'ara-api-je-prod-v2'
+  STAGING_HOST_ID: 'ara-api-je-stg-v2'
+
+jobs:
+  diagnose-and-fix:
+    runs-on: ubuntu-latest
+    name: Diagnose and Fix Host ID Collision
+    
+    steps:
+    - name: 🔍 Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: 📊 Diagnose Current State
+      run: |
+        echo "🔍 Checking current Host ID configuration..."
+        
+        # Check current Host ID setting
+        CURRENT_HOST_ID=$(az functionapp config appsettings list \
+          --name "$FUNCTION_APP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
+          --query "[?name=='AzureFunctionsWebHost__hostId'].value" \
+          --output tsv 2>/dev/null || echo "Not Set")
+        
+        echo "Current Host ID: $CURRENT_HOST_ID"
+        
+        # Get storage account info
+        STORAGE_CONNECTION=$(az functionapp config appsettings list \
+          --name "$FUNCTION_APP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
+          --query "[?name=='AzureWebJobsStorage'].value" \
+          --output tsv)
+        
+        STORAGE_ACCOUNT=$(echo "$STORAGE_CONNECTION" | grep -oP 'AccountName=\K[^;]+' || echo "Unknown")
+        echo "Storage Account: $STORAGE_ACCOUNT"
+        
+        # Check for other function apps
+        echo ""
+        echo "🔍 Checking for other Function Apps in resource group..."
+        az functionapp list \
+          --resource-group "$RESOURCE_GROUP" \
+          --query "[].{Name:name, State:state}" \
+          --output table
+    
+    - name: ⚠️ Display Fix Plan
+      if: github.event.inputs.apply_fix == 'yes'
+      run: |
+        echo "⚠️ Fix Plan:"
+        echo "============"
+        echo "This will set the following Host IDs:"
+        echo "  Production: $PRODUCTION_HOST_ID"
+        echo "  Staging: $STAGING_HOST_ID"
+        echo ""
+        echo "This should resolve the AZFD0004 Host ID collision error."
+    
+    - name: 🔧 Apply Host ID Fix
+      if: github.event.inputs.apply_fix == 'yes'
+      run: |
+        echo "🔧 Applying Host ID fix..."
+        
+        # Set Host ID for production
+        echo "Setting Host ID for production slot..."
+        az functionapp config appsettings set \
+          --name "$FUNCTION_APP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
+          --settings "AzureFunctionsWebHost__hostId=$PRODUCTION_HOST_ID"
+        
+        echo "✅ Production Host ID set to: $PRODUCTION_HOST_ID"
+        
+        # Check if staging slot exists
+        STAGING_EXISTS=$(az functionapp deployment slot list \
+          --name "$FUNCTION_APP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
+          --query "[?name=='staging'].name" \
+          --output tsv)
+        
+        if [ -n "$STAGING_EXISTS" ]; then
+          echo "Setting Host ID for staging slot..."
+          az functionapp config appsettings set \
+            --name "$FUNCTION_APP_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --slot staging \
+            --settings "AzureFunctionsWebHost__hostId=$STAGING_HOST_ID"
+          
+          echo "✅ Staging Host ID set to: $STAGING_HOST_ID"
+        else
+          echo "⚠️ No staging slot found, skipping staging configuration"
+        fi
+    
+    - name: 🔄 Restart Function App
+      if: github.event.inputs.apply_fix == 'yes'
+      run: |
+        echo "🔄 Restarting Function App..."
+        az functionapp restart \
+          --name "$FUNCTION_APP_NAME" \
+          --resource-group "$RESOURCE_GROUP"
+        
+        echo "✅ Function App restarted"
+        
+        # Wait for restart
+        echo "⏳ Waiting 30 seconds for restart to complete..."
+        sleep 30
+    
+    - name: 🧪 Verify Fix
+      if: github.event.inputs.apply_fix == 'yes'
+      run: |
+        echo "🧪 Verifying the fix..."
+        
+        # Check if Host ID is now set correctly
+        NEW_HOST_ID=$(az functionapp config appsettings list \
+          --name "$FUNCTION_APP_NAME" \
+          --resource-group "$RESOURCE_GROUP" \
+          --query "[?name=='AzureFunctionsWebHost__hostId'].value" \
+          --output tsv)
+        
+        if [ "$NEW_HOST_ID" == "$PRODUCTION_HOST_ID" ]; then
+          echo "✅ Host ID successfully updated to: $NEW_HOST_ID"
+        else
+          echo "❌ Host ID update may have failed. Current value: $NEW_HOST_ID"
+          exit 1
+        fi
+        
+        # Test health endpoint
+        echo ""
+        echo "🧪 Testing health endpoint..."
+        HEALTH_URL="https://${FUNCTION_APP_NAME}.azurewebsites.net/health"
+        if [ -n "${{ secrets.JAPANEAST_PRODUCTION_HOST_KEY }}" ]; then
+          HEALTH_URL="${HEALTH_URL}?code=${{ secrets.JAPANEAST_PRODUCTION_HOST_KEY }}"
+        fi
+        
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL" || echo "000")
+        if [ "$HTTP_CODE" == "200" ]; then
+          echo "✅ Health check passed"
+        else
+          echo "⚠️ Health check returned: $HTTP_CODE"
+        fi
+    
+    - name: 📊 Summary
+      if: always()
+      run: |
+        echo ""
+        echo "📊 Summary"
+        echo "=========="
+        if [ "${{ github.event.inputs.apply_fix }}" == "yes" ]; then
+          echo "✅ Host ID fix has been applied"
+          echo ""
+          echo "Next steps:"
+          echo "1. Monitor Azure Portal > Diagnose and solve problems"
+          echo "2. Check for AZFD0004 errors in the next 30 minutes"
+          echo "3. If errors persist, manual storage cleanup may be needed"
+        else
+          echo "ℹ️ Diagnosis completed. No changes were made."
+          echo "To apply the fix, run this workflow again with 'Apply fix' = 'yes'"
+        fi
