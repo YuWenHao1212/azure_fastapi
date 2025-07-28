@@ -190,6 +190,7 @@ async def extract_jd_keywords(
         headers = dict(http_request.headers)
     
     # Use smart LLM client selection (hybrid approach)
+    init_start = time.time()
     from src.services.llm_factory import get_llm_client_smart, get_llm_info
     
     llm_client = get_llm_client_smart(
@@ -210,6 +211,7 @@ async def extract_jd_keywords(
         cache_ttl_minutes=60,  # Cache for 1 hour
         enable_parallel_processing=True  # ✅ Keep parallel processing for speed
     )
+    timing_breakdown["service_init_ms"] = (time.time() - init_start) * 1000
     
     try:
         # Validate request using Work Item #346 validator
@@ -249,6 +251,26 @@ async def extract_jd_keywords(
             f"method={result['extraction_method']}, "
             f"time={timing_breakdown['total_ms']:.2f}ms, "
             f"confidence={result['confidence_score']}"
+        )
+        
+        # Log detailed performance breakdown
+        logger.info(
+            "Performance breakdown",
+            extra={
+                "custom_dimensions": {
+                    "operation": "api_keyword_extraction_complete",
+                    "total_api_ms": timing_breakdown['total_ms'],
+                    "service_init_ms": timing_breakdown.get('service_init_ms', 0),
+                    "validation_ms": timing_breakdown['validation_ms'],
+                    "extraction_ms": timing_breakdown['keyword_extraction_ms'],
+                    "language": result.get('detected_language', 'unknown'),
+                    "cache_hit": result.get('cache_hit', False),
+                    "keyword_count": result.get('keyword_count', 0),
+                    "llm_model": llm_info['model'],
+                    "llm_region": llm_info['region'],
+                    "environment": "staging"
+                }
+            }
         )
         
         # Check for warnings in intersection stats and create appropriate response

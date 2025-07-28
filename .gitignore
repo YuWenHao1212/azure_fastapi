@@ -171,3 +171,6 @@ setup-github-secrets.sh
 
 # Azure Publish Profiles
 *.PublishSettings
+
+# Performance test results (may contain host keys)
+performance_results_*.json
