@@ -86,18 +86,36 @@ jobs:
         respect-funcignore: true
 
     - name: 🏥 Health Check - Production
+      env:
+        PRODUCTION_URL: "https://airesumeadvisor-fastapi-japaneast.azurewebsites.net"
+        PRODUCTION_HOST_KEY: ${{ secrets.JAPANEAST_PRODUCTION_HOST_KEY }}
       run: |
         echo "Waiting for deployment to complete..."
         sleep 30
         
         # Test production health endpoint
         echo "Testing production health endpoint..."
+        
+        # First check if host key is available
+        if [ -z "$PRODUCTION_HOST_KEY" ]; then
+          echo "⚠️  Warning: PRODUCTION_HOST_KEY not set, trying without authentication..."
+          HEALTH_URL="${PRODUCTION_URL}/health"
+        else
+          echo "✅ Using host key for authentication"
+          HEALTH_URL="${PRODUCTION_URL}/health?code=${PRODUCTION_HOST_KEY}"
+        fi
+        
         for i in {1..5}; do
-          if curl -f https://${AZURE_FUNCTIONAPP_NAME}.azurewebsites.net/health; then
+          response=$(curl -s -w "\n%{http_code}" "$HEALTH_URL" | tail -1)
+          if [ "$response" = "200" ]; then
             echo "✅ Production health check passed"
             break
+          elif [ "$response" = "401" ]; then
+            echo "❌ Health check failed with 401 Unauthorized"
+            echo "Please ensure JAPANEAST_PRODUCTION_HOST_KEY is set in GitHub Secrets"
+            exit 1
           else
-            echo "⏳ Attempt $i failed, retrying..."
+            echo "⏳ Attempt $i failed with status $response, retrying..."
             sleep 10
           fi
         done
