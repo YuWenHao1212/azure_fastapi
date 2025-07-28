@@ -385,14 +385,21 @@ https://airesumeadvisor-fastapi.azurewebsites.net
 
 | 錯誤碼 | 說明 | HTTP 狀態碼 |
 |--------|------|-------------|
+| **客戶端錯誤 (4xx)** | | |
 | VALIDATION_ERROR | 輸入參數驗證失敗 | 400 |
-| INVALID_REQUEST | 無效的請求資料 | 400 |
-| SERVICE_UNAVAILABLE | Azure OpenAI 服務暫時無法使用 | 503 |
-| OPENAI_ERROR | OpenAI 處理錯誤 | 500 |
-| TIMEOUT_ERROR | 請求處理超時 | 500 |
+| INVALID_REQUEST | 無效的請求格式或資料 | 400 |
+| UNAUTHORIZED | 缺少或無效的 API 金鑰 | 401 |
+| NOT_FOUND | 請求的資源不存在 | 404 |
+| PAYLOAD_TOO_LARGE | 請求內容超過大小限制 | 413 |
+| RATE_LIMIT_EXCEEDED | 超過 API 呼叫頻率限制 | 429 |
+| **伺服器錯誤 (5xx)** | | |
 | INTERNAL_SERVER_ERROR | 內部伺服器錯誤 | 500 |
-| SEARCH_ERROR | 課程搜尋失敗 | 200 |
-| HEALTH_CHECK_ERROR | 健康檢查失敗 | 503 |
+| LLM_SERVICE_ERROR | AI 服務處理錯誤 | 500 |
+| DATABASE_ERROR | 資料庫連線或查詢失敗 | 500 |
+| TIMEOUT_ERROR | 請求處理超時 | 504 |
+| SERVICE_UNAVAILABLE | 服務暫時無法使用 | 503 |
+| **健康檢查錯誤** | | |
+| HEALTH_CHECK_FAILED | 健康檢查失敗 | 503 |
 
 ## Rate Limits
 
@@ -425,8 +432,11 @@ def call_api_with_retry(url, data, max_retries=3):
                 print(f"API Error: {error['code']} - {error['message']}")
                 
                 # 如果是暫時性錯誤，重試
-                if error["code"] in ["SERVICE_UNAVAILABLE", "TIMEOUT_ERROR"]:
+                if error["code"] in ["SERVICE_UNAVAILABLE", "TIMEOUT_ERROR", "LLM_SERVICE_ERROR"]:
                     sleep(2 ** attempt)  # 指數退避
+                    continue
+                elif error["code"] == "RATE_LIMIT_EXCEEDED":
+                    sleep(60)  # Rate limit，等待 1 分鐘
                     continue
                 else:
                     raise Exception(error["message"])
@@ -440,10 +450,13 @@ def call_api_with_retry(url, data, max_retries=3):
 ```
 
 ### 2. 重試策略
-- **SERVICE_UNAVAILABLE (503)**：指數退避重試
-- **TIMEOUT_ERROR**：增加 timeout 並重試
-- **VALIDATION_ERROR (400)**：不重試，檢查輸入
-- 最多重試 3 次，每次等待 2^n 秒
+- **SERVICE_UNAVAILABLE (503)**：指數退避重試 (2^n 秒)
+- **TIMEOUT_ERROR (504)**：指數退避重試 (2^n 秒)
+- **LLM_SERVICE_ERROR (500)**：指數退避重試 (2^n 秒)
+- **RATE_LIMIT_EXCEEDED (429)**：等待 60 秒後重試
+- **VALIDATION_ERROR (400)**：不重試，檢查輸入參數
+- **UNAUTHORIZED (401)**：不重試，檢查 API 金鑰
+- 最多重試 3 次
 
 ### 3. 效能優化
 - **平行請求**：使用 asyncio 或 threading

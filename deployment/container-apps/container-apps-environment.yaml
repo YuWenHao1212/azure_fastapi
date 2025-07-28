@@ -1,0 +1,144 @@
+# Azure Container Apps Environment Configuration
+# This file defines the Container Apps Environment for AI Resume Advisor API
+
+apiVersion: app.containers.azure.com/v1
+kind: ContainerApp
+metadata:
+  name: airesumeadvisor-api
+  resourceGroup: airesumeadvisorfastapi
+  location: japaneast
+spec:
+  # Environment Configuration
+  environment:
+    name: airesumeadvisor-env
+    location: japaneast
+    properties:
+      # Log Analytics Workspace (existing)
+      logAnalytics:
+        customerId: "[TO_BE_REPLACED_BY_SCRIPT]"
+        sharedKey: "[TO_BE_REPLACED_BY_SCRIPT]"
+      
+      # Network Configuration (Internal VNET - future enhancement)
+      # vnetConfiguration:
+      #   infrastructureSubnetId: "/subscriptions/[SUBSCRIPTION]/resourceGroups/[RG]/providers/Microsoft.Network/virtualNetworks/[VNET]/subnets/[SUBNET]"
+      #   internal: false
+
+  # Container App Configuration  
+  template:
+    # Container Definition
+    containers:
+    - name: airesumeadvisor-api
+      image: airesumeadvisorregistry.azurecr.io/airesumeadvisor-api:latest
+      resources:
+        cpu: 1.0          # 1 vCPU
+        memory: 2Gi       # 2GB Memory
+      
+      # Environment Variables (secrets referenced)
+      env:
+      - name: AZURE_OPENAI_ENDPOINT
+        secretRef: azure-openai-endpoint
+      - name: AZURE_OPENAI_API_KEY
+        secretRef: azure-openai-api-key
+      - name: AZURE_OPENAI_GPT4_DEPLOYMENT
+        value: "gpt-4.1-japan"
+      - name: AZURE_OPENAI_API_VERSION
+        value: "2025-01-01-preview"
+      - name: EMBEDDING_ENDPOINT
+        secretRef: embedding-endpoint
+      - name: EMBEDDING_API_KEY
+        secretRef: embedding-api-key
+      - name: APPINSIGHTS_INSTRUMENTATIONKEY
+        secretRef: appinsights-key
+      - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+        secretRef: appinsights-connection-string
+      
+      # Health Probes
+      probes:
+      - type: liveness
+        httpGet:
+          path: /api/health
+          port: 8000
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 10
+        failureThreshold: 3
+      - type: readiness
+        httpGet:
+          path: /api/health
+          port: 8000
+        initialDelaySeconds: 5
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+
+    # Scaling Configuration
+    scale:
+      minReplicas: 1
+      maxReplicas: 10
+      rules:
+      - name: http-rule
+        http:
+          metadata:
+            concurrentRequests: "20"
+      - name: cpu-rule
+        custom:
+          type: cpu
+          metadata:
+            type: Utilization
+            value: "70"
+
+  # Ingress Configuration
+  configuration:
+    ingress:
+      external: true
+      targetPort: 8000
+      transport: http
+      traffic:
+      - weight: 100
+        latestRevision: true
+      
+      # CORS Configuration
+      corsPolicy:
+        allowedOrigins:
+        - "https://airesumeadvisor.bubbleapps.io"
+        - "https://airesumeadvisor-dev.bubbleapps.io"
+        allowedMethods:
+        - "GET"
+        - "POST"
+        - "OPTIONS"
+        allowedHeaders:
+        - "Content-Type"
+        - "Authorization"
+        - "X-Requested-With"
+        maxAge: 300
+
+    # Registry Configuration
+    registries:
+    - server: airesumeadvisorregistry.azurecr.io
+      username: "[TO_BE_REPLACED_BY_SCRIPT]"
+      passwordSecretRef: acr-password
+
+    # Secrets (will be created by deployment script)
+    secrets:
+    - name: azure-openai-endpoint
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+    - name: azure-openai-api-key
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+    - name: embedding-endpoint
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+    - name: embedding-api-key
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+    - name: appinsights-key
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+    - name: appinsights-connection-string
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+    - name: acr-password
+      value: "[TO_BE_REPLACED_BY_SCRIPT]"
+
+# Expected Performance Improvements with Container Apps:
+# - extract-jd-keywords: 6.0s → 2.8s (53% improvement)
+# - index-calculation: 8.0s → 5.0s (38% improvement)  
+# - gap-analysis: 33.0s → 30.0s (9% improvement)
+# - format-resume: 18.0s → 15.0s (17% improvement)
+# - tailor-resume: 23.0s → 20.0s (13% improvement)
+# - course-search: 5.0s → 2.0s (60% improvement)

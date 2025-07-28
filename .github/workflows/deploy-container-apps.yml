@@ -1,0 +1,243 @@
+# GitHub Actions Workflow for Azure Container Apps Deployment
+# Triggers on push to 'container' branch
+
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [ container ]
+  pull_request:
+    branches: [ container ]
+  workflow_dispatch:  # Allow manual triggering
+
+env:
+  AZURE_SUBSCRIPTION_ID: 5396d388-8261-464e-8ee4-112770674fba
+  AZURE_RESOURCE_GROUP: airesumeadvisorfastapi
+  AZURE_LOCATION: japaneast
+  ACR_NAME: airesumeadvisorregistry
+  CONTAINER_APP_NAME: airesumeadvisor-api
+  CONTAINER_ENV_NAME: airesumeadvisor-env
+  IMAGE_NAME: airesumeadvisor-api
+
+jobs:
+  # Job 1: Run Tests
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run pre-commit tests (Level 2 - Container Apps CI/CD)
+      run: |
+        # Level 2: Code style + Unit tests (no real API calls in CI)
+        ./run_precommit_tests.sh --level-2 --parallel
+      env:
+        # Mock environment variables for testing
+        AZURE_OPENAI_API_KEY: "mock-key-for-testing"
+        AZURE_OPENAI_ENDPOINT: "https://mock-endpoint.openai.azure.com"
+        EMBEDDING_API_KEY: "mock-embedding-key"
+        EMBEDDING_ENDPOINT: "https://mock-embedding.openai.azure.com"
+
+  # Job 2: Build and Deploy to Container Apps
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/container'  # Only deploy from container branch
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Log in to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Azure Container Registry
+      run: |
+        az acr login --name ${{ env.ACR_NAME }}
+    
+    - name: Get ACR login server
+      id: acr-login-server
+      run: |
+        echo "acr_login_server=$(az acr show --name ${{ env.ACR_NAME }} --query loginServer --output tsv)" >> $GITHUB_OUTPUT
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: deployment/container-apps/Dockerfile
+        push: true
+        tags: |
+          ${{ steps.acr-login-server.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:latest
+          ${{ steps.acr-login-server.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Create Container Apps Environment (if not exists)
+      run: |
+        # Check if environment exists
+        if ! az containerapp env show \
+          --name ${{ env.CONTAINER_ENV_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+          
+          echo "Creating Container Apps Environment..."
+          
+          # Get Log Analytics workspace ID
+          WORKSPACE_ID=$(az monitor log-analytics workspace show \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --workspace-name "airesumeadvisorfastapi" \
+            --query customerId --output tsv 2>/dev/null || echo "")
+          
+          if [ -n "$WORKSPACE_ID" ]; then
+            az containerapp env create \
+              --name ${{ env.CONTAINER_ENV_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }} \
+              --logs-workspace-id "$WORKSPACE_ID"
+          else
+            echo "Creating environment without existing Log Analytics workspace..."
+            az containerapp env create \
+              --name ${{ env.CONTAINER_ENV_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --location ${{ env.AZURE_LOCATION }}
+          fi
+        else
+          echo "Container Apps Environment already exists"
+        fi
+    
+    - name: Deploy to Container Apps
+      run: |
+        # Get ACR credentials
+        ACR_USERNAME=$(az acr credential show --name ${{ env.ACR_NAME }} --query username --output tsv)
+        ACR_PASSWORD=$(az acr credential show --name ${{ env.ACR_NAME }} --query passwords[0].value --output tsv)
+        
+        # Full image name
+        FULL_IMAGE_NAME="${{ steps.acr-login-server.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        
+        # Check if Container App exists
+        if az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} 2>/dev/null; then
+          
+          echo "Updating existing Container App..."
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image "$FULL_IMAGE_NAME"
+        else
+          echo "Creating new Container App..."
+          az containerapp create \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --environment ${{ env.CONTAINER_ENV_NAME }} \
+            --image "$FULL_IMAGE_NAME" \
+            --registry-server ${{ steps.acr-login-server.outputs.acr_login_server }} \
+            --registry-username "$ACR_USERNAME" \
+            --registry-password "$ACR_PASSWORD" \
+            --target-port 8000 \
+            --ingress external \
+            --min-replicas 1 \
+            --max-replicas 10 \
+            --cpu 1.0 \
+            --memory 2Gi \
+            --env-vars \
+              AZURE_OPENAI_ENDPOINT=secretref:azure-openai-endpoint \
+              AZURE_OPENAI_API_KEY=secretref:azure-openai-api-key \
+              AZURE_OPENAI_GPT4_DEPLOYMENT=gpt-4.1-japan \
+              AZURE_OPENAI_API_VERSION=2025-01-01-preview \
+              EMBEDDING_ENDPOINT=secretref:embedding-endpoint \
+              EMBEDDING_API_KEY=secretref:embedding-api-key \
+              APPINSIGHTS_INSTRUMENTATIONKEY=secretref:appinsights-key \
+              APPLICATIONINSIGHTS_CONNECTION_STRING=secretref:appinsights-connection-string \
+            --secrets \
+              azure-openai-endpoint="${{ secrets.AZURE_OPENAI_ENDPOINT }}" \
+              azure-openai-api-key="${{ secrets.AZURE_OPENAI_API_KEY }}" \
+              embedding-endpoint="${{ secrets.EMBEDDING_ENDPOINT }}" \
+              embedding-api-key="${{ secrets.EMBEDDING_API_KEY }}" \
+              appinsights-key="${{ secrets.APPINSIGHTS_INSTRUMENTATIONKEY }}" \
+              appinsights-connection-string="${{ secrets.APPLICATIONINSIGHTS_CONNECTION_STRING }}"
+        fi
+    
+    - name: Get Container App URL
+      id: get-url
+      run: |
+        CONTAINER_APP_URL=$(az containerapp show \
+          --name ${{ env.CONTAINER_APP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query properties.configuration.ingress.fqdn \
+          --output tsv)
+        echo "container_app_url=https://$CONTAINER_APP_URL" >> $GITHUB_OUTPUT
+        echo "Container App URL: https://$CONTAINER_APP_URL"
+    
+    - name: Health Check
+      run: |
+        echo "Waiting 60 seconds for deployment to stabilize..."
+        sleep 60
+        
+        # Health check with retry
+        for i in {1..5}; do
+          echo "Health check attempt $i/5..."
+          if curl -f "${{ steps.get-url.outputs.container_app_url }}/api/health" --max-time 30; then
+            echo "✅ Health check passed!"
+            break
+          else
+            echo "❌ Health check failed, retrying in 30 seconds..."
+            sleep 30
+          fi
+          
+          if [ $i -eq 5 ]; then
+            echo "❌ Health check failed after 5 attempts"
+            exit 1
+          fi
+        done
+    
+    - name: Run Basic API Test
+      run: |
+        echo "Testing basic API functionality..."
+        
+        # Test extract-jd-keywords endpoint
+        curl -X POST "${{ steps.get-url.outputs.container_app_url }}/api/v1/extract-jd-keywords" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "job_description": "We are looking for a Python developer with FastAPI experience. Must have Docker knowledge and Azure cloud experience.",
+            "language": "en"
+          }' \
+          --max-time 60 \
+          --fail-with-body \
+          -w "Response time: %{time_total}s\n"
+    
+    - name: Deployment Summary
+      run: |
+        echo "🎉 Deployment completed successfully!"
+        echo ""
+        echo "📋 Deployment Details:"
+        echo "   Branch: ${{ github.ref_name }}"
+        echo "   Commit: ${{ github.sha }}"
+        echo "   Image: ${{ steps.acr-login-server.outputs.acr_login_server }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        echo "   Container App: ${{ env.CONTAINER_APP_NAME }}"
+        echo "   URL: ${{ steps.get-url.outputs.container_app_url }}"
+        echo ""
+        echo "🔗 Next Steps:"
+        echo "   - Update frontend to use new Container Apps URL"
+        echo "   - Run performance comparison tests"
+        echo "   - Monitor Application Insights for metrics"

@@ -1,0 +1,47 @@
+# Docker Compose for local Container Apps development
+# Simulates Container Apps environment locally
+
+version: '3.8'
+
+services:
+  # Main API service
+  airesumeadvisor-api:
+    build:
+      context: ../../
+      dockerfile: deployment/container-apps/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.test
+    environment:
+      # Override specific settings for Container Apps testing
+      - AZURE_OPENAI_GPT4_DEPLOYMENT=gpt-4.1-japan
+      - AZURE_OPENAI_API_VERSION=2025-01-01-preview
+      # Development settings
+      - ENVIRONMENT=container-test
+      - LOG_LEVEL=INFO
+    volumes:
+      # Mount source code for development (optional)
+      - ../../src:/app/src:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Nginx proxy (simulates Container Apps ingress)
+  nginx-proxy:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - airesumeadvisor-api
+    restart: unless-stopped
+
+networks:
+  default:
+    name: airesumeadvisor-network
