@@ -70,13 +70,26 @@ Claude Code **絕對不可以**自行執行 `git commit`
 ## 專案概述
 
 ### 技術棧
-- **架構模式**: FHS (Functional Hierarchy Structure)
+
+#### 當前部署架構 (Functions 版本)
+- **架構模式**: FHS (Functional Hierarchy Structure) 
 - **框架**: FastAPI
 - **Python 版本**: 3.11.8 (使用 .venv 虛擬環境)
 - **虛擬環境**: `/Users/yuwenhao/Documents/GitHub/azure_fastapi/.venv/`
-- **部署平台**: Azure Function App
+- **部署平台**: Azure Function App (Premium Plan EP1)
+- **主要部署**: Japan East (airesumeadvisor-fastapi-japaneast)
 - **版本控制**: GitHub (主要) + Azure DevOps Repos (鏡像)
 - **CI/CD**: ✅ GitHub Actions → Azure Functions（已完成設置，push to main 自動部署）
+
+#### 目標架構 (Container Apps 版本) 🎯
+- **架構模式**: 雲原生容器化架構
+- **框架**: FastAPI (原生運行，無 ASGI 適配層)
+- **容器技術**: Docker + Azure Container Apps
+- **部署區域**: Japan East (與 OpenAI 同區域)
+- **自動縮放**: 2-10 實例
+- **預期效能**: 40-91% 響應時間改善
+
+#### 開發工具
 - **協作工具**: Claude Code + WenHao (Cursor 僅作為 IDE，不使用其 LLM)
 - **記憶系統**: Serena MCP (提供歷史記錄查詢，但非日常開發工具)
 
@@ -92,29 +105,36 @@ Claude Code **絕對不可以**自行執行 `git commit`
 - **Tenant**: wenhaoairesumeadvisor.onmicrosoft.com
 - **Portal URL**: https://portal.azure.com/#@wenhaoairesumeadvisor.onmicrosoft.com/resource/subscriptions/5396d388-8261-464e-8ee4-112770674fba/resourceGroups/airesumeadvisorfastapi/providers/Microsoft.Insights/components/airesumeadvisorfastapi/overview
 
-### Azure Function App 資訊
+### Azure Function App 資訊 (當前部署)
 
-#### Standard App (Flex Consumption Plan)
+#### 主要生產環境 - Japan East 🌏
+- **Function App 名稱**: airesumeadvisor-fastapi-japaneast
+- **基礎 URL**: https://airesumeadvisor-fastapi-japaneast.azurewebsites.net
+- **Host Key**: 從環境變數 `AZURE_FUNCTION_KEY_JAPAN_EAST` 獲取
+- **計畫類型**: Premium Plan (EP1)
+- **部署區域**: Japan East
+- **狀態**: 主要生產環境 ✅
+- **特色**: 與 GPT-4.1 mini 同區域，網路延遲最低
+
+#### 備用環境
+
+**Standard 環境 (備用)**:
 - **Function App 名稱**: airesumeadvisor-fastapi
 - **基礎 URL**: https://airesumeadvisor-fastapi.azurewebsites.net
-- **Host Key**: `[YOUR_HOST_KEY]` (請從 Azure Portal 獲取)
 - **計畫類型**: Flex Consumption Plan
-- **狀態**: 生產環境
+- **狀態**: 備用環境
 
-#### Premium App (Premium Plan) - 新環境 🆕
+**Premium 環境 (East Asia)**:
 - **Function App 名稱**: airesumeadvisor-fastapi-premium
+- **基礎 URL**: https://airesumeadvisor-fastapi-premium.azurewebsites.net
 - **計畫類型**: Premium Plan (EP1)
-- **部署槽位**: 
-  - **Production Slot**
-    - **URL**: https://airesumeadvisor-fastapi-premium.azurewebsites.net
-    - **Host Key**: `[YOUR_HOST_KEY]` (請從 Azure Portal 獲取)
-    - **環境**: production
-  - **Staging Slot**
-    - **URL**: https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net
-    - **Host Key**: `[YOUR_HOST_KEY]` (請從 Azure Portal 獲取)
-    - **環境**: staging
+- **部署區域**: East Asia
+- **狀態**: 備用環境
 
-**注意**: Premium 環境可用來取代 Standard 環境，提供更好的效能和獨立的測試環境。
+**注意**: 
+- 當前主要使用 Japan East 環境，效能最佳
+- 所有 Function Keys 已改為環境變數管理，提升安全性
+- 其他環境作為備用，用於災難恢復或 A/B 測試
 
 ### PostgreSQL 資料庫資訊
 - **Host**: airesumeadvisor-courses-db-eastasia.postgres.database.azure.com
@@ -196,68 +216,45 @@ Claude Code **絕對不可以**自行執行 `git commit`
 
 ### 已部署的 API 端點
 
-#### Standard 環境 (airesumeadvisor-fastapi)
+#### 🌏 主要生產環境 - Japan East (推薦使用)
 ```bash
-# 關鍵字提取
-https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
+# 關鍵字提取 (優化後：平均 2.8 秒)
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net/api/v1/extract-jd-keywords?code=${AZURE_FUNCTION_KEY_JAPAN_EAST}
 
 # 指標計算
-https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net/api/v1/index-calculation?code=${AZURE_FUNCTION_KEY_JAPAN_EAST}
 
 # 指標計算與間隙分析
-https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=${AZURE_FUNCTION_KEY_JAPAN_EAST}
 
 # 履歷格式化
-https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net/api/v1/format-resume?code=${AZURE_FUNCTION_KEY_JAPAN_EAST}
 
 # 履歷優化
-https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net/api/v1/tailor-resume?code=${AZURE_FUNCTION_KEY_JAPAN_EAST}
 
 # 課程搜尋
-https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net/api/v1/courses/search?code=${AZURE_FUNCTION_KEY_JAPAN_EAST}
 ```
 
-#### Premium 環境 - Production (airesumeadvisor-fastapi-premium) 🆕
+#### 🔄 備用環境
+
+**Standard 環境 (Flex Consumption)**:
 ```bash
-# 關鍵字提取
-https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
-
-# 指標計算
-https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
-
-# 指標計算與間隙分析
-https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
-
-# 履歷格式化
-https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
-
-# 履歷優化
-https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
-
-# 課程搜尋
-https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
+# 基礎 URL（備用）
+https://airesumeadvisor-fastapi.azurewebsites.net/api/v1/[endpoint]?code=${AZURE_FUNCTION_KEY_STANDARD}
 ```
 
-#### Premium 環境 - Staging (airesumeadvisor-fastapi-premium-staging) 🧪
+**Premium 環境 - East Asia (備用)**:
 ```bash
-# 關鍵字提取
-https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/extract-jd-keywords?code=[YOUR_HOST_KEY]
-
-# 指標計算
-https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/index-calculation?code=[YOUR_HOST_KEY]
-
-# 指標計算與間隙分析
-https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/index-cal-and-gap-analysis?code=[YOUR_HOST_KEY]
-
-# 履歷格式化
-https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/format-resume?code=[YOUR_HOST_KEY]
-
-# 履歷優化
-https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/tailor-resume?code=[YOUR_HOST_KEY]
-
-# 課程搜尋
-https://airesumeadvisor-fastapi-premium-staging.azurewebsites.net/api/v1/courses/search?code=[YOUR_HOST_KEY]
+# 基礎 URL（備用）  
+https://airesumeadvisor-fastapi-premium.azurewebsites.net/api/v1/[endpoint]?code=${AZURE_FUNCTION_KEY_PREMIUM}
 ```
+
+**使用建議**:
+- ✅ **主要使用**: Japan East 環境 (最佳效能)
+- ⚠️ **備用**: 其他環境僅在 Japan East 不可用時使用
+- 🔐 **安全**: 所有 Function Keys 已改為環境變數管理
 
 ### FHS + FastAPI 架構規範
 
@@ -330,15 +327,28 @@ azure_fastapi/
 ### 環境變數管理
 
 ```yaml
-# 公開配置（可提交）
-EMBEDDING_ENDPOINT: https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com/...
-LLM2_ENDPOINT: https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com
+# 當前 Azure OpenAI 配置（可提交）
+AZURE_OPENAI_ENDPOINT: https://airesumeadvisor-japaneast.openai.azure.com
+AZURE_OPENAI_GPT4_DEPLOYMENT: gpt-4o-mini
+AZURE_OPENAI_API_VERSION: 2024-02-15-preview
+
+# 向量嵌入配置 (目前使用 Sweden Central)
+EMBEDDING_ENDPOINT: https://wenha-m7qan2zj-swedencentral.cognitiveservices.azure.com
 
 # 敏感配置（絕不提交）- 存放位置：
-# 1. Azure Key Vault (生產環境)
+# 1. Azure Key Vault (生產環境) 
 # 2. local.settings.json (本地開發)
 # 3. GitHub Secrets (CI/CD)
 # 4. Azure Function App Configuration (部署環境)
+
+# Function Keys (環境變數)
+AZURE_FUNCTION_KEY_JAPAN_EAST: # Japan East 主要環境
+AZURE_FUNCTION_KEY_STANDARD: # Standard 備用環境
+AZURE_FUNCTION_KEY_PREMIUM: # Premium 備用環境
+
+# OpenAI API Keys
+AZURE_OPENAI_API_KEY: # Japan East OpenAI 服務金鑰
+EMBEDDING_API_KEY: # Sweden Central 嵌入服務金鑰
 ```
 
 ### 配置範例
@@ -1317,10 +1327,18 @@ class DataModel(BaseModel):
 
 ---
 
-**文檔版本**: 2.9.0  
+**文檔版本**: 2.9.1  
 **最後更新**: 2025-07-28  
 **維護者**: Claude Code + WenHao  
-**適用專案**: FHS + FastAPI Container Apps 重構專案
+**適用專案**: FHS + FastAPI → Container Apps 重構專案
+
+### v2.9.1 更新內容 (2025-07-28)
+- **全面更新過時資訊**：移除過時的 Premium/Standard 環境配置
+- **主要環境調整**：Japan East 環境設為主要生產環境
+- **技術棧更新**：加入當前架構與目標 Container Apps 架構對比
+- **API 端點精簡**：突出 Japan East 環境，其他環境標記為備用
+- **安全配置現代化**：更新 Azure OpenAI 配置，環境變數管理策略
+- **文檔結構優化**：移除冗餘資訊，聚焦當前重構任務
 
 ### v2.9.0 更新內容 (2025-07-28)
 - **重大里程碑**：完成 Azure Functions 效能分析，發現 3+ 秒架構開銷
