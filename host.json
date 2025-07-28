@@ -36,9 +36,6 @@
       "maxOutstandingRequests": 200,
       "maxConcurrentRequests": 100,
       "dynamicThrottlesEnabled": true
-    },
-    "durableTask": {
-      "hostId": "airesumeadvisor-fastapi-japaneast-prod"
     }
   }
 }
