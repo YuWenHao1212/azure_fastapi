@@ -48,28 +48,28 @@ jobs:
     - name: 📝 Check YAML Files
       run: |
         echo "Validating YAML files..."
-        python -c "
-import yaml
-import sys
-from pathlib import Path
-
-errors = []
-for yaml_file in Path('src/prompts').rglob('*.yaml'):
-    try:
-        with open(yaml_file) as f:
-            yaml.safe_load(f)
-        print(f'✓ {yaml_file}')
-    except Exception as e:
-        errors.append(f'✗ {yaml_file}: {e}')
+        python << 'EOF'
+        import yaml
+        import sys
+        from pathlib import Path
         
-if errors:
-    print('\nErrors found:')
-    for error in errors:
-        print(error)
-    sys.exit(1)
-else:
-    print('\nAll YAML files are valid!')
-"
+        errors = []
+        for yaml_file in Path('src/prompts').rglob('*.yaml'):
+            try:
+                with open(yaml_file) as f:
+                    yaml.safe_load(f)
+                print(f'✓ {yaml_file}')
+            except Exception as e:
+                errors.append(f'✗ {yaml_file}: {e}')
+                
+        if errors:
+            print('\nErrors found:')
+            for error in errors:
+                print(error)
+            sys.exit(1)
+        else:
+            print('\nAll YAML files are valid!')
+        EOF
 
     - name: 🧪 Run Unit Tests (Level 2)
       run: |
