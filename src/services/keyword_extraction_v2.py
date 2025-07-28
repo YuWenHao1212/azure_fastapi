@@ -175,6 +175,7 @@ class KeywordExtractionServiceV2(BaseService):
     async def process(self, data: dict[str, Any]) -> dict[str, Any]:
         """Process keyword extraction with unified prompt management."""
         start_time = time.time()
+        metrics = {}  # Collect detailed timing metrics
         
         # Extract parameters
         job_description = data['job_description']
@@ -199,14 +200,17 @@ class KeywordExtractionServiceV2(BaseService):
             )
             
             # 2. Check cache
+            cache_key_start = time.time()
             cache_key = self._generate_cache_key(
                 job_description, detected_language, max_keywords, 
                 include_standardization, prompt_version
             )
+            metrics['cache_key_generation_ms'] = (time.time() - cache_key_start) * 1000
             
             cache_start = time.time()
             cached_result = self._get_cached_result(cache_key)
             cache_retrieval_time = (time.time() - cache_start) * 1000
+            metrics['cache_check_ms'] = cache_retrieval_time
             
             if cached_result is not None:
                 processing_time = int((time.time() - start_time) * 1000)
@@ -246,6 +250,7 @@ class KeywordExtractionServiceV2(BaseService):
             )
             
             # 3. Execute extraction with YAML configuration
+            extraction_start = time.time()
             extraction_result = await self._extract_keywords_with_config(
                 job_description, 
                 detected_language,
@@ -253,9 +258,15 @@ class KeywordExtractionServiceV2(BaseService):
                 include_standardization,
                 prompt_version
             )
+            metrics['extraction_total_ms'] = (time.time() - extraction_start) * 1000
             
             # 4. Build result
             processing_time = int((time.time() - start_time) * 1000)
+            
+            # Merge timing metrics from extraction_result if available
+            if 'timing_metrics' in extraction_result:
+                metrics.update(extraction_result['timing_metrics'])
+                del extraction_result['timing_metrics']  # Remove from final result
             
             result = {
                 **extraction_result,
@@ -267,7 +278,29 @@ class KeywordExtractionServiceV2(BaseService):
             }
             
             # 5. Cache result
+            cache_write_start = time.time()
             self._cache_result(cache_key, result)
+            metrics['cache_write_ms'] = (time.time() - cache_write_start) * 1000
+            
+            # Log detailed performance metrics
+            self.logger.info(
+                "Keyword extraction performance metrics",
+                extra={
+                    "custom_dimensions": {
+                        "operation": "keyword_extraction_complete",
+                        "total_processing_ms": processing_time,
+                        "language_detection_ms": language_detection_time,
+                        "cache_hit": False,
+                        "detected_language": detected_language,
+                        "prompt_version": prompt_version,
+                        "keyword_count": result.get('keyword_count', 0),
+                        "llm_endpoint": getattr(self.openai_client, 'endpoint', 'unknown'),
+                        "llm_model": getattr(self.openai_client, 'deployment_id', 'unknown'),
+                        "environment": "staging",
+                        **metrics  # Include all detailed metrics
+                    }
+                }
+            )
             
             # Track actual OpenAI API token usage for cache miss
             if 'llm_config_used' in extraction_result:
@@ -482,7 +515,10 @@ class KeywordExtractionServiceV2(BaseService):
         Execute keyword extraction using configuration from YAML.
         This is the key difference - all LLM parameters come from YAML!
         """
+        timing_metrics = {}
+        
         # 1. Get prompt and LLM config from UnifiedPromptService
+        prompt_start = time.time()
         try:
             formatted_prompt, llm_config = self.unified_prompt_service.get_prompt_with_config(
                 language=language,
@@ -492,6 +528,7 @@ class KeywordExtractionServiceV2(BaseService):
         except Exception as e:
             self.logger.error(f"Failed to get prompt config for {language}/{prompt_version}: {str(e)}")
             raise ValueError(f"Prompt not available: {str(e)}")
+        timing_metrics['prompt_loading_ms'] = (time.time() - prompt_start) * 1000
         
         # 2. Execute 2-round extraction with YAML-based config
         if self.enable_parallel_processing:
@@ -503,15 +540,30 @@ class KeywordExtractionServiceV2(BaseService):
                 self._extract_single_round(formatted_prompt, llm_config, round_num=2)
             )
             
-            round1_keywords, round2_keywords = await asyncio.gather(round1_task, round2_task)
+            round1_data, round2_data = await asyncio.gather(round1_task, round2_task)
+            round1_keywords, round1_timing = round1_data
+            round2_keywords, round2_timing = round2_data
             round_processing_time = int((time.time() - round_start_time) * 1000)
+            
+            timing_metrics['round1_ms'] = round1_timing
+            timing_metrics['round2_ms'] = round2_timing
+            timing_metrics['rounds_total_ms'] = round_processing_time
+            timing_metrics['parallel_processing'] = True
             
             self.logger.debug(f"Parallel extraction completed in {round_processing_time}ms")
         else:
             round_start_time = time.time()
-            round1_keywords = await self._extract_single_round(formatted_prompt, llm_config, round_num=1)
-            round2_keywords = await self._extract_single_round(formatted_prompt, llm_config, round_num=2)
+            round1_data = await self._extract_single_round(formatted_prompt, llm_config, round_num=1)
+            round1_keywords, round1_timing = round1_data
+            timing_metrics['round1_ms'] = round1_timing
+            
+            round2_data = await self._extract_single_round(formatted_prompt, llm_config, round_num=2)
+            round2_keywords, round2_timing = round2_data
+            timing_metrics['round2_ms'] = round2_timing
+            
             round_processing_time = int((time.time() - round_start_time) * 1000)
+            timing_metrics['rounds_total_ms'] = round_processing_time
+            timing_metrics['parallel_processing'] = False
             
             self.logger.debug(f"Sequential extraction completed in {round_processing_time}ms")
         
@@ -595,14 +647,17 @@ class KeywordExtractionServiceV2(BaseService):
                 'top_p': llm_config.top_p,
                 'seed': llm_config.seed,
                 'max_tokens': llm_config.max_tokens
-            }
+            },
+            'timing_metrics': timing_metrics  # Include timing metrics for analysis
         }
     
-    async def _extract_single_round(self, prompt: str, llm_config: LLMConfig, round_num: int) -> list[str]:
+    async def _extract_single_round(self, prompt: str, llm_config: LLMConfig, round_num: int) -> tuple[list[str], float]:
         """
         Execute a single round using LLM config from YAML.
         This is the KEY CHANGE - no more hardcoded parameters!
+        Returns: (keywords, timing_ms)
         """
+        llm_start = time.time()
         try:
             # Use parameters from YAML configuration
             response = await self.openai_client.complete_text(
@@ -612,14 +667,33 @@ class KeywordExtractionServiceV2(BaseService):
                 top_p=llm_config.top_p,
                 seed=llm_config.seed + (round_num - 1)  # Vary seed slightly for each round
             )
+            llm_duration_ms = (time.time() - llm_start) * 1000
             
             keywords = self._parse_keywords_from_response(response)
             
             self.logger.debug(
                 f"Round {round_num}: extracted {len(keywords)} keywords "
-                f"(temp={llm_config.temperature}, top_p={llm_config.top_p})"
+                f"(temp={llm_config.temperature}, top_p={llm_config.top_p}, time={llm_duration_ms:.2f}ms)"
             )
-            return keywords[:self.keywords_per_round]
+            
+            # Log detailed LLM call metrics
+            self.logger.info(
+                f"LLM call completed for round {round_num}",
+                extra={
+                    "custom_dimensions": {
+                        "operation": "llm_call",
+                        "round": round_num,
+                        "duration_ms": llm_duration_ms,
+                        "llm_endpoint": getattr(self.openai_client, 'endpoint', 'unknown'),
+                        "llm_model": getattr(self.openai_client, 'deployment_id', 'unknown'),
+                        "temperature": llm_config.temperature,
+                        "max_tokens": llm_config.max_tokens,
+                        "keyword_count": len(keywords),
+                        "environment": "staging"
+                    }
+                }
+            )
+            return keywords[:self.keywords_per_round], llm_duration_ms
             
         except Exception as e:
             self.logger.error(f"Round {round_num} extraction failed: {str(e)}")

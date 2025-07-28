@@ -4,6 +4,7 @@ Optimized for high performance with Japan East deployment.
 """
 import asyncio
 import logging
+import time
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -98,7 +99,25 @@ class AzureOpenAIGPT41Client:
         """處理非串流模式的請求"""
         for attempt in range(self.max_retries):
             try:
+                network_start = time.time()
                 response = await self.client.post(url, json=request_params)
+                network_duration_ms = (time.time() - network_start) * 1000
+                
+                # Log network call metrics
+                self.logger.info(
+                    "GPT-4.1 mini network call",
+                    extra={
+                        "custom_dimensions": {
+                            "operation": "gpt41_network_call",
+                            "endpoint_url": url,
+                            "deployment": self.deployment_name,
+                            "network_duration_ms": network_duration_ms,
+                            "status_code": response.status_code,
+                            "attempt": attempt + 1,
+                            "environment": "staging"
+                        }
+                    }
+                )
                 
                 if response.status_code == 200:
                     return response.json()
