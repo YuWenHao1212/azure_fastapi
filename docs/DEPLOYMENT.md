@@ -2,23 +2,33 @@
 
 ## 概述
 
-本專案使用 GitHub Actions 自動部署到 Azure Functions。每次推送到 `main` 分支都會觸發自動部署。
+**當前狀態**: 正在從 Azure Functions 遷移到 Azure Container Apps
+- **生產環境**: Azure Functions (Japan East) - 穩定運行中
+- **開發環境**: Container Apps 重構 (進行中)
+- **部署分支**: `container` 分支用於新架構開發
 
 ## 環境需求
 
 ### 本地開發
 - Python 3.11.8
 - Azure CLI
-- Azure Functions Core Tools
+- Docker (Container Apps 開發)
 - Git
 
 ### Azure 資源
 - **Subscription ID**: `5396d388-8261-464e-8ee4-112770674fba`
 - **Tenant**: `wenhaoairesumeadvisor.onmicrosoft.com`
 - **Resource Group**: `airesumeadvisorfastapi`
-- **Function App**: `airesumeadvisor-fastapi`
+
+#### 當前生產環境
+- **Function App**: `airesumeadvisor-fastapi-japaneast` (主要)
+- **區域**: Japan East
+- **計畫**: Premium Plan (EP1)
+
+#### 目標環境 (Container Apps)
+- **Container Apps Environment**: `airesumeadvisor-env` (建立中)
+- **Container Registry**: `airesumeadvisor.azurecr.io` (建立中)
 - **Application Insights**: `airesumeadvisorfastapi`
-- **Portal URL**: [Azure Portal](https://portal.azure.com/#@wenhaoairesumeadvisor.onmicrosoft.com/resource/subscriptions/5396d388-8261-464e-8ee4-112770674fba/resourceGroups/airesumeadvisorfastapi/providers/Microsoft.Insights/components/airesumeadvisorfastapi/overview)
 
 ## 自動部署流程
 

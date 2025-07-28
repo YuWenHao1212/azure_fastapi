@@ -4,6 +4,22 @@
 
 本專案採用 FHS (Functional Hierarchy Structure) 架構模式，將功能邏輯組織成清晰的層次結構。
 
+**⚠️ 重要**: 目前正在進行架構重構，從 Azure Functions 遷移到 Azure Container Apps。
+
+## 架構演進
+
+### 當前架構 (Azure Functions)
+```
+HTTP Request → Azure Functions Runtime → ASGI Adapter → FastAPI → Business Logic
+```
+**問題**: 每個請求有 3+ 秒的固定開銷
+
+### 目標架構 (Container Apps) 🎯
+```
+HTTP Request → Container Apps Ingress → FastAPI (Native) → Business Logic  
+```
+**改善**: 40-91% 響應時間提升
+
 ## 架構原則
 
 ### 1. 功能分層

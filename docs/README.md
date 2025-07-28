@@ -1,6 +1,12 @@
 # AI Resume Advisor API
 
-基於 FastAPI 的履歷優化服務，整合 Azure Functions 部署。
+基於 FastAPI 的履歷優化服務，目前正在從 Azure Functions 遷移到 Azure Container Apps。
+
+## 🚀 專案狀態
+
+- **當前部署**: Azure Functions (Japan East) - 生產環境運行中
+- **進行中**: Container Apps 架構重構 (5天計畫)
+- **主要分支**: `container` (重構開發分支)
 
 ## 快速開始
 
@@ -11,20 +17,25 @@ pip install -r requirements.txt
 # 本地執行
 uvicorn src.main:app --reload
 
-# 執行測試
-./run_precommit_tests.sh --level-2 --parallel
+# 執行測試 (新版命令)
+./precommit.sh --level-2 --parallel
 ```
 
 ## API 端點
 
-| Endpoint | Method | 說明 | 文檔 |
-|----------|--------|------|------|
-| `/api/v1/extract-jd-keywords` | POST | 從職缺描述提取關鍵字 | [詳細說明](features/keyword_extraction.md) |
-| `/api/v1/calculate-resume-jd-index` | POST | 計算履歷與職缺的匹配指數 | [詳細說明](features/index_calculation.md) |
-| `/api/v1/analyze-resume-gaps` | POST | 分析履歷與職缺的差距 | [詳細說明](features/gap_analysis.md) |
-| `/api/v1/format-resume` | POST | 格式化履歷並標記關鍵字 | [詳細說明](features/resume_format.md) |
-| `/api/v1/tailor-resume` | POST | 生成客製化履歷內容 | [詳細說明](features/resume_tailoring.md) |
-| `/api/v1/search-relevant-courses` | POST | 搜尋相關 Coursera 課程 | [詳細說明](features/course_search.md) |
+### 🌏 主要生產環境 (Japan East)
+```
+https://airesumeadvisor-fastapi-japaneast.azurewebsites.net
+```
+
+| Endpoint | Method | 說明 | 文檔 | 效能 |
+|----------|--------|------|------|------|
+| `/api/v1/extract-jd-keywords` | POST | 從職缺描述提取關鍵字 | [詳細說明](features/keyword_extraction.md) | ~2.8s |
+| `/api/v1/index-calculation` | POST | 計算履歷與職缺的匹配指數 | [詳細說明](features/index_calculation.md) | ~5s |
+| `/api/v1/index-cal-and-gap-analysis` | POST | 指標計算與間隙分析 | [詳細說明](features/gap_analysis.md) | ~30s |
+| `/api/v1/format-resume` | POST | 格式化履歷並標記關鍵字 | [詳細說明](features/resume_format.md) | ~15s |
+| `/api/v1/tailor-resume` | POST | 生成客製化履歷內容 | [詳細說明](features/resume_tailoring.md) | ~20s |
+| `/api/v1/courses/search` | POST | 搜尋相關 Coursera 課程 | [詳細說明](features/course_search.md) | ~2s |
 
 ## 核心特色
 
