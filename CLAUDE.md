@@ -1,6 +1,6 @@
-# CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.8.3
+# CLAUDE.md - FHS + FastAPI 重構專案協作指南 v2.9.0
 
-> 最後更新：2025-07-27 16:38:44 CST
+> 最後更新：2025-07-28 16:35:13 CST
 
 ## ⚠️ 關鍵提醒 (CRITICAL REMINDERS)
 
@@ -421,15 +421,16 @@ class Settings(BaseSettings):
 
 ## 開發階段與里程碑
 
-### 當前狀態（2025年7月）
+### ✅ 已完成階段（至 2025-07-28）
 
-✅ **已完成的里程碑**：
+**V1.0 MVP 完成**：
 - **MVP 開發**：所有核心 API 端點實作完成
 - **Azure 部署**：成功部署至 Azure Function App
 - **CI/CD 設置**：GitHub Actions 自動化測試與部署
 - **監控系統**：Application Insights 整合完成
+- **效能分析**：完成深度效能分析，發現 Azure Functions 3+ 秒架構開銷
 
-🚀 **已上線的 API 端點**：
+🚀 **已上線的 API 端點**（Azure Functions 版本）：
 - `/api/v1/extract-jd-keywords` - 關鍵字提取
 - `/api/v1/index-calculation` - 相似度計算
 - `/api/v1/index-cal-and-gap-analysis` - 差距分析
@@ -437,40 +438,94 @@ class Settings(BaseSettings):
 - `/api/v1/tailor-resume` - 履歷優化
 - `/api/v1/courses/search` - 課程搜尋
 
-### 下一階段：效能優化與功能增強
+📊 **效能分析成果**（2025-07-28）：
+- **根本問題發現**：Azure Functions 架構不適合 API 服務
+- **固定開銷識別**：每個請求 3+ 秒開銷，影響所有端點
+- **解決方案確定**：Container Apps 架構重構
+- **Git Checkpoint**：`v1.0-pre-migration` 標籤已建立
+
+### 🚀 當前階段：Container Apps 架構重構（2025-07-28 開始）
+
+**目標**：5個工作天完成從 Azure Functions 到 Container Apps 的完整遷移
 
 ```mermaid
-graph LR
-    A[當前：V1 已上線] --> B[Phase 5: 效能優化]
-    B --> C[Phase 6: 功能增強]
-    C --> D[Phase 7: 進階功能]
+graph TD
+    A[2025-07-28: Git Checkpoint] --> B[Day 1: 基礎架構]
+    B --> C[Day 2: API 遷移 1-3]
+    C --> D[Day 3: API 遷移 4-6]
+    D --> E[Day 4: 測試與切換]
+    E --> F[Day 5: 優化與文檔]
+    
+    G[main 分支] --> H[container 分支]
+    H --> I[feature/api-xxx 分支]
+    I --> J[merge 到 container]
+    J --> K[最終 merge 到 main]
 ```
 
-### Phase 5: 效能優化（進行中）
+#### 重構計畫詳情
 
-**目標**: 提升每個端點的回應時間和效能, 目前Chat LLM 僅使用同一個Azure deployed LLM, 是否需要再加上另一個? 
+**Day 1: 基礎架構設置**
+- ✅ 建立 `container` 主分支
+- [ ] Container Apps 環境創建
+- [ ] Dockerfile 與容器配置
+- [ ] CI/CD 管道調整
+- [ ] 第一個 API (extract-jd-keywords) 遷移
 
-#### 優化重點
-1. **關鍵字提取 API**
-   - [ ] P95 回應時間 < 4 秒
-   - [ ] 優化 prompt管理
-2. **履歷reformat API**
-   - [ ] P95 回應時間 < 15 秒
-   - [ ] 目前使用外部OCR API, 看是否能合併進來
-3. **Index Cal and Gap Analysis**
-   - [ ] P95 回應時間 < 30 秒
-   - [ ] 加上Course是否有recommend course function
-4. **履歷優化 API** 
-   - [ ] P95 回應時間 < 20 秒
-   - [ ] Rich Editor 機率性不顯示issue (這可能是前端問題)
+**Day 2-3: API 端點遷移**
+- [ ] API 1: `/api/v1/extract-jd-keywords`
+- [ ] API 2: `/api/v1/index-calculation`
+- [ ] API 3: `/api/v1/index-cal-and-gap-analysis`
+- [ ] API 4: `/api/v1/format-resume`
+- [ ] API 5: `/api/v1/tailor-resume`
+- [ ] API 6: `/api/v1/courses/search`
 
-### 效能優化檢查清單
+**Day 4: 整合測試與流量切換**
+- [ ] 完整功能測試
+- [ ] 效能基準測試
+- [ ] 流量分割部署（10% → 50% → 100%）
+- [ ] 監控配置驗證
 
-每個端點優化時需確認：
-- [ ] 回應時間測量與基準建立
-- [ ] 識別效能瓶頸（profiling）
-- [ ] 實作優化方案
-- [ ] 更新文檔與監控
+**Day 5: 優化與收尾**
+- [ ] 效能調優
+- [ ] 文檔更新
+- [ ] 舊環境清理
+- [ ] 知識轉移
+
+#### 預期成果
+
+| 指標 | 當前 (Functions) | 目標 (Container Apps) | 改善 |
+|------|-----------------|---------------------|------|
+| P95 響應時間 | 6-11 秒 | 2-8 秒 | 40-91% |
+| 並發能力 | < 0.5 QPS | 20-50 QPS | 40-100x |
+| 冷啟動時間 | 2-3 秒 | 0.1-0.5 秒 | 80-95% |
+| 月成本 | $280 | $250 | -11% |
+
+#### 分支管理策略
+
+```
+main (穩定生產版本)
+├── v1.0-pre-migration (Functions 版本檢查點)
+└── container (Container Apps 主分支)
+    ├── feature/api-extract-keywords
+    ├── feature/api-index-calculation
+    ├── feature/api-gap-analysis
+    ├── feature/api-format-resume
+    ├── feature/api-tailor-resume
+    └── feature/api-courses-search
+```
+
+**工作流程**：
+1. 每個 API 在獨立 feature 分支開發
+2. 完成後 merge 到 `container` 分支
+3. `container` 分支持續部署測試
+4. 最終從 `container` merge 到 `main`
+
+#### 風險緩解
+
+- **回滾計畫**：保留 Functions 版本 30 天
+- **漸進式遷移**：API 逐一遷移，降低風險
+- **監控覆蓋**：Application Insights 全程監控
+- **效能驗證**：每個 API 遷移後立即效能測試
 
 ---
 
@@ -1262,10 +1317,19 @@ class DataModel(BaseModel):
 
 ---
 
-**文檔版本**: 2.8.4  
-**最後更新**: 2025-07-27  
+**文檔版本**: 2.9.0  
+**最後更新**: 2025-07-28  
 **維護者**: Claude Code + WenHao  
-**適用專案**: FHS + FastAPI API 重構專案
+**適用專案**: FHS + FastAPI Container Apps 重構專案
+
+### v2.9.0 更新內容 (2025-07-28)
+- **重大里程碑**：完成 Azure Functions 效能分析，發現 3+ 秒架構開銷
+- **架構決策**：決定遷移到 Azure Container Apps
+- **Git Checkpoint**：建立 `v1.0-pre-migration` 標籤作為重構前檢查點
+- **分支策略更新**：建立 `container` 主分支用於 Container Apps 開發
+- **5天重構計畫**：詳細規劃從 Functions 到 Container Apps 的遷移流程
+- **更新開發階段與里程碑**：反映當前 Container Apps 重構階段
+- **安全改善**：所有測試工具中的硬編碼 Function Keys 改為環境變數
 
 ### v2.8.4 更新內容 (2025-07-27)
 - 新增 Level 4 測試策略：Azure Functions 本地測試（預部署驗證）
