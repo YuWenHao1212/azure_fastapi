@@ -173,28 +173,30 @@ if [ $TEST_LEVEL -ge 1 ] && [ "$SKIP_LOWER_LEVELS" = false ]; then
     
     LEVEL_START=$(date +%s)
     
-    # Run Ruff on different components (count as 4 tests)
-    echo -n "  • Code style checks (4 components)... "
-    components_passed=0
+    # Run Ruff on entire codebase (simpler and more reliable)
+    echo -n "  • Code style checks... "
     
-    # Check each component
-    for component in "services:src/services/keyword_extraction*.py src/services/unified_prompt_service.py" \
-                     "models:src/models/keyword_extraction.py" \
-                     "api:src/api/v1/keyword_extraction.py" \
-                     "tests:tests/unit/test_keyword*.py tests/integration/test_api_endpoints.py"; do
-        name="${component%%:*}"
-        files="${component#*:}"
-        if python -m ruff check $files --exclude=legacy,archive >/dev/null 2>&1; then
-            ((components_passed++))
-        fi
-    done
-    
-    if [ $components_passed -eq 4 ]; then
-        echo -e "${GREEN}✓${NC} (4 components)"
-        PASSED=$((PASSED + 4))
+    # Check if ruff is available
+    if ! command -v ruff &> /dev/null && ! python -m ruff --version &> /dev/null; then
+        echo -e "${RED}✗${NC} (ruff not found)"
+        echo "    Please install ruff: pip install ruff"
+        ((FAILED++))
     else
-        echo -e "${RED}✗${NC} ($components_passed/4 passed)"
-        FAILED=$((FAILED + (4 - components_passed)))
+        # Try python -m ruff first, fall back to ruff command
+        if python -m ruff check src/ tests/ --exclude=legacy,archive > /tmp/ruff_output.log 2>&1; then
+            echo -e "${GREEN}✓${NC}"
+            ((PASSED++))
+        elif ruff check src/ tests/ --exclude=legacy,archive > /tmp/ruff_output.log 2>&1; then
+            echo -e "${GREEN}✓${NC}"
+            ((PASSED++))
+        else
+            echo -e "${RED}✗${NC}"
+            echo -e "    ${RED}Ruff errors found:${NC}"
+            # Show first 10 lines of errors
+            head -10 /tmp/ruff_output.log | sed 's/^/    /'
+            echo "    ... (run 'ruff check src/ tests/ --exclude=legacy,archive' for full output)"
+            ((FAILED++))
+        fi
     fi
     
     check_time 1 1
