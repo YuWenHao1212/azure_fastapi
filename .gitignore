@@ -142,6 +142,26 @@ GITHUB_SECRETS.md
 test_*_scenarios.sh
 test_*_tracking.sh
 
+# Azure Publish Settings
+*.PublishSettings
+
+# Shell scripts with secrets
+*secrets*.sh
+set_*.sh
+
+# Backup files
+*.backup.*
+
+# Deploy packages
+deploy.zip
+
+# Test results in root
+*_test_*.json
+*_results_*.json
+performance_results_*.json
+staging_*.json
+quick_*.py
+
 # Documentation - 現在需要版本控制
 \!docs/
 \!legacy/docs/

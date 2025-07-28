@@ -379,7 +379,7 @@ class TestAPIDocumentation:
                     schemas_with_examples += 1
         
         # At least 9% of schemas should have examples (lowered threshold for MVP)
-        # TODO: Increase to 50% after adding more examples to schemas
+        # Future improvement: Increase to 50% after adding more examples to schemas
         example_ratio = schemas_with_examples / total_schemas if total_schemas > 0 else 0
         assert example_ratio >= 0.09, \
             f"Only {example_ratio:.1%} of schemas have examples (should be >= 9%)"

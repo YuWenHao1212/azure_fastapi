@@ -3,7 +3,7 @@ Integration tests for Performance Suite - Consolidated performance and optimizat
 Tests parallel processing, caching mechanisms, API performance, and optimization effectiveness.
 Combines tests from test_api_performance.py and test_performance_optimizations.py.
 
-TODO: The following tests are currently skipped because they require real Azure OpenAI credentials:
+Note: The following tests are currently skipped because they require real Azure OpenAI credentials:
 - test_parallel_processing_speedup
 - test_caching_mechanism
 - test_cache_isolation

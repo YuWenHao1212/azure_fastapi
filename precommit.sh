@@ -101,7 +101,19 @@ check_time() {
 # Load environment variables
 if [ -f ".env" ]; then
     echo "📄 Loading environment from .env"
-    export $(grep -v '^#' .env | xargs)
+    # Safer method to load .env file
+    while IFS='=' read -r key value; do
+        # Skip comments and empty lines
+        if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ -n "$key" ]]; then
+            # Remove leading/trailing whitespace
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            # Only export if key is valid
+            if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+                export "$key"="$value"
+            fi
+        fi
+    done < .env
     echo ""
 fi
 

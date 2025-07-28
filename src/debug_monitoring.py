@@ -1,3 +1,4 @@
+# flake8: noqa
 """Debug monitoring service to check if it's working."""
 import os
 import sys

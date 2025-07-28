@@ -51,12 +51,19 @@ jobs:
         AZURE_OPENAI_EMBEDDING_ENDPOINT: ${{ secrets.AZURE_OPENAI_EMBEDDING_ENDPOINT }}
         EMBEDDING_API_KEY: ${{ secrets.AZURE_OPENAI_EMBEDDING_API_KEY || secrets.AZURE_OPENAI_API_KEY }}
         EMBEDDING_ENDPOINT: ${{ secrets.AZURE_OPENAI_EMBEDDING_ENDPOINT }}
+        # LLM 模型配置
+        LLM_MODEL_KEYWORDS: "gpt41-mini"
+        LLM_MODEL_DEFAULT: "gpt4o-2"
         # 功能旗標
-        USE_GPT41_MINI_FOR_KEYWORDS: "true"
+        ENABLE_LLM_MODEL_OVERRIDE: "true"
+        ENABLE_LLM_MODEL_HEADER: "true"
       run: |
         echo "Running Level 3 integration tests for production deployment..."
         echo "注意: 根據 CLAUDE.md，Claude Code 已執行適當層級測試 (Level 0-3)"
         echo "現在執行 Level 3 整合測試以驗證 API 功能..."
+        
+        # Make precommit.sh executable
+        chmod +x ./precommit.sh
         
         # Continue with precommit tests
         ./precommit.sh --level-3 --parallel --no-coverage

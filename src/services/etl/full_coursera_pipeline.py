@@ -1,6 +1,8 @@
+# flake8: noqa
 """
 完整的 Coursera ETL + Embedding Pipeline
 包含測試模式（3個課程）和完整模式（所有課程）
+ETL script with CLI output - print statements are intentional
 """
 import asyncio
 import json

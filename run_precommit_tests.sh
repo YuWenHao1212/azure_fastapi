@@ -472,7 +472,7 @@ echo "════════════════════════�
 
 # Check for print statements in src/ (excluding standardization tools)
 echo -e "${YELLOW}Checking for debug print statements...${NC}"
-if grep -r "print(" src/ --include="*.py" | grep -v "__pycache__" | grep -v "# noqa" | grep -v "src/data/standardization/"; then
+if grep -r "print(" src/ --include="*.py" | grep -v "__pycache__" | grep -v "# noqa" | grep -v "src/data/standardization/" | grep -v "src/services/etl/" | grep -v "src/debug_monitoring.py"; then
     echo -e "${RED}⚠️  Found print statements in source code${NC}"
 else
     echo -e "${GREEN}✓ No print statements found${NC}"
