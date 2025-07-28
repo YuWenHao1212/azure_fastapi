@@ -184,7 +184,7 @@ if [ $TEST_LEVEL -ge 1 ] && [ "$SKIP_LOWER_LEVELS" = false ]; then
                      "tests:tests/unit/test_keyword*.py tests/integration/test_api_endpoints.py"; do
         name="${component%%:*}"
         files="${component#*:}"
-        if ruff check $files --exclude=legacy,archive >/dev/null 2>&1; then
+        if python -m ruff check $files --exclude=legacy,archive >/dev/null 2>&1; then
             ((components_passed++))
         fi
     done
