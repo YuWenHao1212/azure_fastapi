@@ -172,3 +172,23 @@ legacy/Legacy_Code/function_app.py
 
 # Wiki export (contains embedded git repo)
 wiki-export/
+
+# Container Apps specific ignores
+deployment/container-apps/.env.*
+deployment/scripts/.acr-config
+response.json
+*_comparison_*.json
+analyze_overhead.py
+test-native-fastapi.py
+test_container_local.sh
+check-docker-setup.sh
+Dockerfile.amd64
+Dockerfile.arm64
+src/main_optimized.py
+src/main_production.py
+performance_optimization/monitoring_overhead_test.py
+performance_optimization/extract-jd-keywords/analyze_azure_infrastructure.py
+performance_optimization/extract-jd-keywords/network_diagnosis.py
+performance_optimization/docker_performance_investigation/
+deployment/scripts/deploy-to-app-service.sh
+deployment/scripts/deploy-production-direct.sh
