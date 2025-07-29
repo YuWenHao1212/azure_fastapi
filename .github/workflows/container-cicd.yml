@@ -1,11 +1,12 @@
 name: Container Apps CI/CD
 
 on:
-  pull_request:
-    branches: [ container ]
-    types: [ opened, synchronize, reopened ]
-  push:
-    branches: [ container ]
+  # Temporarily disabled to allow diagnostic workflow to run
+  # pull_request:
+  #   branches: [ container ]
+  #   types: [ opened, synchronize, reopened ]
+  # push:
+  #   branches: [ container ]
   workflow_dispatch:
     inputs:
       debug_mode:
