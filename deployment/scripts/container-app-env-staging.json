@@ -1,0 +1,12 @@
+[
+    {"name": "ENVIRONMENT", "value": "staging"},
+    {"name": "LOG_LEVEL", "value": "INFO"},
+    {"name": "AZURE_OPENAI_ENDPOINT", "value": "https://airesumeadvisor.openai.azure.com"},
+    {"name": "AZURE_OPENAI_GPT4_DEPLOYMENT", "value": "gpt-4-1-mini-japaneast"},
+    {"name": "AZURE_OPENAI_API_VERSION", "value": "2025-01-01-preview"},
+    {"name": "GPT41_MINI_JAPANEAST_DEPLOYMENT", "value": "gpt-4-1-mini-japaneast"},
+    {"name": "GPT41_MINI_JAPANEAST_API_VERSION", "value": "2025-01-01-preview"},
+    {"name": "LLM_MODEL_KEYWORDS", "value": "gpt41-mini"},
+    {"name": "DISABLE_MONITORING", "value": "false"},
+    {"name": "CORS_ORIGINS", "value": "https://airesumeadvisor.bubbleapps.io"}
+]
