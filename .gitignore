@@ -205,3 +205,10 @@ DOCKER_LOCAL_TEST_GUIDE.md
 deployment/container-apps/DEPLOYMENT_STRATEGY.md
 deployment/container-apps/DEVELOPMENT_WORKFLOW.md
 deployment/container-apps/NEXT_STEPS.md
+
+# Docker compose files that depend on ignored .env files
+deployment/container-apps/docker-compose.local-test.yml
+deployment/container-apps/docker-compose.performance.yml
+
+# Unused code files
+src/core/dependencies.py
