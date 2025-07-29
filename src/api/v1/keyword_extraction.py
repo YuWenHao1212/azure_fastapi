@@ -251,6 +251,14 @@ async def extract_jd_keywords(
             f"confidence={result['confidence_score']}"
         )
         
+        # Log detailed timing breakdown for performance analysis
+        logger.debug(
+            f"Timing breakdown - "
+            f"validation: {timing_breakdown['validation_ms']:.2f}ms, "
+            f"extraction: {timing_breakdown['keyword_extraction_ms']:.2f}ms, "
+            f"total: {timing_breakdown['total_ms']:.2f}ms"
+        )
+        
         # Check for warnings in intersection stats and create appropriate response
         warning_info = WarningInfo()
         intersection_stats = result.get('intersection_stats', {})

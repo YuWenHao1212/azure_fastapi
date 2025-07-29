@@ -187,7 +187,7 @@ def _track_model_selection(
         source: Source of the selection (request/header/config/default)
     """
     try:
-        monitoring_service.track_custom_event(
+        monitoring_service.track_event(
             "LLMModelSelected",
             {
                 "api_name": api_name or "unknown",

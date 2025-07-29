@@ -529,6 +529,9 @@ class KeywordExtractionService(BaseService):
             List of extracted keywords
         """
         try:
+            # Time the LLM call
+            llm_start = time.time()
+            
             # Use complete_text for simple extraction with optimal parameters
             response = await self.openai_client.complete_text(
                 prompt,
@@ -538,10 +541,12 @@ class KeywordExtractionService(BaseService):
                 seed=42  # Fixed seed for deterministic output
             )
             
+            llm_time = (time.time() - llm_start) * 1000
+            
             # Parse keywords from response
             keywords = self._parse_keywords_from_response(response)
             
-            self.logger.debug(f"Round {round_num}: extracted {len(keywords)} keywords")
+            self.logger.debug(f"Round {round_num}: LLM call took {llm_time:.2f}ms, extracted {len(keywords)} keywords")
             return keywords[:self.keywords_per_round]  # Ensure exactly 25 keywords
             
         except Exception as e:

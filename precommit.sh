@@ -22,6 +22,7 @@
 TEST_LEVEL=2
 USE_PARALLEL=false
 SKIP_COVERAGE=false
+CONTAINER_MODE=false
 
 # Color codes
 GREEN='\033[0;32m'
@@ -42,13 +43,20 @@ for arg in "$@"; do
             TEST_LEVEL=4
             SKIP_LOWER_LEVELS=true
             ;;
+        --container)
+            CONTAINER_MODE=true
+            ;;
         --parallel) USE_PARALLEL=true ;;
         --no-coverage) SKIP_COVERAGE=true ;;
         *)
             echo "Unknown option: $arg"
-            echo "Usage: $0 [--level-0|--level-1|--level-2|--level-3|--level-4] [--parallel] [--no-coverage]"
+            echo "Usage: $0 [--level-0|--level-1|--level-2|--level-3|--level-4] [--container] [--parallel] [--no-coverage]"
             echo ""
-            echo "Note: --level-4 runs ONLY Azure Functions test (skips levels 0-3)"
+            echo "Options:"
+            echo "  --level-4: Run only deployment test (skips levels 0-3)"
+            echo "  --container: Use Docker container test instead of Azure Functions (Level 4)"
+            echo "  --parallel: Run tests in parallel (Level 2-3)"
+            echo "  --no-coverage: Skip coverage report"
             exit 1
             ;;
     esac
@@ -56,7 +64,11 @@ done
 
 # Header
 if [ "$SKIP_LOWER_LEVELS" = true ]; then
-    echo "🚀 Azure Functions Local Test Only (Level 4)"
+    if [ "$CONTAINER_MODE" = true ]; then
+        echo "🐳 Container Apps Local Test Only (Level 4)"
+    else
+        echo "🚀 Azure Functions Local Test Only (Level 4)"
+    fi
 else
     echo "🚀 Pre-commit Tests (Level $TEST_LEVEL$([ "$USE_PARALLEL" = true ] && echo ", parallel")$([ "$SKIP_COVERAGE" = true ] && echo ", no coverage"))"
 fi
@@ -264,6 +276,17 @@ if [ $TEST_LEVEL -ge 2 ] && [ "$SKIP_LOWER_LEVELS" = false ]; then
         fi
     fi
     
+    # Run monitoring tests
+    run_test "Unit tests - lightweight monitoring" \
+        "$PYTEST_CMD tests/unit/test_lightweight_monitoring.py 2>/dev/null | grep -v 'CoverageWarning'"
+    
+    run_test "Unit tests - error capture middleware" \
+        "$PYTEST_CMD tests/unit/test_error_capture_middleware.py 2>/dev/null | grep -v 'CoverageWarning'"
+    
+    # Run LLM factory tests (includes monitoring service integration)
+    run_test "Unit tests - LLM factory" \
+        "$PYTEST_CMD tests/unit/test_llm_factory.py 2>/dev/null | grep -v 'CoverageWarning'"
+    
     check_time 2 30
 fi
 
@@ -350,6 +373,12 @@ if [ $TEST_LEVEL -ge 3 ] && [ "$SKIP_LOWER_LEVELS" = false ]; then
                     "$PYTEST_CMD tests/integration/test_llm_switching_integration.py -s"
             fi
             
+            # Test monitoring endpoints
+            if [ -f "tests/integration/test_monitoring_endpoints.py" ]; then
+                run_test "Integration tests - monitoring endpoints" \
+                    "$PYTEST_CMD tests/integration/test_monitoring_endpoints.py -s"
+            fi
+            
             # Stop API server
             kill $API_PID 2>/dev/null || true
             echo "  • API server stopped"
@@ -367,32 +396,73 @@ if [ $TEST_LEVEL -ge 3 ] && [ "$SKIP_LOWER_LEVELS" = false ]; then
 fi
 
 # ====================
-# LEVEL 4: Azure Functions Local Test (< 3 minutes)
+# LEVEL 4: Deployment Test (< 3 minutes)
+# Supports both Azure Functions and Container Apps modes
 # ====================
 if [ $TEST_LEVEL -ge 4 ]; then
     # Show message if skipping lower levels
     if [ "$SKIP_LOWER_LEVELS" = true ]; then
-        echo -e "${YELLOW}Skipping Levels 0-3, running only Level 4 Azure Functions test${NC}"
+        if [ "$CONTAINER_MODE" = true ]; then
+            echo -e "${YELLOW}Skipping Levels 0-3, running only Container Apps test${NC}"
+        else
+            echo -e "${YELLOW}Skipping Levels 0-3, running only Azure Functions test${NC}"
+        fi
         echo ""
     fi
     
-    echo -e "${BLUE}Level 4: Azure Functions Local Test (Pre-deployment)${NC}"
+    if [ "$CONTAINER_MODE" = true ]; then
+        echo -e "${BLUE}Level 4: Container Apps Local Test (Pre-deployment)${NC}"
+    else
+        echo -e "${BLUE}Level 4: Azure Functions Local Test (Pre-deployment)${NC}"
+    fi
     
     LEVEL_START=$(date +%s)
     
-    # Check prerequisites
-    echo -n "  • Checking Azure Functions Core Tools... "
-    if command -v func &> /dev/null; then
-        echo -e "${GREEN}✓${NC}"
+    # Check prerequisites based on mode
+    if [ "$CONTAINER_MODE" = true ]; then
+        # Container Apps prerequisites
+        echo -n "  • Checking Docker... "
+        if command -v docker &> /dev/null && docker ps > /dev/null 2>&1; then
+            echo -e "${GREEN}✓${NC}"
+        else
+            echo -e "${RED}✗${NC}"
+            echo -e "    ${RED}Docker not installed or not running${NC}"
+            echo "    Please install Docker Desktop and ensure it's running"
+            ((FAILED++))
+            check_time 4 180
+            echo ""
+            # Skip rest of Level 4 if Docker not available
+            TEST_LEVEL=3
+        fi
+        
+        if [ $TEST_LEVEL -ge 4 ]; then
+            echo -n "  • Checking Dockerfile... "
+            if [ -f "deployment/container-apps/Dockerfile" ]; then
+                echo -e "${GREEN}✓${NC}"
+            else
+                echo -e "${RED}✗${NC}"
+                echo -e "    ${RED}Dockerfile not found at deployment/container-apps/Dockerfile${NC}"
+                ((FAILED++))
+                check_time 4 180
+                echo ""
+                TEST_LEVEL=3
+            fi
+        fi
     else
-        echo -e "${RED}✗${NC}"
-        echo -e "    ${RED}Azure Functions Core Tools not installed${NC}"
-        echo "    Install with: brew install azure-functions-core-tools@4"
-        ((FAILED++))
-        check_time 4 180
-        echo ""
-        # Skip rest of Level 4 if func not installed
-        TEST_LEVEL=3
+        # Azure Functions prerequisites
+        echo -n "  • Checking Azure Functions Core Tools... "
+        if command -v func &> /dev/null; then
+            echo -e "${GREEN}✓${NC}"
+        else
+            echo -e "${RED}✗${NC}"
+            echo -e "    ${RED}Azure Functions Core Tools not installed${NC}"
+            echo "    Install with: brew install azure-functions-core-tools@4"
+            ((FAILED++))
+            check_time 4 180
+            echo ""
+            # Skip rest of Level 4 if func not installed
+            TEST_LEVEL=3
+        fi
     fi
     
     if [ $TEST_LEVEL -ge 4 ]; then
@@ -408,11 +478,93 @@ if [ $TEST_LEVEL -ge 4 ]; then
             EVIDENCE_DIR="temp/tests/evidence"
             mkdir -p "$EVIDENCE_DIR"
             TEST_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-            EVIDENCE_FILE="$EVIDENCE_DIR/level4_${TEST_TIMESTAMP}.json"
+            if [ "$CONTAINER_MODE" = true ]; then
+                EVIDENCE_FILE="$EVIDENCE_DIR/container_level4_${TEST_TIMESTAMP}.json"
+            else
+                EVIDENCE_FILE="$EVIDENCE_DIR/level4_${TEST_TIMESTAMP}.json"
+            fi
             echo "  📁 Test evidence will be saved to: $EVIDENCE_FILE"
             
-            # Check if local.settings.json exists
-            if [ ! -f "local.settings.json" ]; then
+            # Container Apps mode
+            if [ "$CONTAINER_MODE" = true ]; then
+                # Build Docker image
+                echo -n "  • Building Docker image... "
+                if docker build -t azure_fastapi_test:latest -f deployment/container-apps/Dockerfile . > /tmp/docker_build.log 2>&1; then
+                    echo -e "${GREEN}✓${NC}"
+                else
+                    echo -e "${RED}✗${NC}"
+                    echo "    Docker build log:"
+                    tail -20 /tmp/docker_build.log
+                    ((FAILED++))
+                    check_time 4 180
+                    echo ""
+                    TEST_LEVEL=3
+                fi
+                
+                if [ $TEST_LEVEL -ge 4 ]; then
+                    # Stop any existing container
+                    docker stop azure_fastapi_test 2>/dev/null || true
+                    docker rm azure_fastapi_test 2>/dev/null || true
+                    
+                    # Start Docker container
+                    echo -n "  • Starting Docker container... "
+                    
+                    # Create env file for Docker
+                    if [ -f ".env" ]; then
+                        cp .env .env.docker
+                        # Add Container Apps specific env vars
+                        echo "" >> .env.docker
+                        echo "# Container Apps specific" >> .env.docker
+                        echo "ENVIRONMENT=development" >> .env.docker
+                        echo "CONTAINER_APP_NAME=local-test" >> .env.docker
+                        echo "# Performance optimization" >> .env.docker
+                        echo "MONITORING_ENABLED=false" >> .env.docker
+                        echo "LIGHTWEIGHT_MONITORING=true" >> .env.docker
+                    fi
+                    
+                    # Run container
+                    CONTAINER_ID=$(docker run -d \
+                        --name azure_fastapi_test \
+                        -p 8080:8000 \
+                        --env-file .env.docker \
+                        azure_fastapi_test:latest 2>/dev/null)
+                    
+                    if [ $? -eq 0 ]; then
+                        echo -e "${GREEN}✓${NC} (ID: ${CONTAINER_ID:0:12})"
+                        
+                        # Wait for container to be ready
+                        echo -n "  • Waiting for container to be ready... "
+                        SERVICE_STARTED=false
+                        SERVICE_PORT=8080
+                        SERVICE_URL="http://localhost:8080"
+                        
+                        for i in {1..30}; do
+                            if curl -s $SERVICE_URL/health > /dev/null 2>/dev/null; then
+                                echo -e "${GREEN}✓${NC}"
+                                SERVICE_STARTED=true
+                                break
+                            fi
+                            sleep 1
+                        done
+                        
+                        if [ "$SERVICE_STARTED" = false ]; then
+                            echo -e "${RED}✗${NC}"
+                            echo "    Container logs:"
+                            docker logs azure_fastapi_test | tail -20
+                            ((FAILED++))
+                        fi
+                    else
+                        echo -e "${RED}✗${NC}"
+                        echo "    Failed to start container"
+                        ((FAILED++))
+                        SERVICE_STARTED=false
+                    fi
+                fi
+            
+            # Azure Functions mode
+            else
+                # Check if local.settings.json exists
+                if [ ! -f "local.settings.json" ]; then
                 echo -e "${YELLOW}⚠️  local.settings.json not found${NC}"
                 echo "    Creating from .env file..."
                 
@@ -479,26 +631,31 @@ with open('local.settings.json', 'w') as f:
             FUNC_PID=$!
             
             # Wait for Functions to start
-            FUNC_STARTED=false
+            SERVICE_STARTED=false
+            SERVICE_PORT=7071
+            SERVICE_URL="http://localhost:7071"
+            
             for i in {1..20}; do
                 # Check if Functions HTTP endpoint is responding
-                if curl -s http://localhost:7071/ > /dev/null 2>/dev/null || \
-                   curl -s http://localhost:7071/api/v1/health > /dev/null 2>/dev/null; then
+                if curl -s $SERVICE_URL/ > /dev/null 2>/dev/null || \
+                   curl -s $SERVICE_URL/api/v1/health > /dev/null 2>/dev/null; then
                     echo -e "${GREEN}✓${NC} (PID: $FUNC_PID)"
-                    FUNC_STARTED=true
+                    SERVICE_STARTED=true
                     break
                 fi
                 sleep 1
             done
             
-            if [ "$FUNC_STARTED" = false ]; then
+            if [ "$SERVICE_STARTED" = false ]; then
                 echo -e "${RED}✗${NC}"
                 echo "    Functions log:"
                 tail -20 /tmp/azure_functions.log
                 ((FAILED++))
             fi
+            fi  # End of Azure Functions mode
             
-            if [ "$FUNC_STARTED" = true ]; then
+            # Common test logic for both modes
+            if [ "$SERVICE_STARTED" = true ]; then
                 # Run real API tests against local Functions
                 echo "  • Testing with real Azure OpenAI API:"
                 
@@ -514,12 +671,22 @@ with open('local.settings.json', 'w') as f:
                 
                 # Record start time
                 TEST_START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+                if [ "$CONTAINER_MODE" = true ]; then
+                    # Use Python for millisecond precision on macOS
+                    PERF_START=$(python3 -c "import time; print(int(time.time() * 1000))")
+                fi
                 
                 # Make API call
                 response=$(curl -s -w "\n%{http_code}" -X POST \
-                    "http://localhost:7071/api/v1/extract-jd-keywords" \
+                    "$SERVICE_URL/api/v1/extract-jd-keywords" \
                     -H "Content-Type: application/json" \
                     -d "$TEST_INPUT" 2>/dev/null || echo "CURL_ERROR")
+                
+                if [ "$CONTAINER_MODE" = true ]; then
+                    # Use Python for millisecond precision on macOS
+                    PERF_END=$(python3 -c "import time; print(int(time.time() * 1000))")
+                    RESPONSE_TIME=$((PERF_END - PERF_START))
+                fi
                 
                 if [[ "$response" == *"CURL_ERROR"* ]]; then
                     echo -e "${RED}✗ (connection failed)${NC}"
@@ -548,10 +715,15 @@ EOF
                         # Check if response has expected structure
                         if echo "$body" | grep -q '"success":true' && echo "$body" | grep -q '"keywords":\['; then
                             keyword_count=$(echo "$body" | grep -o '"keywords":\[[^]]*\]' | grep -o '"[^"]*"' | grep -v "keywords" | wc -l)
-                            echo -e "${GREEN}✓${NC} ($keyword_count keywords extracted)"
+                            if [ "$CONTAINER_MODE" = true ]; then
+                                echo -e "${GREEN}✓${NC} ($keyword_count keywords, ${RESPONSE_TIME}ms)"
+                            else
+                                echo -e "${GREEN}✓${NC} ($keyword_count keywords extracted)"
+                            fi
                             
                             # Create combined evidence file for success
-                            cat > "$EVIDENCE_FILE" << EOF
+                            if [ "$CONTAINER_MODE" = true ]; then
+                                cat > "$EVIDENCE_FILE" << EOF
 {
   "metadata": {
     "test_name": "keyword_extraction",
@@ -559,12 +731,31 @@ EOF
     "timestamp": "$TEST_START_TIME",
     "http_status": "$status_code",
     "test_result": "PASSED",
-    "keyword_count": $keyword_count
+    "keyword_count": $keyword_count,
+    "response_time_ms": $RESPONSE_TIME,
+    "deployment_type": "container"
   },
   "input": $(echo "$TEST_INPUT" | jq '.' 2>/dev/null || echo "$TEST_INPUT"),
   "output": $(echo "$body" | jq '.' 2>/dev/null || echo "$body")
 }
 EOF
+                            else
+                                cat > "$EVIDENCE_FILE" << EOF
+{
+  "metadata": {
+    "test_name": "keyword_extraction",
+    "endpoint": "/api/v1/extract-jd-keywords",
+    "timestamp": "$TEST_START_TIME",
+    "http_status": "$status_code",
+    "test_result": "PASSED",
+    "keyword_count": $keyword_count,
+    "deployment_type": "azure_functions"
+  },
+  "input": $(echo "$TEST_INPUT" | jq '.' 2>/dev/null || echo "$TEST_INPUT"),
+  "output": $(echo "$body" | jq '.' 2>/dev/null || echo "$body")
+}
+EOF
+                            fi
                             ((PASSED++))
                         else
                             echo -e "${RED}✗ (invalid response structure)${NC}"
@@ -610,9 +801,25 @@ EOF
                 
                 # Add more endpoint tests here as needed
                 
-                # Stop Functions
-                kill $FUNC_PID 2>/dev/null || true
-                echo "  • Azure Functions stopped"
+                # Add performance check for container mode
+                if [ "$CONTAINER_MODE" = true ] && [ "$status_code" = "200" ]; then
+                    if [ $RESPONSE_TIME -lt 3000 ]; then
+                        echo -e "    ${GREEN}✅ Performance: Excellent! Response time under 3 seconds${NC}"
+                    else
+                        echo -e "    ${YELLOW}⚠️  Performance: Response time ${RESPONSE_TIME}ms (target: < 3000ms)${NC}"
+                    fi
+                fi
+                
+                # Clean up based on mode
+                if [ "$CONTAINER_MODE" = true ]; then
+                    echo "  • Stopping container..."
+                    docker stop azure_fastapi_test > /dev/null 2>&1
+                    docker rm azure_fastapi_test > /dev/null 2>&1
+                    rm -f .env.docker
+                else
+                    kill $FUNC_PID 2>/dev/null || true
+                    echo "  • Azure Functions stopped"
+                fi
                 
                 # Show evidence file location
                 echo ""
@@ -636,20 +843,35 @@ echo -e "${RED}Failed: $FAILED${NC}"
 
 if [ $FAILED -eq 0 ]; then
     echo ""
-    echo -e "${GREEN}✅ All tests passed! Ready to commit.${NC}"
-    echo ""
-    echo "According to CLAUDE.md, you should now:"
-    echo "1. Review the test results"
-    echo "2. Get explicit approval before committing"
-    echo "3. Use conventional commit message format"
+    if [ "$CONTAINER_MODE" = true ] && [ "$SKIP_LOWER_LEVELS" = true ]; then
+        echo -e "${GREEN}✅ Container Apps tests passed! Ready for deployment.${NC}"
+        echo ""
+        echo "Next steps for Container Apps deployment:"
+        echo "1. Review the test results and performance metrics"
+        echo "2. Push Docker image to Azure Container Registry"
+        echo "3. Deploy to Azure Container Apps"
+    else
+        echo -e "${GREEN}✅ All tests passed! Ready to commit.${NC}"
+        echo ""
+        echo "According to CLAUDE.md, you should now:"
+        echo "1. Review the test results"
+        echo "2. Get explicit approval before committing"
+        echo "3. Use conventional commit message format"
+    fi
     exit 0
 else
     echo ""
     echo -e "${RED}❌ Some tests failed. Please fix before committing.${NC}"
     echo ""
     echo "Tips:"
-    echo "- Run 'ruff check --fix' to auto-fix style issues"
-    echo "- Check test output above for specific failures"
-    echo "- Ensure all YAML files are valid"
+    if [ "$CONTAINER_MODE" = true ]; then
+        echo "- Check Docker logs: docker logs azure_fastapi_test"
+        echo "- Ensure Dockerfile is optimized for production"
+        echo "- Verify all environment variables are set correctly"
+    else
+        echo "- Run 'ruff check --fix' to auto-fix style issues"
+        echo "- Check test output above for specific failures"
+        echo "- Ensure all YAML files are valid"
+    fi
     exit 1
 fi

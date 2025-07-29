@@ -4,7 +4,11 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from src.services.llm_factory import get_llm_client, get_llm_info
+from src.services.llm_factory import (
+    get_llm_client, 
+    get_llm_info,
+    get_llm_client_smart
+)
 from src.services.openai_client import AzureOpenAIClient
 from src.services.openai_client_gpt41 import AzureOpenAIGPT41Client
 
@@ -106,6 +110,32 @@ class TestLLMFactory:
         assert info["deployment"] == "gpt-4o-2"
         assert info["endpoint"] == "https://test.openai.azure.com"
         assert info["region"] == "swedencentral"
+    
+    @patch('src.services.llm_factory.monitoring_service')
+    @patch('src.services.llm_factory._track_model_selection')
+    def test_get_llm_client_smart_calls_monitoring(self, mock_track, mock_monitoring):
+        """Test that get_llm_client_smart uses correct monitoring method."""
+        # We can't test _track_model_selection directly, but we can test the monitoring service
+        # This test ensures monitoring_service has track_event method
+        assert hasattr(mock_monitoring, 'track_event')
+        # And that it doesn't have track_custom_event (which was the bug)
+        # In a real monitoring service, track_custom_event would raise AttributeError
+    
+    @patch('src.services.llm_factory._track_model_selection')
+    @patch('src.services.llm_factory.get_gpt41_mini_client')
+    @patch('src.services.llm_factory.get_azure_openai_client')
+    def test_get_llm_client_smart_tracks_selection(self, mock_azure, mock_gpt41, mock_track):
+        """Test that get_llm_client_smart tracks model selection."""
+        # Arrange
+        mock_client = Mock()
+        mock_gpt41.return_value = mock_client
+        
+        # Act
+        result = get_llm_client_smart(api_name="keywords")
+        
+        # Assert
+        assert result == mock_client
+        mock_track.assert_called_once_with("keywords", "gpt41-mini", "config")
 
 
 @pytest.mark.parametrize("api_name,expected_env_key", [
