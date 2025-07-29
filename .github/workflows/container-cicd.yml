@@ -61,8 +61,8 @@ jobs:
         EMBEDDING_ENDPOINT=${{ secrets.EMBEDDING_ENDPOINT }}
         EMBEDDING_API_KEY=${{ secrets.EMBEDDING_API_KEY }}
         
-        # Database
-        DATABASE_URL=${{ secrets.DATABASE_URL }}
+        # Database (not used in tests, course search uses postgres_connection.json)
+        DATABASE_URL=
         
         # Monitoring (disabled for tests)
         MONITORING_ENABLED=false
