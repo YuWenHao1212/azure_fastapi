@@ -80,7 +80,7 @@ jobs:
     
     - name: Upload test results
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results
         path: |
@@ -146,7 +146,7 @@ jobs:
         echo "Deployment Time: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> deployment-info.txt
     
     - name: Upload deployment info
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: deployment-info-${{ steps.meta.outputs.version_tag }}
         path: deployment-info.txt
