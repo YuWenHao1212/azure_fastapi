@@ -12,16 +12,21 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Container Apps 生產環境 URL
-BASE_URL="https://airesumeadvisor-api-production.yellowpond-a96deff7.japaneast.azurecontainerapps.io"
+BASE_URL="https://airesumeadvisor-api-production.calmisland-ea7fe91e.japaneast.azurecontainerapps.io"
 
 # 嘗試從 .env 檔案讀取 API Key
 if [ -f .env ]; then
-    # 從 .env 讀取 VALID_API_KEYS（注意是複數）
-    API_KEY=$(grep "^VALID_API_KEYS=" .env | cut -d '=' -f2- | tr -d '"' | tr -d "'")
-    echo -e "${GREEN}從 .env 檔案讀取 API Key${NC}"
+    # 嘗試多個可能的環境變數名稱
+    API_KEY=$(grep "^CONTAINER_APP_API_KEY=" .env | cut -d '=' -f2- | tr -d '"' | tr -d "'")
+    if [ -z "$API_KEY" ]; then
+        API_KEY=$(grep "^VALID_API_KEYS=" .env | cut -d '=' -f2- | tr -d '"' | tr -d "'")
+    fi
+    if [ ! -z "$API_KEY" ]; then
+        echo -e "${GREEN}從 .env 檔案讀取 API Key${NC}"
+    fi
 else
     # 從環境變數讀取
-    API_KEY="${VALID_API_KEY:-}"
+    API_KEY="${CONTAINER_APP_API_KEY:-${VALID_API_KEY:-}}"
 fi
 
 # 如果還是沒有 API Key，使用你提供的預設值
@@ -60,30 +65,30 @@ test_endpoint() {
     log "方法: $method"
     
     # 執行請求並計時
-    START_TIME=$(date +%s.%N)
+    START_TIME=$(date +%s)
     
     if [ "$method" = "GET" ]; then
         RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "X-API-Key: $API_KEY" \
-            "${BASE_URL}${endpoint}")
+            "${BASE_URL}${endpoint}" 2>/dev/null || echo "CURL_ERROR")
     else
         RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X POST \
             -H "Content-Type: application/json" \
             -H "X-API-Key: $API_KEY" \
             -d "$data" \
-            "${BASE_URL}${endpoint}")
+            "${BASE_URL}${endpoint}" 2>/dev/null || echo "CURL_ERROR")
     fi
     
-    END_TIME=$(date +%s.%N)
+    END_TIME=$(date +%s)
     
     # 分離響應和狀態碼
     HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
     BODY=$(echo "$RESPONSE" | sed '$d')
     
     # 計算執行時間
-    DURATION=$(echo "$END_TIME - $START_TIME" | bc)
-    DURATION_MS=$(echo "scale=0; $DURATION * 1000" | bc)
+    DURATION=$((END_TIME - START_TIME))
+    DURATION_MS=$((DURATION * 1000))
     
     # 記錄結果
     log "HTTP 狀態碼: $HTTP_CODE"
@@ -166,8 +171,9 @@ test_endpoint "/api/v1/courses/search" "POST" '{
 log ""
 log "=== 效能測試 - 連續 5 次關鍵字提取 ==="
 TOTAL_TIME=0
+SUCCESS_COUNT=0
 for i in {1..5}; do
-    START_TIME=$(date +%s.%N)
+    START_TIME=$(date +%s)
     
     RESPONSE=$(curl -s -w "\n%{http_code}" \
         -X POST \
@@ -177,17 +183,18 @@ for i in {1..5}; do
             "job_description": "Software Engineer with Python and AWS experience needed.",
             "language": "en"
         }' \
-        "${BASE_URL}/api/v1/extract-jd-keywords")
+        "${BASE_URL}/api/v1/extract-jd-keywords" 2>/dev/null || echo "CURL_ERROR")
     
-    END_TIME=$(date +%s.%N)
+    END_TIME=$(date +%s)
     HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
     
-    DURATION=$(echo "$END_TIME - $START_TIME" | bc)
-    DURATION_MS=$(echo "scale=0; $DURATION * 1000" | bc)
+    DURATION=$((END_TIME - START_TIME))
+    DURATION_MS=$((DURATION * 1000))
     
     if [ "$HTTP_CODE" = "200" ]; then
         echo -e "請求 $i: ${GREEN}✓${NC} ${DURATION_MS}ms"
-        TOTAL_TIME=$(echo "$TOTAL_TIME + $DURATION" | bc)
+        TOTAL_TIME=$((TOTAL_TIME + DURATION))
+        SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
     else
         echo -e "請求 $i: ${RED}✗${NC} HTTP $HTTP_CODE"
     fi
@@ -195,7 +202,11 @@ for i in {1..5}; do
     sleep 0.5
 done
 
-AVG_TIME=$(echo "scale=2; $TOTAL_TIME / 5 * 1000" | bc)
+if [ $SUCCESS_COUNT -gt 0 ]; then
+    AVG_TIME=$((TOTAL_TIME * 1000 / SUCCESS_COUNT))
+else
+    AVG_TIME=0
+fi
 log "平均響應時間: ${AVG_TIME}ms"
 
 # 完成測試

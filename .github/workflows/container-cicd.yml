@@ -283,7 +283,7 @@ jobs:
             repo: context.repo.repo,
             deployment_id: deployment.data.id,
             state: 'success',
-            environment_url: 'https://airesumeadvisor-api-production.yellowpond-a96deff7.japaneast.azurecontainerapps.io',
+            environment_url: 'https://airesumeadvisor-api-production.calmisland-ea7fe91e.japaneast.azurecontainerapps.io',
             description: 'Deployment completed successfully'
           });
 
