@@ -115,13 +115,16 @@ jobs:
         SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
         VERSION_TAG="${TIMESTAMP}-${SHORT_SHA}"
         
+        # Use environment variables to avoid masking issues
+        FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
+        
         echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
-        echo "full_image_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}" >> $GITHUB_OUTPUT
+        echo "full_image_tag=${FULL_IMAGE}" >> $GITHUB_OUTPUT
         echo "latest_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
         
         # Debug output
         echo "Generated version_tag: ${VERSION_TAG}"
-        echo "Generated full_image_tag: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
+        echo "Generated full_image_tag: ${FULL_IMAGE}"
     
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -178,18 +181,23 @@ jobs:
           echo "Received version_tag: ${{ needs.build-and-push.outputs.version_tag }}"
           echo "Received full_image_tag: ${{ needs.build-and-push.outputs.full_image_tag }}"
           
-          # Check if image tag is empty
+          # Reconstruct image tag if needed
+          VERSION_TAG="${{ needs.build-and-push.outputs.version_tag }}"
           if [ -z "${{ needs.build-and-push.outputs.full_image_tag }}" ]; then
-            echo "ERROR: Image tag is empty!"
-            exit 1
+            echo "WARNING: Image tag is empty, reconstructing..."
+            FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
+          else
+            FULL_IMAGE="${{ needs.build-and-push.outputs.full_image_tag }}"
           fi
+          
+          echo "Using image: ${FULL_IMAGE}"
           
           # Update Container App with new image
           az containerapp update \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${{ needs.build-and-push.outputs.full_image_tag }} \
-            --revision-suffix ${{ needs.build-and-push.outputs.version_tag }}
+            --image ${FULL_IMAGE} \
+            --revision-suffix ${VERSION_TAG}
           
           # Wait for deployment to complete
           echo "Waiting for deployment to complete..."
