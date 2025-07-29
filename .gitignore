@@ -211,4 +211,4 @@ deployment/container-apps/docker-compose.local-test.yml
 deployment/container-apps/docker-compose.performance.yml
 
 # Unused code files
-src/core/dependencies.py
+# src/core/dependencies.py  # Actually needed for application startup
