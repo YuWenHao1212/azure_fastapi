@@ -1,7 +1,8 @@
 # Azure Container Apps Dockerfile for AI Resume Advisor API
 # Base on official Python 3.11 slim image for optimal performance
 
-FROM python:3.11-slim
+# Specify platform for Azure Container Apps compatibility
+FROM --platform=linux/amd64 python:3.11-slim
 
 # Set working directory
 WORKDIR /app
@@ -21,8 +22,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
-COPY pyproject.toml .
-COPY pytest.ini .
 
 # Create non-root user for security
 RUN adduser --disabled-password --gecos '' appuser
