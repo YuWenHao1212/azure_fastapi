@@ -2,15 +2,42 @@
 
 ## 基礎資訊
 
-### Base URL
+### Base URLs
+
+#### Function Apps (生產環境)
 ```
 https://airesumeadvisor-fastapi.azurewebsites.net
 ```
 
+#### Container Apps (新架構 - 開發環境)
+```
+https://airesumeadvisor-api-dev.calmisland-ea7fe91e.japaneast.azurecontainerapps.io
+```
+
 ### 認證
+
+#### Function Apps
 所有 API 請求需要在 URL 參數中包含 host key：
 ```
 ?code=[YOUR_HOST_KEY]
+```
+
+#### Container Apps
+支援兩種認證方式：
+
+1. **Query Parameter** (相容 Function Apps)：
+```
+?code=[YOUR_API_KEY]
+```
+
+2. **Header** (推薦)：
+```
+X-API-Key: [YOUR_API_KEY]
+```
+
+開發環境 API Key：
+```
+SXJo23qdWoyv3IEpfDLNfwcVozbCzECTCZpvQXsAuts
 ```
 
 ### API 版本

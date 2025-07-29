@@ -3,6 +3,7 @@ Main FastAPI application entry point.
 Following FHS architecture principles.
 """
 import logging
+import os
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -18,6 +19,10 @@ load_dotenv()
 from src.api.v1 import router as v1_router  # noqa: E402
 from src.core.config import settings  # noqa: E402
 from src.core.monitoring_service import monitoring_service  # noqa: E402
+from src.middleware.error_capture_middleware import ErrorCaptureMiddleware  # noqa: E402
+from src.middleware.lightweight_monitoring import (
+    LightweightMonitoringMiddleware,  # noqa: E402
+)
 from src.middleware.monitoring_middleware import MonitoringMiddleware  # noqa: E402
 
 # Configure logging
@@ -62,8 +67,29 @@ def create_app() -> FastAPI:
         allow_headers=settings.cors_allow_headers_list,
     )
     
-    # Add monitoring middleware
-    app.add_middleware(MonitoringMiddleware)
+    # Add API Key authentication middleware for Container Apps
+    import os
+    if os.getenv("CONTAINER_APP_API_KEY"):
+        from src.middleware.api_key_middleware import APIKeyMiddleware
+        app.add_middleware(APIKeyMiddleware)
+        logger.info("API Key authentication enabled")
+    
+    # Add monitoring middleware based on environment
+    # Use lightweight monitoring by default, old monitoring only if explicitly enabled
+    if os.getenv('MONITORING_ENABLED', 'false').lower() == 'true':
+        # Heavy monitoring (Application Insights) - only if explicitly enabled
+        app.add_middleware(MonitoringMiddleware)
+        logger.info("Heavy monitoring (Application Insights) enabled")
+    elif os.getenv('LIGHTWEIGHT_MONITORING', 'true').lower() == 'true':
+        # Lightweight monitoring - enabled by default
+        # Add error capture first (processes errors before monitoring)
+        if os.getenv('ERROR_CAPTURE_ENABLED', 'true').lower() == 'true':
+            app.add_middleware(ErrorCaptureMiddleware)
+            logger.info("Error capture middleware enabled")
+        app.add_middleware(LightweightMonitoringMiddleware)
+        logger.info("Lightweight monitoring enabled")
+    else:
+        logger.info("All monitoring disabled")
     
     # Include API routers
     app.include_router(v1_router, prefix=settings.api_v1_prefix)
@@ -81,6 +107,99 @@ def create_app() -> FastAPI:
                 "docs": "/docs",
                 "status": "healthy"
             },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    # Monitoring stats endpoint (dev/staging only)
+    @app.get("/api/v1/monitoring/stats")
+    async def get_monitoring_stats():
+        """Get current monitoring statistics (non-production only)."""
+        if os.getenv("ENVIRONMENT", "local") == "production":
+            raise HTTPException(403, "Not available in production")
+        
+        # Check if lightweight monitoring is enabled
+        if os.getenv('LIGHTWEIGHT_MONITORING', 'true').lower() == 'true':
+            # Try to get stats from the global response_tracker
+            try:
+                from src.middleware.lightweight_monitoring import response_tracker
+                stats = response_tracker.get_stats()
+                return {
+                    "success": True,
+                    "data": stats,
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            except Exception as e:
+                return {
+                    "success": True,
+                    "data": {"message": f"Error getting stats: {str(e)}"},
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        return {
+            "success": True,
+            "data": {"message": "Lightweight monitoring is disabled"},
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    # Error storage info endpoint (dev/staging only)
+    @app.get("/api/v1/debug/storage-info")
+    async def get_storage_info():
+        """Get error storage configuration (non-production only)."""
+        if os.getenv("ENVIRONMENT", "local") == "production":
+            raise HTTPException(403, "Not available in production")
+        
+        # Check if error capture is enabled
+        if os.getenv('ERROR_CAPTURE_ENABLED', 'true').lower() == 'true':
+            try:
+                from src.core.monitoring_config import monitoring_config
+                return {
+                    "success": True,
+                    "data": monitoring_config.get_storage_info(),
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            except Exception as e:
+                return {
+                    "success": True,
+                    "data": {"message": f"Error getting storage info: {str(e)}"},
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        return {
+            "success": True,
+            "data": {"message": "Error capture middleware not enabled"},
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    # Recent errors endpoint (dev/staging only)
+    @app.get("/api/v1/debug/errors")
+    async def get_recent_errors(count: int = 10):
+        """Get recent captured errors (non-production only)."""
+        if os.getenv("ENVIRONMENT", "local") == "production":
+            raise HTTPException(403, "Not available in production")
+        
+        # Check if error capture is enabled
+        if os.getenv('ERROR_CAPTURE_ENABLED', 'true').lower() == 'true':
+            try:
+                from src.middleware.error_capture_middleware import error_storage
+                errors = error_storage.get_recent_errors(count)
+                return {
+                    "success": True,
+                    "data": {
+                        "errors": errors,
+                        "count": len(errors)
+                    },
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+            except Exception as e:
+                return {
+                    "success": True,
+                    "data": {"message": f"Error getting recent errors: {str(e)}"},
+                    "timestamp": datetime.utcnow().isoformat()
+                }
+        
+        return {
+            "success": True,
+            "data": {"message": "Error capture middleware not enabled"},
             "timestamp": datetime.utcnow().isoformat()
         }
     
@@ -372,3 +491,43 @@ def create_app() -> FastAPI:
 
 # Create app instance
 app = create_app()
+
+
+# Startup event to preload heavy resources
+@app.on_event("startup")
+async def startup_event():
+    """
+    Initialize heavy resources at application startup.
+    This ensures all standardization dictionaries are loaded once and reused.
+    """
+    from src.core.dependencies import initialize_dependencies
+    
+    logger.info("🚀 Starting application initialization...")
+    start_time = datetime.utcnow()
+    
+    try:
+        # Initialize all dependencies (standardizers, prompt service, etc.)
+        initialize_dependencies()
+        
+        elapsed_time = (datetime.utcnow() - start_time).total_seconds()
+        logger.info(f"✅ Application startup completed in {elapsed_time:.2f} seconds")
+        
+        # Track startup success
+        if monitoring_service.is_enabled:
+            monitoring_service.track_event(
+                "ApplicationStartup",
+                {
+                    "startup_time_seconds": elapsed_time,
+                    "environment": os.getenv("ENVIRONMENT", "unknown"),
+                    "version": settings.app_version
+                }
+            )
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize application: {e}", exc_info=True)
+        # Don't prevent startup, but log the error
+        if monitoring_service.is_enabled:
+            monitoring_service.track_error(
+                error_type="STARTUP_ERROR",
+                error_message=str(e),
+                endpoint="startup"
+            )

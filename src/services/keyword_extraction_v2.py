@@ -73,9 +73,20 @@ class KeywordExtractionServiceV2(BaseService):
         self.language_detector = SimplifiedLanguageDetector()
         self.language_validator = LanguageValidator(self.language_detector)
         
-        # Standardization
-        self.multilingual_standardizer = MultilingualStandardizer()
-        self.legacy_standardizer = KeywordStandardizer()
+        # Standardization - Use preloaded instances when available
+        try:
+            from src.core.dependencies import (
+                get_keyword_standardizer,
+                get_multilingual_standardizer,
+            )
+            self.multilingual_standardizer = get_multilingual_standardizer()
+            self.legacy_standardizer = get_keyword_standardizer()
+            self.logger.info("Using preloaded standardizers from application startup")
+        except (RuntimeError, ImportError):
+            # Fallback for tests or when dependencies not initialized
+            self.multilingual_standardizer = MultilingualStandardizer()
+            self.legacy_standardizer = KeywordStandardizer()
+            self.logger.info("Created new standardizer instances (fallback mode)")
         
         # 2-round strategy configuration
         self.keywords_per_round = 25

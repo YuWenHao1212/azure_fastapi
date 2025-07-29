@@ -75,6 +75,7 @@ ignore = [
 "tests/*" = ["S101", "S105", "F841", "E402"]  # 允許測試中使用 assert、硬編碼密碼、未使用變數和非頂層導入
 "src/data/standardization/*" = ["E501", "E722"]  # 標準化工具允許長行和 bare except
 "tests/temp/*" = ["E402"]  # 臨時測試文件允許非頂層導入
+"src/main.py" = ["E402"]  # 允許 main.py 中非頂層導入（需要先執行 load_dotenv）
 
 # isort 配置
 [tool.ruff.lint.isort]
