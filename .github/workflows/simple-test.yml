@@ -1,0 +1,53 @@
+name: Simple Azure Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type'
+        required: true
+        default: 'quick'
+        type: choice
+        options:
+          - 'quick'
+          - 'detailed'
+
+jobs:
+  test-azure-access:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Test Azure Access
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "=== Testing Azure CLI Access ==="
+          az account show
+          
+          echo ""
+          echo "=== Container App Status ==="
+          az containerapp show \
+            --name airesumeadvisor-api-production \
+            --resource-group airesumeadvisorfastapi \
+            --query "{name:name, state:properties.provisioningState, url:properties.configuration.ingress.fqdn}" \
+            -o table
+          
+          if [ "${{ github.event.inputs.test_type }}" = "detailed" ]; then
+            echo ""
+            echo "=== ACR Repository List ==="
+            az acr repository list --name airesumeadvisorregistry -o table
+            
+            echo ""
+            echo "=== Latest Image Tags ==="
+            az acr repository show-tags \
+              --name airesumeadvisorregistry \
+              --repository airesumeadvisor-api \
+              --orderby time_desc \
+              --top 3 \
+              -o table
+          fi
