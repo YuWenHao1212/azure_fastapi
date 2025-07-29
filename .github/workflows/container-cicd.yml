@@ -114,6 +114,8 @@ jobs:
         TIMESTAMP=$(date -u +'%Y%m%d-%H%M%S')
         SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
         VERSION_TAG="${TIMESTAMP}-${SHORT_SHA}"
+        # Create shorter revision suffix (max 10 chars for Container Apps)
+        REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
         
         # Use environment variables to avoid masking issues
         FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
@@ -190,6 +192,9 @@ jobs:
             FULL_IMAGE="${{ needs.build-and-push.outputs.full_image_tag }}"
           fi
           
+          # Create shorter revision suffix (max 10 chars for Container Apps)
+          REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
+          
           echo "Using image: ${FULL_IMAGE}"
           
           # Update Container App with new image
@@ -197,7 +202,7 @@ jobs:
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --image ${FULL_IMAGE} \
-            --revision-suffix ${VERSION_TAG}
+            --revision-suffix ${REVISION_SUFFIX}
           
           # Wait for deployment to complete
           echo "Waiting for deployment to complete..."
