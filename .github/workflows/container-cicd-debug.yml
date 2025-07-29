@@ -1,0 +1,120 @@
+name: Container Apps CI/CD Debug
+
+on:
+  workflow_dispatch:  # 手動觸發，方便測試
+
+env:
+  REGISTRY: airesumeadvisorregistry.azurecr.io
+  IMAGE_NAME: airesumeadvisor-api
+  RESOURCE_GROUP: airesumeadvisorfastapi
+  CONTAINER_APP_NAME: airesumeadvisor-api-production
+  CONTAINER_APP_ENV: airesumeadvisor-env-production
+
+jobs:
+  debug-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Test Azure CLI Access
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "Testing Azure CLI access..."
+          az account show
+          
+          echo "Checking Container App..."
+          az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "{name: name, location: location, provisioningState: properties.provisioningState}" \
+            -o table
+          
+          echo "Checking ACR access..."
+          az acr repository show-tags \
+            --name airesumeadvisorregistry \
+            --repository ${{ env.IMAGE_NAME }} \
+            --top 3 \
+            -o table
+    
+    - name: Get Latest Image
+      id: get-image
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          LATEST_TAG=$(az acr repository show-tags \
+            --name airesumeadvisorregistry \
+            --repository ${{ env.IMAGE_NAME }} \
+            --orderby time_desc \
+            --top 1 \
+            -o tsv)
+          
+          echo "Latest tag: $LATEST_TAG"
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+    
+    - name: Deploy with Detailed Logging
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "Deploying image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-image.outputs.latest_tag }}"
+          
+          # Create a simple revision suffix
+          REVISION=$(date +%Y%m%d%H%M | tail -c 10)
+          echo "Revision suffix: $REVISION"
+          
+          # Deploy with detailed output
+          az containerapp update \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.get-image.outputs.latest_tag }} \
+            --revision-suffix $REVISION \
+            --debug 2>&1 | tee deploy.log
+          
+          # Check deployment status
+          echo "Waiting 45 seconds for deployment..."
+          sleep 45
+          
+          # Get revision status
+          LATEST_REVISION=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].name" -o tsv)
+          
+          echo "Latest revision: $LATEST_REVISION"
+          
+          REVISION_STATUS=$(az containerapp revision show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision $LATEST_REVISION \
+            --query "properties.runningState" -o tsv)
+          
+          echo "Revision status: $REVISION_STATUS"
+          
+          if [ "$REVISION_STATUS" != "Running" ]; then
+            echo "Deployment failed! Getting revision logs..."
+            
+            # Try to get logs
+            az containerapp logs show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --revision $LATEST_REVISION \
+              --tail 100 || echo "Could not retrieve logs"
+            
+            exit 1
+          fi
+          
+          echo "Deployment successful!"
+    
+    - name: Upload Deploy Log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: deploy-log
+        path: deploy.log
