@@ -7,6 +7,15 @@ on:
   push:
     branches: [ container ]
   workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Enable debug mode'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 env:
   REGISTRY: airesumeadvisorregistry.azurecr.io
@@ -198,11 +207,21 @@ jobs:
           echo "Using image: ${FULL_IMAGE}"
           
           # Update Container App with new image
-          az containerapp update \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --image ${FULL_IMAGE} \
-            --revision-suffix ${REVISION_SUFFIX}
+          if [ "${{ github.event.inputs.debug_mode }}" = "true" ]; then
+            echo "Debug mode enabled - using verbose output"
+            az containerapp update \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --image ${FULL_IMAGE} \
+              --revision-suffix ${REVISION_SUFFIX} \
+              --debug
+          else
+            az containerapp update \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --image ${FULL_IMAGE} \
+              --revision-suffix ${REVISION_SUFFIX}
+          fi
           
           # Wait for deployment to complete
           echo "Waiting for deployment to complete..."

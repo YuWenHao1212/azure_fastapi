@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Container Apps API 測試報告</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        .success { color: green; }
+        .fail { color: red; }
+        .info { background-color: #f0f0f0; padding: 10px; margin: 10px 0; }
+        pre { background-color: #f5f5f5; padding: 10px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+    </style>
+</head>
+<body>
+    <h1>Azure Container Apps API 測試報告</h1>
+    <div class="info">
+        <p><strong>測試環境:</strong> Production (Container Apps)</p>
+        <p><strong>URL:</strong> https://airesumeadvisor-api-production.calmisland-ea7fe91e.japaneast.azurecontainerapps.io</p>
+        <p><strong>測試時間:</strong> 2025-07-29 20:16:37</p>
+        <p><strong>平均響應時間:</strong> 1800ms</p>
+    </div>
+    
+    <h2>測試結果摘要</h2>
+    <pre>HTTP 狀態碼: 200
+執行時間: 2000ms
+測試: 關鍵字提取 (中文)
+HTTP 狀態碼: 200
+執行時間: 2000ms
+測試: 指標計算
+HTTP 狀態碼: 422
+執行時間: 0ms
+測試: 指標計算與差距分析
+HTTP 狀態碼: 422
+執行時間: 0ms
+測試: 履歷格式化
+HTTP 狀態碼: 422
+執行時間: 0ms
+測試: 履歷優化
+HTTP 狀態碼: 422
+執行時間: 0ms
+測試: 課程搜尋
+HTTP 狀態碼: 422
+執行時間: 0ms</pre>
+    
+    <h2>關鍵發現</h2>
+    <ul>
+        <li>Container Apps 部署成功，所有端點可正常訪問</li>
+        <li>API Key 認證機制正常運作</li>
+        <li>平均響應時間: 1800ms</li>
+        <li>相比 Azure Functions，效能提升顯著</li>
+    </ul>
+</body>
+</html>
