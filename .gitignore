@@ -192,3 +192,16 @@ performance_optimization/extract-jd-keywords/network_diagnosis.py
 performance_optimization/docker_performance_investigation/
 deployment/scripts/deploy-to-app-service.sh
 deployment/scripts/deploy-production-direct.sh
+
+# Manual deployment scripts (use GitHub Actions instead)
+deployment/scripts/build-and-push.sh
+deployment/scripts/deploy-container-app-production.sh
+deployment/scripts/deploy-container-app-staging.sh
+deployment/scripts/deploy-dev-container-app.sh
+deployment/scripts/setup-azure-container-apps.sh
+
+# Local documentation (not for commit)
+DOCKER_LOCAL_TEST_GUIDE.md
+deployment/container-apps/DEPLOYMENT_STRATEGY.md
+deployment/container-apps/DEVELOPMENT_WORKFLOW.md
+deployment/container-apps/NEXT_STEPS.md
