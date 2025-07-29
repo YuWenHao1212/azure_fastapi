@@ -1,0 +1,214 @@
+name: Container Apps CI/CD Enhanced
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_mode:
+        description: 'Deployment mode'
+        required: true
+        default: 'test'
+        type: choice
+        options:
+          - 'test'     # Only test, no deployment
+          - 'deploy'   # Full deployment
+          - 'debug'    # Debug mode with verbose output
+      
+env:
+  REGISTRY: airesumeadvisorregistry.azurecr.io
+  IMAGE_NAME: airesumeadvisor-api
+  RESOURCE_GROUP: airesumeadvisorfastapi
+  CONTAINER_APP_NAME: airesumeadvisor-api-production
+  CONTAINER_APP_ENV: airesumeadvisor-env-production
+
+jobs:
+  diagnose-permissions:
+    runs-on: ubuntu-latest
+    name: Diagnose Azure Permissions
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Check Service Principal Permissions
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "=== Service Principal Information ==="
+          az account show
+          
+          echo ""
+          echo "=== Role Assignments ==="
+          SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          SP_ID=$(az account show --query user.name -o tsv)
+          
+          echo "Subscription Level Roles:"
+          az role assignment list --assignee $SP_ID --query "[].{role:roleDefinitionName, scope:scope}" -o table
+          
+          echo ""
+          echo "Resource Group Level Roles:"
+          az role assignment list --assignee $SP_ID --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/${{ env.RESOURCE_GROUP }} --query "[].{role:roleDefinitionName}" -o table
+          
+          echo ""
+          echo "=== Checking Access to Resources ==="
+          
+          echo "Container App Access:"
+          az containerapp show --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.RESOURCE_GROUP }} --query "{name:name, state:properties.provisioningState}" -o table || echo "Cannot access Container App"
+          
+          echo ""
+          echo "ACR Access:"
+          az acr show --name airesumeadvisorregistry --query "{name:name, sku:sku.name}" -o table || echo "Cannot access ACR"
+          
+          echo ""
+          echo "Can list ACR repositories:"
+          az acr repository list --name airesumeadvisorregistry -o table || echo "Cannot list repositories"
+
+  test-deployment:
+    runs-on: ubuntu-latest
+    needs: diagnose-permissions
+    name: Test Deployment Process
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Test Container App Update Command
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "=== Testing Container App Update Process ==="
+          
+          # Get current image
+          CURRENT_IMAGE=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].image" -o tsv)
+          
+          echo "Current image: $CURRENT_IMAGE"
+          
+          # Get latest tag from ACR
+          LATEST_TAG=$(az acr repository show-tags \
+            --name airesumeadvisorregistry \
+            --repository ${{ env.IMAGE_NAME }} \
+            --orderby time_desc \
+            --top 1 \
+            -o tsv)
+          
+          echo "Latest ACR tag: $LATEST_TAG"
+          
+          # Test revision suffix generation
+          TEST_SUFFIX=$(date +%s | tail -c 10)
+          echo "Test revision suffix: $TEST_SUFFIX"
+          
+          if [ "${{ github.event.inputs.deploy_mode }}" != "test" ]; then
+            echo ""
+            echo "=== Attempting Container App Update ==="
+            
+            # Create a detailed update command
+            UPDATE_CMD="az containerapp update"
+            UPDATE_CMD="$UPDATE_CMD --name ${{ env.CONTAINER_APP_NAME }}"
+            UPDATE_CMD="$UPDATE_CMD --resource-group ${{ env.RESOURCE_GROUP }}"
+            UPDATE_CMD="$UPDATE_CMD --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$LATEST_TAG"
+            UPDATE_CMD="$UPDATE_CMD --revision-suffix $TEST_SUFFIX"
+            
+            if [ "${{ github.event.inputs.deploy_mode }}" = "debug" ]; then
+              UPDATE_CMD="$UPDATE_CMD --debug"
+            fi
+            
+            echo "Executing: $UPDATE_CMD"
+            
+            # Execute with error handling
+            if $UPDATE_CMD 2>&1 | tee update.log; then
+              echo "Update command succeeded"
+            else
+              echo "Update command failed, checking error details..."
+              cat update.log
+              
+              # Try to get more error information
+              echo ""
+              echo "=== Checking Container App State ==="
+              az containerapp show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --query "{state:properties.provisioningState, latestRevision:properties.latestRevisionName}" \
+                -o json
+            fi
+          else
+            echo "Test mode - skipping actual deployment"
+          fi
+    
+    - name: Upload Update Log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: update-log
+        path: update.log
+
+  check-deployment-status:
+    runs-on: ubuntu-latest
+    needs: test-deployment
+    if: github.event.inputs.deploy_mode != 'test'
+    name: Check Deployment Status
+    
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Check Revision Status
+      uses: azure/CLI@v1
+      with:
+        inlineScript: |
+          echo "=== Checking Latest Revision Status ==="
+          
+          # Get latest revision
+          LATEST_REVISION=$(az containerapp revision list \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "[0].{name:name, state:properties.runningState, created:properties.createdTime, replicas:properties.replicas}" \
+            -o json)
+          
+          echo "Latest revision info:"
+          echo "$LATEST_REVISION" | jq .
+          
+          # Get revision name
+          REVISION_NAME=$(echo "$LATEST_REVISION" | jq -r .name)
+          
+          echo ""
+          echo "=== Checking Revision Logs ==="
+          az containerapp logs show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --revision $REVISION_NAME \
+            --tail 50 2>&1 || echo "Could not retrieve logs"
+          
+          echo ""
+          echo "=== Container App Health Check ==="
+          APP_URL=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          
+          echo "App URL: https://$APP_URL"
+          
+          # Test health endpoint
+          echo "Testing health endpoint..."
+          HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL/health || echo "000")
+          echo "Health check status: $HEALTH_STATUS"
+          
+          if [ "$HEALTH_STATUS" = "200" ]; then
+            echo "✅ Application is healthy!"
+            curl -s https://$APP_URL/health | jq .
+          else
+            echo "❌ Health check failed"
+          fi
