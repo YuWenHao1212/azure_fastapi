@@ -119,12 +119,19 @@ jobs:
     - name: Generate build metadata
       id: meta
       run: |
-        # Generate unique tag with timestamp and short SHA
+        # 修復 2: 改善 Revision Suffix 生成策略
+        # 使用時間戳 + 隨機字符避免衝突，確保長度符合 Container Apps 限制 (10 字符)
         TIMESTAMP=$(date -u +'%Y%m%d-%H%M%S')
         SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
         VERSION_TAG="${TIMESTAMP}-${SHORT_SHA}"
-        # Create shorter revision suffix (max 10 chars for Container Apps)
-        REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
+        
+        # 生成高唯一性的 revision suffix: 時間戳(6位) + 隨機字符(4位) = 10字符
+        MICRO_TIMESTAMP=$(date -u +'%H%M%S')
+        RANDOM_SUFFIX=$(openssl rand -hex 2)
+        REVISION_SUFFIX="${MICRO_TIMESTAMP}${RANDOM_SUFFIX}"
+        
+        # 確保 revision suffix 符合 10 字符限制
+        REVISION_SUFFIX=$(echo $REVISION_SUFFIX | cut -c1-10)
         
         # Set outputs directly without intermediate variables
         echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
@@ -135,7 +142,7 @@ jobs:
         # Debug output
         echo "Generated version_tag: ${VERSION_TAG}"
         echo "Generated full_image_tag: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
-        echo "Generated revision_suffix: ${REVISION_SUFFIX}"
+        echo "Generated revision_suffix: ${REVISION_SUFFIX} (length: ${#REVISION_SUFFIX})"
     
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -208,13 +215,18 @@ jobs:
           
           if [ -z "${REVISION_SUFFIX}" ]; then
             echo "WARNING: Revision suffix is empty, generating new one"
-            REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
+            # 使用改善的生成策略
+            MICRO_TIMESTAMP=$(date -u +'%H%M%S')
+            RANDOM_SUFFIX=$(openssl rand -hex 2)
+            REVISION_SUFFIX="${MICRO_TIMESTAMP}${RANDOM_SUFFIX}"
+            REVISION_SUFFIX=$(echo $REVISION_SUFFIX | cut -c1-10)
           fi
           
           echo "Final image to deploy: ${FULL_IMAGE}"
           echo "Final revision suffix: ${REVISION_SUFFIX}"
           
           # Update Container App with new image
+          echo "Starting Container App update..."
           if [ "${{ github.event.inputs.debug_mode }}" = "true" ]; then
             echo "Debug mode enabled - using verbose output"
             az containerapp update \
@@ -231,29 +243,95 @@ jobs:
               --revision-suffix ${REVISION_SUFFIX}
           fi
           
-          # Wait for deployment to complete
-          echo "Waiting for deployment to complete..."
-          sleep 30
+          echo "Container App update command completed. Starting deployment verification..."
           
-          # Get the latest revision
-          LATEST_REVISION=$(az containerapp revision list \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --query "[0].name" -o tsv)
+          # 修復 1: 延長等待時間和增加重試機制
+          # 延長初始等待時間從 30 秒到 60 秒
+          echo "Initial wait for deployment to stabilize (60 seconds)..."
+          sleep 60
           
-          echo "Latest revision: $LATEST_REVISION"
+          # 增加最多 3 次的重試檢查機制
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          DEPLOYMENT_SUCCESS=false
           
-          # Check revision status
-          REVISION_STATUS=$(az containerapp revision show \
-            --name ${{ env.CONTAINER_APP_NAME }} \
-            --resource-group ${{ env.RESOURCE_GROUP }} \
-            --revision $LATEST_REVISION \
-            --query "properties.runningState" -o tsv)
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Deployment verification attempt $((RETRY_COUNT + 1))/$MAX_RETRIES"
+            
+            # Get the latest revision
+            LATEST_REVISION=$(az containerapp revision list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "[0].name" -o tsv)
+            
+            echo "Latest revision: $LATEST_REVISION"
+            
+            # Check revision status
+            REVISION_STATUS=$(az containerapp revision show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --revision $LATEST_REVISION \
+              --query "properties.runningState" -o tsv)
+            
+            echo "Revision status: $REVISION_STATUS"
+            
+            # 對 Deprovisioning 狀態進行特殊處理
+            if [ "$REVISION_STATUS" = "Deprovisioning" ]; then
+              echo "Revision is in Deprovisioning state, waiting for transition..."
+              sleep 30
+              continue
+            elif [ "$REVISION_STATUS" = "Running" ]; then
+              echo "Deployment successful! Revision is in Running state."
+              DEPLOYMENT_SUCCESS=true
+              break
+            elif [ "$REVISION_STATUS" = "Failed" ]; then
+              echo "Deployment failed! Revision is in Failed state."
+              # 修復 3: 增加失敗診斷資訊
+              echo "=== DEPLOYMENT FAILURE DIAGNOSTICS ==="
+              echo "Failed revision details:"
+              az containerapp revision show \
+                --name ${{ env.CONTAINER_APP_NAME }} \
+                --resource-group ${{ env.RESOURCE_GROUP }} \
+                --revision $LATEST_REVISION \
+                --output table
+              break
+            else
+              echo "Revision status: $REVISION_STATUS (waiting for Running state)"
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+              echo "Waiting 30 seconds before next retry..."
+              sleep 30
+            fi
+          done
           
-          echo "Revision status: $REVISION_STATUS"
-          
-          if [ "$REVISION_STATUS" != "Running" ]; then
-            echo "Deployment failed! Revision is not in Running state."
+          # 最終檢查
+          if [ "$DEPLOYMENT_SUCCESS" != "true" ]; then
+            echo "=== COMPREHENSIVE FAILURE DIAGNOSTICS ==="
+            
+            # 顯示所有 revisions 狀態
+            echo "All revisions status:"
+            az containerapp revision list \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --output table
+            
+            # 顯示 Container App 詳細資訊
+            echo "Container App details:"
+            az containerapp show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --output table
+            
+            # 嘗試取得應用程式日誌
+            echo "Recent application logs:"
+            az containerapp logs show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --tail 50 || echo "Unable to retrieve logs"
+            
+            echo "Deployment failed after $MAX_RETRIES retries!"
             exit 1
           fi
     
@@ -261,7 +339,8 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # Test the health endpoint
+          # 修復 3: 測試健康檢查端點 (改善版)
+          # 取得應用程式 URL
           APP_URL=$(az containerapp show \
             --name ${{ env.CONTAINER_APP_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
@@ -269,25 +348,59 @@ jobs:
           
           echo "Testing application health at https://$APP_URL/health"
           
-          # Retry logic for health check
-          MAX_RETRIES=5
+          # 增強的重試邏輯，延長等待時間
+          MAX_RETRIES=6
           RETRY_COUNT=0
+          HEALTH_CHECK_SUCCESS=false
           
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://$APP_URL/health)
+            echo "Health check attempt $((RETRY_COUNT + 1))/$MAX_RETRIES"
+            
+            # 使用更詳細的 curl 檢查
+            HTTP_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}\nTIME_TOTAL:%{time_total}\n" \
+              --max-time 30 --connect-timeout 10 https://$APP_URL/health)
+            
+            HTTP_CODE=$(echo "$HTTP_RESPONSE" | grep HTTPSTATUS | cut -d: -f2)
+            TIME_TOTAL=$(echo "$HTTP_RESPONSE" | grep TIME_TOTAL | cut -d: -f2)
+            RESPONSE_BODY=$(echo "$HTTP_RESPONSE" | sed '/HTTPSTATUS:/d' | sed '/TIME_TOTAL:/d')
+            
+            echo "HTTP Status: $HTTP_CODE, Response Time: ${TIME_TOTAL}s"
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo "Health check passed! Application is running."
+              echo "Response body: $RESPONSE_BODY"
+              HEALTH_CHECK_SUCCESS=true
               break
             else
-              echo "Health check failed with HTTP code: $HTTP_CODE. Retrying..."
+              echo "Health check failed with HTTP code: $HTTP_CODE"
+              if [ ! -z "$RESPONSE_BODY" ]; then
+                echo "Response body: $RESPONSE_BODY"
+              fi
+              
               RETRY_COUNT=$((RETRY_COUNT + 1))
-              sleep 10
+              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                echo "Waiting 15 seconds before next retry..."
+                sleep 15
+              fi
             fi
           done
           
-          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+          if [ "$HEALTH_CHECK_SUCCESS" != "true" ]; then
+            echo "=== HEALTH CHECK FAILURE DIAGNOSTICS ==="
             echo "Health check failed after $MAX_RETRIES retries!"
+            
+            # 嘗試基本連接測試
+            echo "Testing basic connectivity to $APP_URL..."
+            curl -I --max-time 10 https://$APP_URL/ || echo "Basic connectivity test failed"
+            
+            # 顯示當前 Container App 狀態
+            echo "Current Container App status:"
+            az containerapp show \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --query "{name:name,state:properties.runningState,fqdn:properties.configuration.ingress.fqdn}" \
+              --output table
+            
             exit 1
           fi
     
