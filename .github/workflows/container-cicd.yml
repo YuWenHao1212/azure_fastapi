@@ -1,12 +1,11 @@
 name: Container Apps CI/CD
 
 on:
-  # Temporarily disabled to allow diagnostic workflow to run
-  # pull_request:
-  #   branches: [ container ]
-  #   types: [ opened, synchronize, reopened ]
-  # push:
-  #   branches: [ container ]
+  pull_request:
+    branches: [ container ]
+    types: [ opened, synchronize, reopened ]
+  push:
+    branches: [ container ]
   workflow_dispatch:
     inputs:
       debug_mode:
@@ -127,16 +126,16 @@ jobs:
         # Create shorter revision suffix (max 10 chars for Container Apps)
         REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
         
-        # Use environment variables to avoid masking issues
-        FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
-        
+        # Set outputs directly without intermediate variables
         echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
-        echo "full_image_tag=${FULL_IMAGE}" >> $GITHUB_OUTPUT
+        echo "full_image_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}" >> $GITHUB_OUTPUT
         echo "latest_tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_OUTPUT
+        echo "revision_suffix=${REVISION_SUFFIX}" >> $GITHUB_OUTPUT
         
         # Debug output
         echo "Generated version_tag: ${VERSION_TAG}"
-        echo "Generated full_image_tag: ${FULL_IMAGE}"
+        echo "Generated full_image_tag: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
+        echo "Generated revision_suffix: ${REVISION_SUFFIX}"
     
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -169,6 +168,7 @@ jobs:
     outputs:
       version_tag: ${{ steps.meta.outputs.version_tag }}
       full_image_tag: ${{ steps.meta.outputs.full_image_tag }}
+      revision_suffix: ${{ steps.meta.outputs.revision_suffix }}
 
   # Job 3: Deploy to Azure Container Apps
   deploy:
@@ -189,23 +189,30 @@ jobs:
       uses: azure/CLI@v1
       with:
         inlineScript: |
-          # Debug outputs
-          echo "Received version_tag: ${{ needs.build-and-push.outputs.version_tag }}"
-          echo "Received full_image_tag: ${{ needs.build-and-push.outputs.full_image_tag }}"
-          
-          # Reconstruct image tag if needed
+          # Get outputs from build job
           VERSION_TAG="${{ needs.build-and-push.outputs.version_tag }}"
-          if [ -z "${{ needs.build-and-push.outputs.full_image_tag }}" ]; then
-            echo "WARNING: Image tag is empty, reconstructing..."
+          FULL_IMAGE="${{ needs.build-and-push.outputs.full_image_tag }}"
+          REVISION_SUFFIX="${{ needs.build-and-push.outputs.revision_suffix }}"
+          
+          # Debug outputs
+          echo "Received version_tag: ${VERSION_TAG}"
+          echo "Received full_image_tag: ${FULL_IMAGE}"
+          echo "Received revision_suffix: ${REVISION_SUFFIX}"
+          
+          # Validate outputs
+          if [ -z "${FULL_IMAGE}" ] || [ "${FULL_IMAGE}" = "null" ]; then
+            echo "ERROR: Full image tag is empty or null"
+            echo "Reconstructing from version tag..."
             FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${VERSION_TAG}"
-          else
-            FULL_IMAGE="${{ needs.build-and-push.outputs.full_image_tag }}"
           fi
           
-          # Create shorter revision suffix (max 10 chars for Container Apps)
-          REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
+          if [ -z "${REVISION_SUFFIX}" ]; then
+            echo "WARNING: Revision suffix is empty, generating new one"
+            REVISION_SUFFIX=$(echo ${{ github.sha }} | cut -c1-10)
+          fi
           
-          echo "Using image: ${FULL_IMAGE}"
+          echo "Final image to deploy: ${FULL_IMAGE}"
+          echo "Final revision suffix: ${REVISION_SUFFIX}"
           
           # Update Container App with new image
           if [ "${{ github.event.inputs.debug_mode }}" = "true" ]; then

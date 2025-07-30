@@ -64,6 +64,7 @@ Claude Code **絕對不可以**自行執行 `git commit`
 9. [快速參考卡](#快速參考卡)
 10. [Bubble.io API 相容性](#bubbleio-api-相容性)
 11. [注意事項](#注意事項)
+12. [Claude Code Sub-agents 參考](#claude-code-sub-agents-參考)
 
 ---
 
@@ -92,6 +93,7 @@ Claude Code **絕對不可以**自行執行 `git commit`
 #### 開發工具
 - **協作工具**: Claude Code + WenHao (Cursor 僅作為 IDE，不使用其 LLM)
 - **記憶系統**: Serena MCP (提供歷史記錄查詢，但非日常開發工具)
+- **Sub-agents**: 37 個專門 agents，詳見 `/Users/yuwenhao/.claude/agents/`
 
 ### Azure DevOps 專案資訊
 - **組織**: airesumeadvisor
@@ -1491,4 +1493,58 @@ claude "分析效能瓶頸並提出優化方案"
 
 # 文檔更新
 claude "更新相關文檔確保一致性"
+```
+
+---
+
+## Claude Code Sub-agents 參考
+
+Claude Code 提供 37 個專門的 sub-agents 來協助各種開發任務。
+
+- **快速參考**: [`.claude/AGENTS_QUICK_REFERENCE.md`](./.claude/AGENTS_QUICK_REFERENCE.md)
+- **完整文檔**: `/Users/yuwenhao/.claude/agents/`
+
+### 🔴 主動觸發 Agents
+
+以下 agents 應在特定情況下自動觸發，無需用戶明確要求：
+
+| Agent | 觸發時機 | 用途 |
+|-------|---------|------|
+| `whimsy-injector` | UI/UX 變更後 | 為介面添加愉悅元素 |
+| `test-writer-fixer` | 程式碼修改後 | 確保測試通過 |
+| `project-shipper` | 接近發布里程碑 | 協調發布流程 |
+| `studio-producer` | 團隊協調需求出現 | 跨團隊資源管理 |
+| `experiment-tracker` | 實驗開始或修改時 | A/B 測試追蹤 |
+| `studio-coach` | 複雜任務或 agent 遇困時 | Agent 績效指導 |
+
+### 📊 常用 Agents 快速選擇
+
+**開發任務**：
+- 複雜研究 → `general-purpose`
+- 前端開發 → `frontend-developer`
+- 後端架構 → `backend-architect`
+- 快速原型 → `rapid-prototyper`
+
+**部署與維運**：
+- CI/CD 設置 → `devops-automator`
+- 效能測試 → `performance-benchmarker`
+- 系統維護 → `infrastructure-maintainer`
+
+**產品與策略**：
+- 衝刺規劃 → `sprint-prioritizer`
+- 市場研究 → `trend-researcher`
+- 用戶反饋 → `feedback-synthesizer`
+
+### 使用範例
+
+```python
+# 單一 agent 執行
+Task(
+    description="分析 Container Apps 架構",
+    prompt="分析當前 container 分支的架構設計並提供改進建議",
+    subagent_type="backend-architect"
+)
+
+# 並發執行多個 agents（推薦）
+# 在單一訊息中使用多個 Task 調用以提升效率
 ```
