@@ -106,39 +106,8 @@ async def tailor_resume(
         )
 
 
-@router.get(
-    "/health",
-    summary="Health Check",
-    description="Check if the resume tailoring service is healthy"
-)
-async def health_check():
-    """Check service health"""
-    try:
-        # Check if service is initialized
-        if not tailoring_service:
-            raise Exception("Service not initialized")
-        
-        # Check standardizers
-        en_available = tailoring_service.en_standardizer.is_standardization_available()
-        zh_available = tailoring_service.zh_tw_standardizer.is_standardization_available()
-        
-        return {
-            "success": True,
-            "data": {
-                "status": "healthy",
-                "service": "resume_tailoring",
-                "standardizers": {
-                    "en": en_available,
-                    "zh-TW": zh_available
-                }
-            }
-        }
-    except Exception as e:
-        logger.error(f"Health check failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Service unhealthy: {str(e)}"
-        )
+# Health check endpoint removed - using unified /health endpoint in main.py
+# Service-specific health info is available through the main health endpoint
 
 
 @router.get(

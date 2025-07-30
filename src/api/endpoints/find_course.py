@@ -53,13 +53,5 @@ async def search_courses(request: CourseSearchRequest) -> CourseSearchResponse:
             )
         )
 
-@router.get("/health")
-async def health_check():
-    """
-    健康檢查端點
-    """
-    return {
-        "status": "healthy",
-        "service": "find-course-api",
-        "version": "1.0.0"
-    }
+# Health check endpoint removed - using unified /health endpoint in main.py
+# Course search health status is included in the main health endpoint

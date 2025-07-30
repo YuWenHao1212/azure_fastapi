@@ -60,9 +60,9 @@ async def v1_root():
                     "status": "implemented"
                 },
                 "health_check": {
-                    "path": "/api/v1/health",
+                    "path": "/health",
                     "method": "GET", 
-                    "description": "Health check for keyword extraction service",
+                    "description": "Unified health check for all services",
                     "status": "implemented"
                 },
                 "version_info": {
@@ -111,12 +111,6 @@ async def v1_root():
                     "path": "/api/v1/tailor-resume",
                     "method": "POST",
                     "description": "Optimize resume based on job description and gap analysis",
-                    "status": "implemented"
-                },
-                "tailor_resume_health": {
-                    "path": "/api/v1/tailor-resume/health",
-                    "method": "GET",
-                    "description": "Health check for resume tailoring service",
                     "status": "implemented"
                 },
                 "tailor_resume_languages": {
